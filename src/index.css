@@ -1,0 +1,70 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-text-main: hsl(220, 20%, 15%);
+  --color-text-muted: hsl(220, 20%, 45%);
+  --color-bg-light: hsl(140, 20%, 98%);
+  
+  --glass-bg: rgba(255, 255, 255, 0.75);
+  --glass-border: rgba(255, 255, 255, 0.5);
+  --glass-shadow: 0 8px 32px 0 rgba(41, 181, 122, 0.08);
+}
+
+[data-theme="dark"] {
+  --color-text-main: hsl(0, 0%, 90%);
+  --color-text-muted: hsl(220, 10%, 65%);
+  --color-bg-light: hsl(220, 25%, 10%); 
+  
+  --glass-bg: rgba(20, 25, 30, 0.65);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+}
+
+body {
+  color: var(--color-text-main);
+  background-color: var(--color-bg-light);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+@layer components {
+  /* Retain glassmorphism utility classes because Tailwind arbitrary values for blur and backdrop filter together can be messy */
+  .glass-panel {
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    @apply rounded-2xl;
+  }
+  
+  .glass-nav {
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+  }
+}
+
+/* Animasi Modal Konfirmasi */
+@keyframes modalIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}

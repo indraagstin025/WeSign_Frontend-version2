@@ -1,0 +1,24 @@
+import { useState, useEffect } from 'react';
+
+/**
+ * Custom hook untuk memantau status koneksi internet browser.
+ * @returns {boolean} isOnline - true jika terhubung, false jika offline.
+ */
+export const useNetwork = () => {
+  const [isOnline, setIsOnline] = useState(window.navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  return isOnline;
+};
