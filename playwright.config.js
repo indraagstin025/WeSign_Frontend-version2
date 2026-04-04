@@ -12,8 +12,8 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   /* Ulangi jika gagal */
   retries: process.env.CI ? 2 : 0,
-  /* Jumlah worker */
-  workers: process.env.CI ? 1 : undefined,
+  /* Jumlah worker (Diset 1 agar stabil saat mengetes fitur yang sama) */
+  workers: 1,
   /* Reporter yang digunakan */
   reporter: 'html',
   /* Shared settings for all the projects below. */
