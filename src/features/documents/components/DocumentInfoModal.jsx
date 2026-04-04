@@ -5,37 +5,25 @@ import {
   User, 
   Clock, 
   CheckCircle2, 
-  AlertCircle,
-  FileText,
-  ExternalLink,
   History,
-  Download
+  Download,
+  ExternalLink
 } from 'lucide-react';
+import { useDocumentInfo } from '../hooks/useDocumentInfo';
 
 const DocumentInfoModal = ({ isOpen, onClose, document, onViewFile, onDownload }) => {
+  const { helpers } = useDocumentInfo(document);
+
   if (!isOpen || !document) return null;
 
-  const getStatusBadge = (status) => {
-    switch (status.toLowerCase()) {
-      case 'completed':
-        return <span className="px-3 py-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 rounded-full text-xs font-bold uppercase tracking-wider">Selesai</span>;
-      case 'pending':
-        return <span className="px-3 py-1 bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 rounded-full text-xs font-bold uppercase tracking-wider">Menunggu</span>;
-      case 'draft':
-        return <span className="px-3 py-1 bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400 rounded-full text-xs font-bold uppercase tracking-wider">Draf</span>;
-      default:
-        return <span className="px-3 py-1 bg-slate-100 text-slate-700 dark:bg-slate-800 rounded-full text-xs font-bold uppercase tracking-wider">{status}</span>;
-    }
-  };
-
-  const formatDate = (date) => {
-    return new Date(date).toLocaleString('id-ID', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+  // Render Badge based on hook config
+  const renderStatusBadge = (status) => {
+    const config = helpers.getStatusConfig(status);
+    return (
+      <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${config.className}`}>
+        {config.label}
+      </span>
+    );
   };
 
   return (
@@ -71,12 +59,12 @@ const DocumentInfoModal = ({ isOpen, onClose, document, onViewFile, onDownload }
           {/* Section 1: Overview Metadata */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div className="space-y-4">
-              <InfoRow label="Status Saat Ini" value={getStatusBadge(document.status)} />
+              <InfoRow label="Status Saat Ini" value={renderStatusBadge(document.status)} />
               <InfoRow label="ID Dokumen" value={document.id} technical />
               <InfoRow label="Kategori" value={document.type || 'Umum'} />
             </div>
             <div className="space-y-4">
-              <InfoRow icon={<Clock size={14} />} label="Diunggah Pada" value={formatDate(document.createdAt)} />
+              <InfoRow icon={<Clock size={14} />} label="Diunggah Pada" value={helpers.formatDate(document.createdAt)} />
               <InfoRow icon={<User size={14} />} label="Pemilik" value={document.user?.name || document.userId} />
               <InfoRow label="Total Versi" value={document.versions?.length || 1} />
             </div>
@@ -144,7 +132,7 @@ const DocumentInfoModal = ({ isOpen, onClose, document, onViewFile, onDownload }
                   <div key={v.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/30 rounded-xl border border-slate-100 dark:border-slate-800 group hover:border-primary/30 transition-all">
                     <div className="flex items-center gap-3">
                       <div className="text-xs font-bold text-slate-400 w-6">v{document.versions.length - idx}</div>
-                      <div className="text-xs text-slate-600 dark:text-slate-400">{formatDate(v.createdAt)}</div>
+                      <div className="text-xs text-slate-600 dark:text-slate-400">{helpers.formatDate(v.createdAt)}</div>
                     </div>
                     <button 
                       onClick={() => onDownload(document.id, v.id)}

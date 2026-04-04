@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { X, FileEdit, Save, AlertCircle, Tag } from 'lucide-react';
+import { useEditDoc } from '../hooks/useEditDoc';
 
 /**
  * @component EditDocModal
@@ -11,42 +12,9 @@ const EditDocModal = ({
   onUpdate, 
   loading 
 }) => {
-  const [title, setTitle] = useState('');
-  const [type, setType] = useState('General');
-  const [error, setError] = useState('');
-
-  // Sinkronisasi data saat modal dibuka
-  useEffect(() => {
-    if (document) {
-      setTitle(document.title || '');
-      setType(document.type || 'General');
-      setError('');
-    }
-  }, [document]);
+  const { state, actions } = useEditDoc(document, onUpdate, onClose);
 
   if (!isOpen || !document) return null;
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    
-    // Validasi
-    const cleanedTitle = title.trim();
-    if (!cleanedTitle) {
-      setError('Judul dokumen tidak boleh kosong.');
-      return;
-    }
-
-    // Jika tidak ada perubahan sama sekali
-    if (cleanedTitle === document.title && type === document.type) {
-      onClose();
-      return;
-    }
-
-    onUpdate(document.id, { 
-      title: cleanedTitle,
-      type: type 
-    });
-  };
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
@@ -75,7 +43,7 @@ const EditDocModal = ({
         </div>
 
         {/* Body */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+        <form onSubmit={actions.handleSubmit} className="p-6 space-y-5">
           {/* Input Judul */}
           <div className="space-y-1.5 text-left">
             <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">
@@ -83,19 +51,16 @@ const EditDocModal = ({
             </label>
             <input 
               type="text" 
-              value={title}
+              value={state.title}
               disabled={loading}
-              onChange={(e) => {
-                setTitle(e.target.value);
-                if (error) setError('');
-              }}
+              onChange={(e) => actions.setTitle(e.target.value)}
               placeholder="Masukkan judul baru..."
-              className={`w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border ${error ? 'border-rose-400 focus:ring-rose-500/20' : 'border-slate-200 dark:border-slate-700 focus:ring-primary/20'} rounded-2xl focus:outline-none focus:ring-2 dark:text-white transition-all`}
+              className={`w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border ${state.error ? 'border-rose-400 focus:ring-rose-500/20' : 'border-slate-200 dark:border-slate-700 focus:ring-primary/20'} rounded-2xl focus:outline-none focus:ring-2 dark:text-white transition-all`}
             />
-            {error && (
+            {state.error && (
               <div className="flex items-center gap-1.5 text-rose-500 text-[10px] font-bold mt-1 ml-1">
                 <AlertCircle size={12} />
-                <span>{error}</span>
+                <span>{state.error}</span>
               </div>
             )}
           </div>
@@ -107,9 +72,9 @@ const EditDocModal = ({
             </label>
             <div className="relative">
               <select 
-                value={type}
+                value={state.type}
                 disabled={loading}
-                onChange={(e) => setType(e.target.value)}
+                onChange={(e) => actions.setType(e.target.value)}
                 className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/20 dark:text-white transition-all appearance-none cursor-pointer"
               >
                 <option value="General">Umum (General)</option>
@@ -135,7 +100,7 @@ const EditDocModal = ({
             </button>
             <button
               type="submit"
-              disabled={loading || !title.trim()}
+              disabled={loading || !state.title.trim()}
               className="flex-[2] py-3 px-4 rounded-2xl text-sm font-bold bg-primary text-white hover:bg-primary-dark shadow-lg shadow-primary/25 transition-all border-none cursor-pointer flex items-center justify-center gap-2"
             >
               {loading ? (
@@ -156,4 +121,3 @@ const Loader2 = ({ size, className }) => (
 );
 
 export default EditDocModal;
-

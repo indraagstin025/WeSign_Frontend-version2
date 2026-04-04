@@ -1,32 +1,15 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { usePagination } from '../hooks/usePagination';
 
 /**
  * @component Pagination
  * @description Komponen navigasi halaman untuk data tabel.
  */
 const Pagination = ({ currentPage, totalPages, onPageChange }) => {
-  if (totalPages <= 1) return null;
+  const { pageNumbers } = usePagination(currentPage, totalPages);
 
-  // Helper untuk mendapatkan range halaman
-  const getPageNumbers = () => {
-    const pages = [];
-    if (totalPages <= 7) {
-      for (let i = 1; i <= totalPages; i++) pages.push(i);
-    } else {
-      pages.push(1);
-      if (currentPage > 3) pages.push('...');
-      
-      const start = Math.max(2, currentPage - 1);
-      const end = Math.min(totalPages - 1, currentPage + 1);
-      
-      for (let i = start; i <= end; i++) pages.push(i);
-      
-      if (currentPage < totalPages - 2) pages.push('...');
-      pages.push(totalPages);
-    }
-    return pages;
-  };
+  if (totalPages <= 1) return null;
 
   return (
     <div className="px-5 py-4 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/50 dark:bg-slate-900/50">
@@ -45,7 +28,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
         </button>
 
         <div className="hidden sm:flex items-center gap-1">
-          {getPageNumbers().map((pageNum, i) => (
+          {pageNumbers.map((pageNum, i) => (
             pageNum === '...' ? (
               <span key={`ellipsis-${i}`} className="w-9 h-9 flex items-center justify-center text-slate-400">...</span>
             ) : (

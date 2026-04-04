@@ -35,6 +35,9 @@ export const useDocuments = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [editDoc, setEditDoc] = useState(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  
+  // State khusus Riwayat Versi (V1/V2)
+  const [versionDoc, setVersionDoc] = useState(null);
 
   // --- FETCH DATA ---
   const fetchDocuments = useCallback(async () => {
@@ -90,11 +93,19 @@ export const useDocuments = () => {
         setEditDoc(doc);
         break;
 
+      case 'history':
+        setVersionDoc(doc);
+        break;
+
       case 'view':
         navigate(`/dashboard/documents/preview/${doc.id}`);
         break;
 
       case 'sign':
+        if (doc.status?.toLowerCase() === 'completed') {
+          alert('Dokumen ini sudah ditandatangani dan tidak dapat ditandatangani ulang.');
+          return;
+        }
         navigate(`/dashboard/documents/sign/${doc.id}`);
         break;
 
@@ -150,58 +161,59 @@ export const useDocuments = () => {
     }
   };
 
-  const handleUploadSuccess = () => {
-    fetchDocuments(); // Refresh daftar dokumen
+  const actions = {
+    refresh: fetchDocuments,
+    handleStatusChange,
+    handlePageChange,
+    handleAction,
+    handleConfirmDelete,
+    handleUpdateDocument
+  };
+
+  const modals = {
+    upload: {
+      isOpen: isUploadModalOpen,
+      setOpen: setIsUploadModalOpen,
+      onSuccess: () => {
+        setIsUploadModalOpen(false);
+        fetchDocuments();
+      }
+    },
+    info: {
+      data: infoDoc,
+      setOpen: setInfoDoc,
+      isLoading: isInfoLoading
+    },
+    edit: {
+      data: editDoc,
+      setOpen: setEditDoc,
+      onUpdate: handleUpdateDocument,
+      loading: isUpdating
+    },
+    delete: {
+      data: deleteDoc,
+      setOpen: setDeleteDoc,
+      onConfirm: handleConfirmDelete,
+      loading: isDeleting
+    },
+    version: {
+      data: versionDoc,
+      setOpen: setVersionDoc,
+      onRollbackSuccess: fetchDocuments // Refresh saat rollback (V2 di-delete)
+    }
   };
 
   return {
-    // Data & Loading States
     documents,
     loading,
     error,
     meta,
-    
-    // Filter States & Handlers
     filters: {
-      status,
-      search,
-      page,
-      setStatus: handleStatusChange,
-      setSearch,
-      setPage
+      status, setStatus: handleStatusChange,
+      search, setSearch,
+      page, setPage
     },
-
-    // Modal States & Handlers
-    modals: {
-      upload: {
-        isOpen: isUploadModalOpen,
-        setOpen: setIsUploadModalOpen,
-        onSuccess: handleUploadSuccess
-      },
-      info: {
-        data: infoDoc,
-        setOpen: setInfoDoc,
-        isLoading: isInfoLoading
-      },
-      delete: {
-        data: deleteDoc,
-        setOpen: setDeleteDoc,
-        loading: isDeleting,
-        onConfirm: handleConfirmDelete
-      },
-      edit: {
-        data: editDoc,
-        setOpen: setEditDoc,
-        loading: isUpdating,
-        onUpdate: handleUpdateDocument
-      }
-    },
-
-    // Action Handlers
-    actions: {
-      handleAction,
-      handlePageChange,
-      refresh: fetchDocuments
-    }
+    modals,
+    actions
   };
 };
