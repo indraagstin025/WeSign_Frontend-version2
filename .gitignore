@@ -22,3 +22,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Test artifacts
+test_*.txt
+tests/
+*.webm
+*.png
+*.jpg
+*.jpeg
