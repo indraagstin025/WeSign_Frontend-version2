@@ -9,6 +9,7 @@ import {
   Settings, 
   LogOut,
   ShieldCheck,
+  Layers,
   X
 } from 'lucide-react';
 
@@ -32,6 +33,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
   const menuItems = [
     { title: "Beranda Ruang Kerja", icon: <LayoutDashboard size={18} />, path: "/dashboard" },
     { title: "Brankas Dokumen", icon: <FileText size={18} />, path: "/dashboard/documents" },
+    { title: "Paket (Batch)", icon: <Layers size={18} />, path: "/dashboard/packages" },
     { title: "Grup Kolaborasi", icon: <Users size={18} />, path: "/dashboard/groups" },
     { title: "Pengaturan Akun", icon: <Settings size={18} />, path: "/dashboard/settings" },
   ];

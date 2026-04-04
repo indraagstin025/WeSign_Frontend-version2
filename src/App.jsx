@@ -14,8 +14,11 @@ const RegisterPage = lazy(() => import('./pages/auth/RegisterPage'));
 const OverviewPage = lazy(() => import('./pages/dashboard/OverviewPage'));
 const DashboardLayout = lazy(() => import('./components/Layout/DashboardLayout'));
 const DocumentsPage = lazy(() => import('./features/documents/pages/DocumentsPage'));
+const PackagesPage = lazy(() => import('./features/packages/pages/PackagesPage'));
 const DocumentPreviewPage = lazy(() => import('./features/documents/pages/DocumentPreviewPage'));
 const DocumentSigningPage = lazy(() => import('./features/signature/pages/DocumentSigningPage'));
+const SignPackagePage = lazy(() => import('./features/packages/pages/SignPackagePage'));
+const PackagePreviewPage = lazy(() => import('./features/packages/pages/PackagePreviewPage'));
 
 // Komponen Loading sederhana untuk transisi Lazy Loading
 const PageLoader = () => (
@@ -31,7 +34,11 @@ function App() {
       <NetworkStatus />
       <Suspense fallback={<PageLoader />}>
         <Routes>
-          <Route path="/" element={<HomePage />} />
+          <Route path="/" element={
+            <GuestRoute>
+              <HomePage />
+            </GuestRoute>
+          } />
 
           {/* Guest-only */}
           <Route path="/login" element={
@@ -53,6 +60,7 @@ function App() {
           }>
             <Route index element={<OverviewPage />} />
             <Route path="documents" element={<DocumentsPage />} />
+            <Route path="packages" element={<PackagesPage />} />
             <Route path="documents/preview/:id" element={<DocumentPreviewPage />} />
           </Route>
 
@@ -60,6 +68,18 @@ function App() {
           <Route path="/dashboard/documents/sign/:id" element={
             <ProtectedRoute>
               <DocumentSigningPage />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/dashboard/packages/sign/:id" element={
+            <ProtectedRoute>
+              <SignPackagePage />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/dashboard/packages/preview/:id" element={
+            <ProtectedRoute>
+              <PackagePreviewPage />
             </ProtectedRoute>
           } />
         </Routes>

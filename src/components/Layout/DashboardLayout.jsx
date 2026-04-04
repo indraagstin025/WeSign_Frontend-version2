@@ -50,8 +50,8 @@ const DashboardLayout = () => {
         </header>
 
         {/* B. Area Konten Dinamis Utama (Tergantung Rute URL) */}
-        <main className="flex-1 overflow-y-auto bg-slate-50 dark:bg-[#0B1120] p-4 sm:p-6 lg:p-8 scroll-smooth">
-          <div className="max-w-7xl mx-auto w-full">
+        <main className="flex-1 flex flex-col bg-slate-50 dark:bg-[#0B1120] overflow-hidden no-scrollbar">
+          <div className="flex-1 flex flex-col min-h-0 w-full">
             <Outlet />
           </div>
         </main>
