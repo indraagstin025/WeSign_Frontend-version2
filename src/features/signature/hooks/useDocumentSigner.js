@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   getDocumentDetail, 
@@ -8,34 +8,62 @@ import { addPersonalSignature } from '../api/signatureService';
 
 /**
  * @hook useDocumentSigner
- * @description Mengelola logika interaktif penempatan tanda tangan pada PDF.
- * Menangani state koordinat, penambahan tanda tangan baru, dan pengiriman ke backend.
+ * @description State manager untuk proses penandatanganan dokumen.
+ * Menangani fetch data, penempatan tanda tangan, kalkulasi dimensi PDF, dan UI Feedback.
  */
 export const useDocumentSigner = (documentId) => {
   const navigate = useNavigate();
   
-  // --- STATE DATA ---
+  // --- Refs ---
+  const containerRef = useRef(null);
+
+  // --- State Data ---
   const [document, setDocument] = useState(null);
   const [pdfUrl, setPdfUrl] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [loadError, setLoadError] = useState(null);
   
-  // --- STATE SIGNING ---
-  const [signatures, setSignatures] = useState([]); // List tanda tangan yang ditempatkan { x, y, page, type, imageUrl }
+  // --- State PDF UI ---
+  const [isRendering, setIsRendering] = useState(false);
+  const [numPages, setNumPages] = useState(null);
+  const [pageNumber, setPageNumber] = useState(1);
+  const [containerWidth, setContainerWidth] = useState(0);
+  const [pageDimensions, setPageDimensions] = useState({ width: 0, height: 0 });
+  const [isReady, setIsReady] = useState(false);
+
+  // --- State Signing ---
+  const [signatures, setSignatures] = useState([]); 
   const [isCanvasOpen, setIsCanvasOpen] = useState(false);
-  const [currentSignature, setCurrentSignature] = useState(null); // Tanda tangan aktif yang sedang "dipegang" kursor
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [currentSignature, setCurrentSignature] = useState(null); 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // --- FETCH DATA ---
+  // --- State Feedback (Modals) ---
+  const [statusModal, setStatusModal] = useState({ 
+    isOpen: false, 
+    type: 'success', 
+    title: '', 
+    message: '',
+    onConfirm: null 
+  });
+
+  // --- Fetch Data ---
   const fetchDocument = useCallback(async () => {
     if (!documentId) return;
     setLoading(true);
     try {
       const docResponse = await getDocumentDetail(documentId);
       if (docResponse.status === 'success') {
-        setDocument(docResponse.data);
-        
-        // --- FETCH SIGNED URL ---
+        const docData = docResponse.data;
+
+        if (docData.status?.toLowerCase() === 'completed') {
+          alert('Dokumen ini sudah ditandatangani dan tidak dapat ditandatangani ulang.');
+          navigate('/dashboard/documents', { replace: true });
+          return;
+        }
+
+        setDocument(docData);
         const fileResponse = await getDocumentFile(documentId, 'view');
         if (fileResponse.success && fileResponse.url) {
           setPdfUrl(fileResponse.url);
@@ -47,129 +75,133 @@ export const useDocumentSigner = (documentId) => {
       }
     } catch (err) {
       setError(err.message || 'Error saat memuat dokumen.');
-      console.error(err);
     } finally {
       setLoading(false);
     }
-  }, [documentId]);
+  }, [documentId, navigate]);
 
   useEffect(() => {
     fetchDocument();
   }, [fetchDocument]);
 
-  // --- HANDLERS ---
-  
-  // Menambahkan tanda tangan yang sudah digambar ke "palet" atau menempatkannya langsung
+  // --- Dimension Calculation Logic ---
+  const measureContainer = useCallback(() => {
+    if (!containerRef.current) return;
+    const el = containerRef.current;
+    const targetWidth = el.clientWidth;
+    const availableWidth = targetWidth - 64; // Padding
+    const finalWidth = Math.floor(Math.max(100, Math.min(availableWidth, 800)));
+    setContainerWidth(finalWidth); 
+    setIsReady(true);
+  }, []);
+
+  useEffect(() => {
+    measureContainer();
+    const resizeObserver = new ResizeObserver(() => measureContainer());
+    if (containerRef.current) resizeObserver.observe(containerRef.current);
+    window.addEventListener('resize', measureContainer);
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', measureContainer);
+    };
+  }, [measureContainer, loading]);
+
+  // --- PDF Handlers ---
+  const onDocumentLoadSuccess = ({ numPages }) => {
+    setLoadError(null);
+    setNumPages(numPages);
+  };
+  const onDocumentLoadError = (err) => setLoadError(err.message || 'Error memuat PDF');
+  const handlePageLoadSuccess = (page) => setPageDimensions({ width: page.originalWidth, height: page.originalHeight });
+
+  // --- Signing Handlers ---
   const handleSaveCanvas = (dataUrl) => {
     setCurrentSignature(dataUrl);
     setIsCanvasOpen(false);
   };
 
-  // Menempatkan tanda tangan pada koordinat tertentu
-  const placeSignature = (pageNumber, clickX, clickY, defaultWidth = 0.15, defaultHeight = 0.075) => {
-    if (!currentSignature) {
-      setIsCanvasOpen(true);
-      return;
-    }
+  const handleCanvasClick = (e) => {
+    if (!currentSignature) { setIsCanvasOpen(true); return; }
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clickX = (e.clientX - rect.left) / rect.width;
+    const clickY = (e.clientY - rect.top) / rect.height;
 
-    // clickX dan clickY adalah titik tengah dari tempat kursor user mengklik layar.
-    // Karena Backend menggambar signature menggunakan koordinat Pojok Kiri Atas (Top-Left),
-    // Kita translasikan sentral klik dengan mengurangi setengah lebar & setengah tinggi.
-    const topLeftX = Math.max(0, clickX - (defaultWidth / 2));
-    const topLeftY = Math.max(0, clickY - (defaultHeight / 2));
+    const TARGET_WIDTH_PX = 120;
+    const ASPECT_RATIO = 2; // 2:1
+    const aspectRatio = pageDimensions.width > 0 ? pageDimensions.height / pageDimensions.width : 1.41;
+    const currentContainerHeight = containerWidth * aspectRatio;
 
-    const newSig = {
+    const defaultWidth = Math.min(0.35, Math.max(0.1, TARGET_WIDTH_PX / containerWidth));
+    const defaultHeight = Math.min(0.2, Math.max(0.05, (TARGET_WIDTH_PX / ASPECT_RATIO) / currentContainerHeight));
+
+    setSignatures([...signatures, {
       id: Date.now(),
       pageNumber,
-      positionX: topLeftX, // Skala 0-1 (Top-Left)
-      positionY: topLeftY, // Skala 0-1 (Top-Left)
+      positionX: Math.max(0, Math.min(1 - defaultWidth, clickX - (defaultWidth / 2))),
+      positionY: Math.max(0, Math.min(1 - defaultHeight, clickY - (defaultHeight / 2))),
       width: defaultWidth,
       height: defaultHeight,
       signatureImageUrl: currentSignature,
       method: 'canvas'
-    };
-
-    setSignatures([...signatures, newSig]);
+    }]);
   };
 
-  const removeSignature = (id) => {
-    setSignatures(signatures.filter(s => s.id !== id));
-  };
+  const removeSignature = (id) => setSignatures(signatures.filter(s => s.id !== id));
+  const updateSignaturePosition = (id, x, y) => setSignatures(signatures.map(sig => sig.id === id ? { ...sig, positionX: x, positionY: y } : sig));
+  const updateSignatureSize = (id, width, height) => setSignatures(signatures.map(sig => sig.id === id ? { ...sig, width, height } : sig));
 
-  const updateSignaturePosition = (id, x, y) => {
-    setSignatures(signatures.map(sig => 
-      sig.id === id ? { ...sig, positionX: x, positionY: y } : sig
-    ));
-  };
-
-  const updateSignatureSize = (id, width, height) => {
-    setSignatures(signatures.map(sig => 
-      sig.id === id ? { ...sig, width, height } : sig
-    ));
-  };
-
-  const handleSubmit = async () => {
+  // --- Submission with Feedback ---
+  const handleFinalSign = async () => {
     if (signatures.length === 0) {
-      alert('Anda belum menempatkan tanda tangan apapun.');
+      setStatusModal({ isOpen: true, type: 'error', title: 'Belum Ada Tanda Tangan', message: 'Silakan tempatkan tanda tangan Anda pada dokumen terlebih dahulu.' });
       return;
     }
 
     setIsSubmitting(true);
     try {
-      // 1. Siapkan payload untuk backend (array tanda tangan dalam field 'signatures')
-      const signaturesToSubmit = signatures.map(({ pageNumber, positionX, positionY, width, height, signatureImageUrl, method }) => ({
+      const signaturesToSubmit = signatures.map(sig => ({
         documentVersionId: document.currentVersionId,
-        pageNumber,
-        positionX,
-        positionY,
-        width: width || 0.15,
-        height: height || 0.08,
-        signatureImageUrl,
-        method: method || 'canvas',
+        pageNumber: sig.pageNumber,
+        positionX: sig.positionX,
+        positionY: sig.positionY,
+        width: sig.width || 0.15,
+        height: sig.height || 0.08,
+        signatureImageUrl: sig.signatureImageUrl,
+        method: sig.method || 'canvas',
         displayQrCode: true
       }));
 
-      // 2. Kirim ke API Signature (URL yang benar: /api/signatures/personal)
-      const res = await addPersonalSignature({
-        signatures: signaturesToSubmit
-      });
-
+      const res = await addPersonalSignature({ signatures: signaturesToSubmit });
       if (res.status === 'success' || res.data) {
-        alert('Dokumen Berhasil Ditandatangani!');
-        navigate('/dashboard/documents');
+        setStatusModal({
+          isOpen: true,
+          type: 'success',
+          title: 'Berhasil!',
+          message: 'Dokumen Anda telah berhasil ditandatangani.',
+          onConfirm: () => navigate('/dashboard/documents')
+        });
       } else {
-        throw new Error('Respons backend tidak valid.');
+        throw new Error(res.message || 'Respons backend tidak valid.');
       }
     } catch (err) {
       console.error('Signing Error:', err);
-      alert(`Gagal menyelesaikan penandatanganan: ${err.message}`);
+      setStatusModal({ isOpen: true, type: 'error', title: 'Gagal Menyimpan', message: err.message || 'Terjadi kesalahan saat menyimpan tanda tangan.' });
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return {
-    document,
-    pdfUrl,
-    loading,
-    error,
-    isSubmitting,
-    
-    // Signature States
-    signatures,
-    currentSignature,
-    setCurrentSignature,
-    placeSignature,
-    removeSignature,
-    updateSignaturePosition,
-    updateSignatureSize,
-    
-    // Canvas States
-    isCanvasOpen,
-    setIsCanvasOpen,
-    handleSaveCanvas,
-    
-    // Actions
-    handleSubmit
+    document, pdfUrl, loading, error, loadError,
+    isRendering, setIsRendering,
+    isSubmitting, containerRef, containerWidth, isReady,
+    numPages, pageNumber, setPageNumber, pageDimensions,
+    signatures, currentSignature, setCurrentSignature, removeSignature,
+    updateSignaturePosition, updateSignatureSize,
+    isCanvasOpen, setIsCanvasOpen, handleSaveCanvas,
+    isSheetOpen, setIsSheetOpen,
+    onDocumentLoadSuccess, onDocumentLoadError, handlePageLoadSuccess,
+    handleCanvasClick, handleFinalSign,
+    statusModal, setStatusModal
   };
 };
