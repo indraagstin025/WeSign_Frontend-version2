@@ -8,26 +8,26 @@ import { apiFetch } from '../../../services/api';
 
 /**
  * Registrasi akun baru.
- * @param {{ name: string, email: string, password: string }} payload
+ * @param {{ name: string, email: string, password: string, isCompany?: boolean }} payload
  * @returns {Promise<object>} Data user yang baru dibuat
  */
-export async function registerUser({ name, email, password }) {
+export async function registerUser({ name, email, password, isCompany }) {
   const data = await apiFetch('/auth/register', {
     method: 'POST',
-    body: { name, email, password },
+    body: { name, email, password, isCompany },
   });
   return data;
 }
 
 /**
  * Login pengguna dan simpan token ke localStorage.
- * @param {{ email: string, password: string }} payload
+ * @param {{ email: string, password: string, rememberMe?: boolean }} payload
  * @returns {Promise<object>} Data user + session token
  */
-export async function loginUser({ email, password }) {
+export async function loginUser({ email, password, rememberMe }) {
   const data = await apiFetch('/auth/login', {
     method: 'POST',
-    body: { email, password },
+    body: { email, password, rememberMe },
   });
 
   // Simpan token dari respons server ke localStorage
@@ -72,4 +72,29 @@ export async function logoutUser() {
     localStorage.clear();
     window.location.href = '/login';
   }
+}
+
+/**
+ * Meminta link reset password melalui email (mocking log).
+ * @param {string} email
+ * @returns {Promise<object>} Pesan sukses dari server
+ */
+export async function forgotPassword(email) {
+  return await apiFetch('/auth/forgot-password', {
+    method: 'POST',
+    body: { email }
+  });
+}
+
+/**
+ * Mereset password menggunakan secure token.
+ * @param {string} token 
+ * @param {string} newPassword 
+ * @returns {Promise<object>} Pesan sukses
+ */
+export async function resetPassword(token, newPassword) {
+  return await apiFetch('/auth/reset-password', {
+    method: 'POST',
+    body: { token, newPassword }
+  });
 }

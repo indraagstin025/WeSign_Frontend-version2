@@ -80,3 +80,39 @@ export async function updateDocument(id, data) {
     body: JSON.stringify(data),
   });
 }
+
+/**
+ * Mendapatkan riwayat versi dokumen.
+ * @param {string} id - Document ID
+ * @returns {Promise<object>} Daftar versi dokumen (V1 dan V2)
+ */
+export async function getDocumentHistory(id) {
+  return apiFetch(`/documents/${id}/versions`, {
+    method: 'GET',
+  });
+}
+
+/**
+ * Membatalkan dokumen / Mengembalikan ke Versi 1 (Rollback).
+ * Memicu penghapusan V2 di backend sesuai Arsitektur 2-Versi.
+ * @param {string} id - Document ID
+ * @param {string} versionId - Version ID yang ingin dijadikan current (selalu V1)
+ * @returns {Promise<object>} Data dokumen yang sudah di-rollback
+ */
+export async function restoreVersion(id, versionId) {
+  return apiFetch(`/documents/${id}/versions/${versionId}/use`, {
+    method: 'PUT',
+  });
+}
+
+/**
+ * Mendapatkan URL untuk mengunduh versi spesifik.
+ * @param {string} id - Document ID
+ * @param {string} versionId - Version ID (V1 atau V2)
+ * @returns {Promise<object>} URL download file PDF versi tersebut
+ */
+export async function getVersionFile(id, versionId) {
+  return apiFetch(`/documents/${id}/versions/${versionId}/file`, {
+    method: 'GET',
+  });
+}
