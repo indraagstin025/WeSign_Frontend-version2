@@ -19,7 +19,7 @@ const DocumentHeader = ({ onUpload }) => {
       
       <button 
         onClick={onUpload}
-        className="flex items-center justify-center gap-3 bg-primary hover:bg-primary-dark text-white px-7 py-3.5 rounded-2xl text-sm font-bold transition-all shadow-xl shadow-primary/25 cursor-pointer border-none shrink-0 group hover:-translate-y-0.5 active:scale-95"
+        className="flex items-center justify-center gap-3 bg-primary/10 dark:bg-primary/20 hover:bg-primary/20 text-primary px-8 py-3.5 rounded-full text-sm font-bold transition-all border border-primary/20 dark:border-primary/40 backdrop-blur-sm cursor-pointer shrink-0 group active:scale-95 shadow-sm"
       >
         <Plus size={20} strokeWidth={2.5} className="group-hover:rotate-90 transition-transform duration-300" /> Unggah Baru
       </button>

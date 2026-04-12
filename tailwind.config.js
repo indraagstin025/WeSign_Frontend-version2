@@ -26,6 +26,9 @@ export default {
       fontFamily: {
         sans: ['Inter', 'sans-serif'],
         heading: ['Outfit', 'sans-serif'],
+        dancing: ['Dancing Script', 'cursive'],
+        caveat: ['Caveat', 'cursive'],
+        sacramento: ['Sacramento', 'cursive'],
       },
       animation: {
         'fade-in-up': 'fadeInUp 0.8s ease-out forwards',

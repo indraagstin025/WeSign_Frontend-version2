@@ -1,8 +1,18 @@
 import { useRef, useState, useEffect } from 'react';
 
 /**
- * Hook for managing the logic of Draggable & Resizable Signature.
- * Optimized for performance using direct DOM manipulation for resizing.
+ * @hook useDraggableSignature
+ * 
+ * KOORDINAT MODEL:
+ * - State (sig.positionX/Y, sig.width/height) menyimpan koordinat INNER IMAGE
+ *   sebagai fraksi (0-1) dari dimensi halaman PDF.
+ * - Hook ini menambahkan VISUAL_PADDING untuk display UI (border, handle resize).
+ * - Saat drag/resize selesai, hook mengkonversi kembali ke koordinat INNER
+ *   sebelum melaporkan ke parent via onUpdatePosition/onUpdateSize.
+ * 
+ * PADDING BREAKDOWN (per sisi):
+ *   1px (outer border) + 16px (CSS p-4 padding) + 1px (inner border) = 18px
+ *   Total per axis = 36px
  */
 export const useDraggableSignature = (sig, containerWidth, containerHeight, onUpdatePosition, onUpdateSize) => {
   const nodeRef = useRef(null);
@@ -14,213 +24,185 @@ export const useDraggableSignature = (sig, containerWidth, containerHeight, onUp
   const [isActive, setIsActive] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const isResizingRef = useRef(false);
+  const isReadyRef = useRef(false);
+  const [isReady, setIsReady] = useState(false);
+  const aspectRatioRef = useRef(null);
 
-  // Initial calculation
-  const getInitialSize = () => {
-    const w = sig.width * containerWidth;
-    const h = sig.height && sig.height !== 0.075 
-      ? sig.height * containerHeight 
-      : w * 0.5;
-    return { width: w, height: h };
+  // ============================================================
+  // PADDING CALCULATION:
+  // Outer div: border (1px) + padding p-4 (16px) = 17px
+  // Inner div: border (1px) = 1px
+  // Total per side: 18px. Total per axis: 36px.
+  // ============================================================
+  const VISUAL_PADDING = 18;
+  const TOTAL_PADDING = VISUAL_PADDING * 2; // 36px total per axis
+
+  /**
+   * Menghitung OUTER height dari OUTER width, mempertahankan aspect ratio gambar.
+   */
+  const outerHeightFromOuterWidth = (outerWidth, ratio) => {
+    const innerW = Math.max(10, outerWidth - TOTAL_PADDING);
+    const innerH = innerW / (ratio || 1);
+    return Math.round(innerH + TOTAL_PADDING);
   };
 
-  const [localSize, setLocalSize] = useState(getInitialSize());
-
-  // Sync state with props
-  useEffect(() => {
-    if (!isResizingRef.current) {
-      setLocalSize({
-        width: sig.width * containerWidth,
-        height: sig.height * containerHeight
-      });
-    }
-  }, [sig.width, sig.height, containerWidth, containerHeight]);
-
-  // Click outside detection
-  useEffect(() => {
-    if (!isActive) return;
-    const handleOutsideClick = (e) => {
-      if (isResizingRef.current) return;
-      if (nodeRef.current && !nodeRef.current.contains(e.target)) {
-        setIsActive(false);
-      }
+  // Display size (OUTER = inner + padding + borders)
+  const [localSize, setLocalSize] = useState(() => {
+    const innerW = sig.width * containerWidth;
+    return {
+      width: Math.round(innerW + TOTAL_PADDING) || 160,
+      height: 60
     };
-    const timer = setTimeout(() => {
-      document.addEventListener('pointerdown', handleOutsideClick);
-    }, 150);
-    return () => {
-      clearTimeout(timer);
-      document.removeEventListener('pointerdown', handleOutsideClick);
-    };
-  }, [isActive]);
+  });
 
-  // Stable refs for event listeners
+  // Display position (OUTER = inner position - padding offset)
+  const [dragPos, setDragPos] = useState(() => ({
+    x: Math.max(0, sig.positionX * containerWidth - VISUAL_PADDING),
+    y: Math.max(0, sig.positionY * containerHeight - VISUAL_PADDING)
+  }));
+
   const sigRef = useRef(sig);
-  const localSizeRef = useRef(localSize);
   const containerWidthRef = useRef(containerWidth);
   const containerHeightRef = useRef(containerHeight);
   
   useEffect(() => { sigRef.current = sig; }, [sig]);
-  useEffect(() => { localSizeRef.current = localSize; }, [localSize]);
   useEffect(() => { containerWidthRef.current = containerWidth; }, [containerWidth]);
   useEffect(() => { containerHeightRef.current = containerHeight; }, [containerHeight]);
 
-  // Direct DOM Resize Logic
+  // --- CLICK OUTSIDE (DESELECT) ---
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (nodeRef.current && !nodeRef.current.contains(event.target)) {
+        setIsActive(false);
+      }
+    };
+    if (isActive) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [isActive]);
+
+  /**
+   * Saat gambar tanda tangan dimuat, hitung ukuran yang tepat
+   * berdasarkan aspect ratio natural. Tanpa inflate.
+   */
+  const handleImageLoad = (e) => {
+    if (isReadyRef.current) return;
+    const { naturalWidth, naturalHeight } = e.target;
+    const cw = containerWidthRef.current;
+    const ch = containerHeightRef.current;
+    if (naturalWidth && naturalHeight && cw > 0) {
+      const ratio = naturalWidth / naturalHeight;
+      aspectRatioRef.current = ratio;
+      
+      const innerW = sigRef.current.width * cw;
+      const innerH = innerW / ratio;
+      
+      const outerW = Math.round(innerW + TOTAL_PADDING);
+      const outerH = Math.round(innerH + TOTAL_PADDING);
+      
+      setTimeout(() => {
+        setLocalSize({ width: outerW, height: outerH });
+        onUpdateSize(sigRef.current.id, innerW / cw, innerH / ch);
+        isReadyRef.current = true;
+        setIsReady(true);
+      }, 0);
+    }
+  };
+
+  // --- RESIZE LOGIC ---
   useEffect(() => {
     if (!isActive) return;
-
     const handles = [
-      { ref: handleNWRef, dir: 'nw' },
-      { ref: handleNERef, dir: 'ne' },
-      { ref: handleSWRef, dir: 'sw' },
-      { ref: handleSERef, dir: 'se' },
+      { ref: handleNWRef, dir: 'nw' }, { ref: handleNERef, dir: 'ne' },
+      { ref: handleSWRef, dir: 'sw' }, { ref: handleSERef, dir: 'se' },
     ];
-
     const cleanups = [];
-
     handles.forEach(({ ref, dir }) => {
       const el = ref.current;
       if (!el) return;
-
       const onStart = (e) => {
-        e.stopPropagation();
-        e.preventDefault();
+        e.stopPropagation(); e.preventDefault();
         isResizingRef.current = true;
-        
-        const cw = containerWidthRef.current;
-        const ch = containerHeightRef.current;
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        
-        const currentSig = sigRef.current;
-        const currentSize = localSizeRef.current;
-        const startMouseX = clientX;
-        const startW = currentSize.width;
-        const startH = currentSize.height;
-        const startPosX = currentSig.positionX * cw;
-        const startPosY = currentSig.positionY * ch;
-        const aspectRatio = startW / startH;
-
-        let finalW = startW, finalH = startH;
-        let finalPosX = startPosX, finalPosY = startPosY;
+        const rect = nodeRef.current.getBoundingClientRect();
+        const startW = rect.width;
+        const style = window.getComputedStyle(nodeRef.current);
+        const matrix = new DOMMatrix(style.transform);
+        const startPosX = matrix.m41;
+        const startPosY = matrix.m42;
+        const startX = e.touches ? e.touches[0].clientX : e.clientX;
+        const ratio = aspectRatioRef.current || (startW / rect.height);
+        let finalW = startW, finalH = outerHeightFromOuterWidth(startW, ratio), finalX = startPosX, finalY = startPosY;
 
         const onMove = (moveEvent) => {
-          moveEvent.preventDefault();
-          moveEvent.stopPropagation();
-          
-          const cwNow = containerWidthRef.current;
           const currentX = moveEvent.touches ? moveEvent.touches[0].clientX : moveEvent.clientX;
-          const dx = currentX - startMouseX;
-          
+          const dx = currentX - startX;
           let newW = dir.includes('w') ? startW - dx : startW + dx;
-          newW = Math.max(40, Math.min(cwNow * 0.8, newW));
-          const newH = newW / aspectRatio;
-          
-          const deltaW = newW - startW;
-          const deltaH = newH - startH;
-
-          let newPosX = startPosX;
-          if (dir.includes('w')) newPosX -= deltaW;
-          let newPosY = startPosY;
-          if (dir.includes('n')) newPosY -= deltaH;
-
-          finalW = newW; finalH = newH;
-          finalPosX = newPosX; finalPosY = newPosY;
-
-          // ⚡ DIRECT DOM MANIPULATION
-          const domNode = nodeRef.current;
-          if (domNode) {
-            domNode.style.width = `${newW}px`;
-            domNode.style.height = `${newH}px`;
-            domNode.style.transform = `translate(${newPosX}px, ${newPosY}px)`;
+          newW = Math.max(60, newW);
+          const newH = outerHeightFromOuterWidth(newW, ratio);
+          let newPosX = dir.includes('w') ? startPosX - (newW - startW) : startPosX;
+          let newPosY = dir.includes('n') ? startPosY - (newH - outerHeightFromOuterWidth(startW, ratio)) : startPosY;
+          const cw = containerWidthRef.current;
+          const ch = containerHeightRef.current;
+          newPosX = Math.max(0, Math.min(cw - newW, newPosX));
+          newPosY = Math.max(0, Math.min(ch - newH, newPosY));
+          finalW = newW; finalH = newH; finalX = newPosX; finalY = newPosY;
+          if (nodeRef.current) {
+            nodeRef.current.style.width = `${Math.round(newW)}px`;
+            nodeRef.current.style.height = `${Math.round(newH)}px`;
+            nodeRef.current.style.transform = `translate(${Math.round(newPosX)}px, ${Math.round(newPosY)}px)`;
           }
         };
 
         const onEnd = () => {
           isResizingRef.current = false;
+          setLocalSize({ width: finalW, height: finalH });
+          setDragPos({ x: finalX, y: finalY });
+          
+          const cw = containerWidthRef.current;
+          const ch = containerHeightRef.current;
+          const innerX = (finalX + VISUAL_PADDING) / cw;
+          const innerY = (finalY + VISUAL_PADDING) / ch;
+          const innerW = Math.max(0, finalW - TOTAL_PADDING) / cw;
+          const innerH = Math.max(0, finalH - TOTAL_PADDING) / ch;
+          onUpdatePosition(sigRef.current.id, innerX, innerY);
+          onUpdateSize(sigRef.current.id, innerW, innerH);
+          
           document.removeEventListener('mousemove', onMove);
           document.removeEventListener('mouseup', onEnd);
           document.removeEventListener('touchmove', onMove);
           document.removeEventListener('touchend', onEnd);
-          document.removeEventListener('touchcancel', onEnd);
-          
-          setLocalSize({ width: finalW, height: finalH });
-          localSizeRef.current = { width: finalW, height: finalH };
-          
-          onUpdatePosition(sigRef.current.id, finalPosX / containerWidthRef.current, finalPosY / containerHeightRef.current);
-          onUpdateSize(sigRef.current.id, finalW / containerWidthRef.current, finalH / containerHeightRef.current);
         };
-
         document.addEventListener('mousemove', onMove, { passive: false });
         document.addEventListener('mouseup', onEnd);
         document.addEventListener('touchmove', onMove, { passive: false });
         document.addEventListener('touchend', onEnd);
-        document.addEventListener('touchcancel', onEnd);
       };
-
-      el.addEventListener('mousedown', onStart, { passive: false });
+      el.addEventListener('mousedown', onStart);
       el.addEventListener('touchstart', onStart, { passive: false });
-      cleanups.push(() => {
-        el.removeEventListener('mousedown', onStart);
-        el.removeEventListener('touchstart', onStart);
-      });
+      cleanups.push(() => { el.removeEventListener('mousedown', onStart); el.removeEventListener('touchstart', onStart); });
     });
-
     return () => cleanups.forEach(fn => fn());
   }, [isActive, onUpdatePosition, onUpdateSize]);
 
-  // Image load & Aspect ratio fix
-  const handleImageLoad = (e) => {
-    const naturalW = e.target.naturalWidth;
-    const naturalH = e.target.naturalHeight;
-    if (naturalW > 0 && naturalH > 0) {
-      const actualRatio = naturalW / naturalH;
-      const currentRatio = sig.width / sig.height;
-      if (Math.abs(actualRatio - currentRatio) > 0.1) {
-        const realHeightPx = (sig.width * containerWidth) / actualRatio;
-        onUpdateSize(sig.id, sig.width, realHeightPx / containerHeight);
-      }
-    }
-  };
-
   return {
-    state: {
-      nodeRef,
-      handleNWRef,
-      handleNERef,
-      handleSWRef,
-      handleSERef,
-      isActive,
-      isDragging,
-      isResizing: isResizingRef.current,
-      localSize,
-      controlledPosition: {
-        x: sig.positionX * containerWidth,
-        y: sig.positionY * containerHeight
-      }
-    },
-    actions: {
-      setIsActive,
-      setIsDragging,
-      handleImageLoad,
-      onDragStart: (e) => {
-        if (isResizingRef.current) return false;
-        e.stopPropagation();
-        setIsDragging(true);
-        setIsActive(true);
-      },
+    state: { nodeRef, handleNWRef, handleNERef, handleSWRef, handleSERef, isActive, isDragging, isResizing: isResizingRef.current, localSize, controlledPosition: dragPos, isReady },
+    actions: { 
+      setIsActive, setIsDragging, handleImageLoad,
+      onDragStart: (e) => { if (isResizingRef.current) return false; e.stopPropagation(); setIsDragging(true); setIsActive(true); },
+      onDrag: (e, data) => setDragPos({ x: data.x, y: data.y }),
       onDragStop: (e, data) => {
         setIsDragging(false);
-        onUpdatePosition(sig.id, data.x / containerWidth, data.y / containerHeight);
+        setDragPos({ x: data.x, y: data.y });
+        const innerX = (data.x + VISUAL_PADDING) / containerWidth;
+        const innerY = (data.y + VISUAL_PADDING) / containerHeight;
+        onUpdatePosition(sig.id, innerX, innerY);
       },
-      handleOutsideInteraction: (e) => {
-        e.stopPropagation();
-        if (!isDragging && !isResizingRef.current) {
-          setIsActive(prev => !prev);
-        }
-      },
-      handleHover: (active) => {
-        if (!isDragging && window.innerWidth >= 640) setIsActive(active);
-      }
+      handleOutsideInteraction: (e) => { e.stopPropagation(); setIsActive(true); }
     }
   };
 };

@@ -65,8 +65,8 @@ export const usePackagePreview = (packageId) => {
       
       try {
         const fileResponse = await getDocumentFile(documentId, 'view');
-        if (fileResponse.success && fileResponse.url) {
-          setPdfUrl(fileResponse.url);
+        if (fileResponse.status === 'success' && fileResponse.data?.url) {
+          setPdfUrl(fileResponse.data.url);
         } else {
           throw new Error('Gagal mendapatkan akses file dokumen.');
         }

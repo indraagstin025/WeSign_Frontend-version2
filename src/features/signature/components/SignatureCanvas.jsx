@@ -4,8 +4,11 @@ import {
   RotateCcw, 
   Check, 
   PenTool, 
+  Type,
+  Upload,
+  Image as ImageIcon
 } from 'lucide-react';
-import { useSignatureCanvas } from '../hooks/useSignatureCanvas';
+import { useSignatureModal } from '../hooks/useSignatureModal';
 
 /**
  * @component SignatureCanvas
@@ -13,93 +16,233 @@ import { useSignatureCanvas } from '../hooks/useSignatureCanvas';
  * Refaktorisasi: Logika kanvas & koordinat dipisahkan ke useSignatureCanvas hook.
  */
 const SignatureCanvas = ({ isOpen, onClose, onSave }) => {
-  const { state, actions } = useSignatureCanvas(isOpen, onSave, onClose);
+  const { state, actions } = useSignatureModal(isOpen, onSave, onClose);
+  const { canvasState, activeTab } = state;
 
   if (!isOpen) return null;
 
+  const fonts = [
+    { name: 'Dancing Script', id: 'font-dancing', family: 'dancing' },
+    { name: 'Caveat', id: 'font-caveat', family: 'caveat' },
+    { name: 'Sacramento', id: 'font-sacramento', family: 'sacramento' },
+    { name: 'Inter', id: 'font-inter', family: 'inter' },
+  ];
+
   return (
-    <div className="fixed inset-0 z-[200] bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
+    <div className="fixed inset-0 z-[200] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-300">
       
-      <div className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 flex flex-col max-h-[90vh]">
+      <div className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 flex flex-col max-h-[90vh] transition-colors duration-300">
         
         {/* HEADER */}
-        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-              <PenTool size={20} />
-            </div>
-            <div className="text-left">
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">Buat Tanda Tangan</h3>
-              <p className="text-[11px] text-slate-500 font-medium uppercase tracking-wider">Gunakan cursor atau jari Anda</p>
-            </div>
-          </div>
+        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+          <h3 className="text-lg font-bold text-slate-800 dark:text-white">Tentukan tanda tangan Anda</h3>
           <button 
             onClick={onClose}
-            className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 transition-colors border-none bg-transparent cursor-pointer"
+            className="p-2 rounded-xl border-none bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
           >
             <X size={20} />
           </button>
         </div>
 
-        {/* TOOLS BAR */}
-        <div className="px-6 py-3 bg-white dark:bg-slate-900 flex items-center justify-between border-b border-slate-50 dark:border-slate-800/50">
-           <div className="flex items-center gap-2">
-              <button 
-                onClick={() => actions.setColor('#000000')}
-                className={`w-8 h-8 rounded-full border-2 transition-all cursor-pointer ${state.color === '#000000' ? 'border-primary ring-2 ring-primary/20 scale-110' : 'border-transparent bg-black hover:scale-105'}`}
-                title="Hitam"
-              />
-              <button 
-                onClick={() => actions.setColor('#1E40AF')}
-                className={`w-8 h-8 rounded-full border-2 transition-all cursor-pointer ${state.color === '#1E40AF' ? 'border-primary ring-2 ring-primary/20 scale-110' : 'border-transparent bg-blue-800 hover:scale-105'}`}
-                title="Biru Tua"
-              />
-           </div>
+        {/* TOP TABS NAVIGATION */}
+        <div className="flex px-6 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800">
+           <button className="px-6 py-3 flex items-center gap-2 text-sm font-bold border-b-2 border-rose-500 text-slate-900 dark:text-white bg-transparent cursor-pointer transition-all">
+             <PenTool size={16} className="text-sky-600" /> Tanda tangan
+           </button>
+           <button className="px-6 py-3 flex items-center gap-2 text-sm font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 bg-transparent cursor-pointer transition-all">
+             <span className="text-sky-600 font-bold border border-sky-600 rounded px-1 text-[9px]">AC</span> Inisial
+           </button>
+           <button className="px-6 py-3 flex items-center gap-2 text-sm font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 bg-transparent cursor-pointer transition-all">
+             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5 text-sky-600"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Stempel
+           </button>
+        </div>
 
-           <div className="flex items-center gap-2">
+        {/* MAIN BODY WITH SIDEBAR */}
+        <div className="flex-1 flex overflow-hidden min-h-[380px]">
+          
+          {/* LEFT SIDEBAR (METHODS) */}
+          <div className="w-16 bg-slate-50 dark:bg-slate-950 border-r border-slate-100 dark:border-slate-800 flex flex-col items-center py-6 gap-6 transition-colors">
              <button 
-                onClick={actions.clear}
-                className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-slate-500 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-all border-none bg-transparent cursor-pointer"
+               onClick={() => actions.setActiveTab('type')}
+               className={`p-3 rounded-xl transition-all cursor-pointer ${activeTab === 'type' ? 'bg-white dark:bg-slate-800 text-rose-500 shadow-md border border-slate-100 dark:border-slate-700' : 'text-slate-400 hover:text-slate-600 dark:text-slate-600 dark:hover:text-slate-400'}`}
+               title="Ketik"
              >
-               <RotateCcw size={14} /> Reset Kanvas
+               <Type size={20} />
              </button>
-           </div>
+             <button 
+               onClick={() => actions.setActiveTab('draw')}
+               className={`p-3 rounded-xl transition-all cursor-pointer ${activeTab === 'draw' ? 'bg-white dark:bg-slate-800 text-rose-500 shadow-md border border-slate-100 dark:border-slate-700' : 'text-slate-400 hover:text-slate-600 dark:text-slate-600 dark:hover:text-slate-400'}`}
+               title="Gambar"
+             >
+               <PenTool size={20} />
+             </button>
+             <button 
+               onClick={() => actions.setActiveTab('upload')}
+               className={`p-3 rounded-xl transition-all cursor-pointer ${activeTab === 'upload' ? 'bg-white dark:bg-slate-800 text-rose-500 shadow-md border border-slate-100 dark:border-slate-700' : 'text-slate-400 hover:text-slate-600 dark:text-slate-600 dark:hover:text-slate-400'}`}
+               title="Unggah"
+             >
+               <Upload size={20} />
+             </button>
+          </div>
+
+          {/* CONTENT AREA */}
+          <div className="flex-1 bg-white dark:bg-slate-900 p-8 overflow-y-auto transition-colors">
+            
+            {/* 1. TYPE MODE (List of variation) */}
+            {activeTab === 'type' && (
+              <div className="space-y-6 animate-in fade-in duration-300">
+                
+                {/* USER INFO INPUTS (CONDITIONAL IN TYPE MODE) */}
+                <div className="flex items-center gap-8 mb-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+                  <div className="w-12 h-12 rounded-full border-2 border-rose-500 flex items-center justify-center text-rose-500 shrink-0">
+                     <div className="w-10 h-10 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center">
+                       <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08s5.97 1.09 6 3.08c-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
+                     </div>
+                  </div>
+
+                  <div className="flex-1 flex gap-6">
+                     <div className="flex-1 space-y-1.5">
+                       <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Nama lengkap:</label>
+                       <input 
+                         type="text" 
+                         value={state.fullName}
+                         onChange={(e) => {
+                            actions.setFullName(e.target.value);
+                            actions.setTypedName(e.target.value); 
+                         }}
+                         placeholder="Nama Anda"
+                         className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-rose-500 dark:focus:border-rose-500 dark:text-white transition-all shadow-sm"
+                       />
+                     </div>
+                     <div className="w-1/4 space-y-1.5">
+                       <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Inisial:</label>
+                       <input 
+                         type="text" 
+                         value={state.initials}
+                         onChange={(e) => actions.setInitials(e.target.value)}
+                         placeholder="AA"
+                         className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-rose-500 dark:focus:border-rose-500 dark:text-white transition-all shadow-sm"
+                       />
+                     </div>
+                  </div>
+                </div>
+
+                <div className="border border-slate-100 dark:border-slate-800 rounded-xl overflow-hidden divide-y divide-slate-50 dark:divide-slate-800 shadow-sm transition-colors">
+                  {fonts.map((font) => (
+                    <div 
+                      key={font.id} 
+                      className={`flex items-center gap-4 px-6 py-5 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all cursor-pointer ${state.selectedFont === font.id ? 'bg-slate-50 dark:bg-slate-800' : ''}`}
+                      onClick={() => actions.setSelectedFont(font.id)}
+                    >
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${state.selectedFont === font.id ? 'border-rose-500 ring-2 ring-rose-500/20' : 'border-slate-200 dark:border-slate-700'}`}>
+                        {state.selectedFont === font.id && <div className="w-2.5 h-2.5 rounded-full bg-rose-500" />}
+                      </div>
+                      <div className={`text-4xl text-slate-800 dark:text-slate-100 ${font.family} flex-1 truncate`}>
+                        {state.fullName || 'Tanda tangan'}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* COLOR SELECTOR */}
+                <div className="flex items-center gap-3 pt-4">
+                  <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">Pilih Warna:</span>
+                  {['#334155', '#e11d48', '#2563eb', '#16a34a'].map((color) => (
+                    <button 
+                      key={color}
+                      onClick={() => actions.canvasActions.setColor(color)}
+                      className={`w-7 h-7 rounded-full border-2 transition-all cursor-pointer ${canvasState.color === color ? 'border-slate-400 dark:border-white ring-2 ring-slate-400/20' : 'border-transparent hover:scale-110'}`}
+                      style={{ backgroundColor: color }}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 2. DRAW MODE (Canvas + QR) */}
+            {activeTab === 'draw' && (
+              <div className="flex gap-8 h-full animate-in fade-in duration-300">
+                <div className="flex-1 flex flex-col gap-4">
+                  <div className="relative flex-1 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-100 dark:border-slate-800 overflow-hidden" style={{ touchAction: 'none' }}>
+                    <canvas 
+                      ref={canvasState.canvasRef}
+                      {...actions.canvasActions.mouseHandlers}
+                      className="w-full h-full cursor-crosshair"
+                    />
+                    {canvasState.isEmpty && (
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-slate-400 dark:text-slate-600 font-medium select-none">
+                        Gunakan kursor atau jari Anda untuk menggambar
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-bold text-slate-400 uppercase">Warna:</span>
+                      {['#334155', '#e11d48', '#2563eb', '#16a34a'].map((color) => (
+                        <button 
+                          key={color}
+                          onClick={() => actions.canvasActions.setColor(color)}
+                          className={`w-6 h-6 rounded-full border-2 transition-all cursor-pointer ${canvasState.color === color ? 'border-slate-400 dark:border-white ring-2 ring-slate-400/20' : 'border-transparent hover:scale-110'}`}
+                          style={{ backgroundColor: color }}
+                        />
+                      ))}
+                    </div>
+                    <button onClick={actions.clear} className="text-rose-500 text-sm font-bold hover:underline bg-transparent border-none cursor-pointer">Hapus</button>
+                  </div>
+                </div>
+
+                {/* QR CODE SECTION */}
+                <div className="w-[180px] flex flex-col items-center justify-center border border-slate-100 dark:border-slate-800 rounded-2xl p-4 bg-white dark:bg-slate-950 shadow-sm transition-colors">
+                  <div className="w-full aspect-square bg-slate-50 dark:bg-slate-900 rounded-xl flex items-center justify-center relative overflow-hidden group">
+                     <div className="absolute inset-0 p-4 opacity-5 dark:opacity-20 text-slate-900 dark:text-white">
+                        <svg viewBox="0 0 100 100" fill="currentColor" className="w-full h-full"><path d="M0 0h40v40H0zm10 10v20h20V10zm50-10h40v40H60zm10 10v20h20V10zM0 60h40v40H0zm10 70v20h20V70zm50 0h10v10H60zm10 10h10v10H70zm10-10h10v10H80zm10 10h10v10H90zm-10-10v-10h10v10H80z"/></svg>
+                     </div>
+                     <div className="relative text-center p-3">
+                        <p className="text-[10px] font-bold text-rose-500 underline leading-tight cursor-pointer hover:text-rose-600 transition-colors">Gambar dari perangkat seluler Anda</p>
+                     </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 3. UPLOAD MODE */}
+            {activeTab === 'upload' && (
+              <div className="h-full flex flex-col items-center justify-center animate-in fade-in duration-300">
+                <div className={`w-full max-w-2xl aspect-[2/1] bg-slate-50/50 dark:bg-slate-950/20 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-4 transition-all ${state.uploadedImage ? 'border-slate-200 dark:border-slate-700' : 'border-slate-200 dark:border-slate-800 hover:border-rose-500 dark:hover:border-rose-500 hover:bg-rose-50/30 dark:hover:bg-rose-900/10'}`}>
+                  {state.uploadedImage ? (
+                    <div className="relative group p-8 w-full h-full flex items-center justify-center">
+                      <img src={state.uploadedImage} alt="Preview" className="max-h-full object-contain" />
+                      <button onClick={() => actions.clear()} className="absolute top-4 right-4 p-2 bg-rose-500 text-white rounded-full shadow-lg hover:scale-110 transition-all border-none cursor-pointer"><RotateCcw size={16} /></button>
+                    </div>
+                  ) : (
+                    <>
+                      <label className="px-8 py-3 bg-white dark:bg-slate-800 border border-rose-500 text-rose-500 rounded-xl font-bold text-sm cursor-pointer hover:bg-rose-500 hover:text-white transition-all shadow-sm">
+                        Unggah tanda tangan
+                        <input type="file" className="hidden" accept="image/*" onChange={actions.handleFileUpload} />
+                      </label>
+                      <p className="text-slate-400 dark:text-slate-500 font-medium">atau jatuhkan file di sini</p>
+                      <p className="text-[10px] text-slate-300 dark:text-slate-600 font-bold uppercase tracking-widest mt-2 text-center">Format yang diterima: <span className="text-slate-400 dark:text-slate-500">PNG, JPG dan SVG</span></p>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* CANVAS AREA */}
-        <div className="flex-1 bg-slate-50 dark:bg-slate-950/50 p-6 flex items-center justify-center relative min-h-[300px]" style={{ touchAction: 'none' }}>
-          <canvas 
-            ref={state.canvasRef}
-            {...actions.mouseHandlers}
-            className="bg-white rounded-2xl shadow-inner border-2 border-dashed border-slate-200 dark:border-slate-800 cursor-crosshair w-full h-full max-h-[400px]"
-            style={{ touchAction: 'none' }}
-          />
-          {state.isEmpty && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20 select-none">
-               <span className="text-2xl font-bold tracking-[0.2em] text-slate-400 uppercase italic">Tanda Tangan Di Sini</span>
-            </div>
-          )}
-        </div>
-
-        {/* ACTIONS */}
-        <div className="p-6 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-3 bg-slate-50/30 dark:bg-slate-900/30">
-          <button 
-            onClick={onClose}
-            className="px-6 py-2.5 text-sm font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all border-none bg-transparent cursor-pointer"
-          >
-            Batal
-          </button>
+        {/* FOOTER */}
+        <div className="px-8 py-5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end bg-white dark:bg-slate-900 transition-colors">
           <button 
             onClick={actions.save}
-            disabled={state.isEmpty}
-            className={`flex items-center gap-2 px-8 py-2.5 rounded-xl text-sm font-bold transition-all border-none cursor-pointer shadow-lg
-              ${state.isEmpty 
-                ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' 
-                : 'bg-primary text-white hover:bg-primary-dark shadow-primary/20 active:scale-95'
+            disabled={state.isSaveDisabled}
+            className={`px-10 py-3 rounded-xl font-bold text-sm transition-all border-none cursor-pointer
+              ${state.isSaveDisabled 
+                ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed' 
+                : 'bg-rose-500 text-white hover:bg-rose-600 active:scale-95 shadow-lg shadow-rose-500/20'
               }
             `}
           >
-            <Check size={18} /> Simpan Tanda Tangan
+            Terapkan
           </button>
         </div>
       </div>

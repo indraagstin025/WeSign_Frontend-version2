@@ -30,3 +30,6 @@ tests/
 *.png
 *.jpg
 *.jpeg
+
+playwright-report
+test-results

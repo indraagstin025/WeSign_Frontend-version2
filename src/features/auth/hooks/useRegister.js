@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { registerUser } from '../api/authService';
-import { sanitizeText, sanitizeEmail, isValidEmail, isValidName } from '../../../utils/sanitize';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { registerUser } from "../api/authService";
+import { sanitizeText, sanitizeEmail, isValidEmail, isValidName, validatePasswordStrength } from "../../../utils/sanitize";
 
 /**
  * Hook to manage the logic of the Registration Form.
@@ -11,56 +11,46 @@ export const useRegister = () => {
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    isCompany: false
+    name: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    isCompany: false,
   });
-
-  // Password Validation Logic
-  const getPasswordErrors = (pw) => {
-    const errors = [];
-    if (pw.length < 8) errors.push('Minimal 8 karakter');
-    if (!/[A-Z]/.test(pw)) errors.push('Harus ada huruf besar (A-Z)');
-    if (!/[0-9]/.test(pw)) errors.push('Harus ada angka (0-9)');
-    if (!/[a-z]/.test(pw)) errors.push('Harus ada huruf kecil (a-z)');
-    return errors;
-  };
 
   const handleFieldChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === "checkbox" ? checked : value,
     }));
   };
 
   const setAccountType = (isCompany) => {
-    setFormData(prev => ({ ...prev, isCompany }));
+    setFormData((prev) => ({ ...prev, isCompany }));
   };
 
   const handleRegister = async (e) => {
     e.preventDefault();
-    setSuccess('');
-    setError('');
+    setSuccess("");
+    setError("");
 
     // Client-side Validation: Matching Passwords
     if (formData.password !== formData.confirmPassword) {
-      setError('Kata sandi dan konfirmasi sandi tidak cocok.');
+      setError("Kata sandi dan konfirmasi sandi tidak cocok.");
       return;
     }
 
-    // Client-side Validation: Password Strength
-    const pwErrors = getPasswordErrors(formData.password);
-    if (pwErrors.length > 0) {
-      setError(`Password lemah: ${pwErrors.join(', ')}.`);
+    // Client-side Validation: Password Strength (match backend requirements)
+    const passwordValidation = validatePasswordStrength(formData.password);
+    if (!passwordValidation.isValid) {
+      setError(`Password lemah: ${passwordValidation.errors.join(", ")}.`);
       return;
     }
 
@@ -70,13 +60,13 @@ export const useRegister = () => {
 
     // Name Validation
     if (!isValidName(cleanName)) {
-      setError('Nama harus terdiri dari 2 hingga 100 karakter yang valid.');
+      setError("Nama harus terdiri dari 2 hingga 100 karakter yang valid.");
       return;
     }
 
     // Email Validation
     if (!isValidEmail(cleanEmail)) {
-      setError('Format email tidak valid. Contoh: nama@email.com');
+      setError("Format email tidak valid. Contoh: nama@email.com");
       return;
     }
 
@@ -87,16 +77,16 @@ export const useRegister = () => {
         name: cleanName,
         email: cleanEmail,
         password: formData.password,
-        isCompany: formData.isCompany
+        isCompany: formData.isCompany,
       });
 
       if (result?.success) {
-        setSuccess(result.message || 'Registrasi berhasil! Mengarahkan ke halaman login...');
+        setSuccess(result.message || "Registrasi berhasil! Mengarahkan ke halaman login...");
         // Auto-redirect after 2 seconds
-        setTimeout(() => navigate('/login'), 2000);
+        setTimeout(() => navigate("/login"), 2000);
       }
     } catch (err) {
-      setError(err.message || 'Registrasi gagal. Silakan coba lagi.');
+      setError(err.message || "Registrasi gagal. Silakan coba lagi.");
     } finally {
       setLoading(false);
     }
@@ -105,9 +95,10 @@ export const useRegister = () => {
   const togglePasswordVisibility = () => setShowPassword(!showPassword);
   const toggleConfirmVisibility = () => setShowConfirm(!showConfirm);
 
-  // Derived Values
-  const passwordErrors = formData.password ? getPasswordErrors(formData.password) : [];
-  const isPasswordValid = formData.password.length > 0 && passwordErrors.length === 0;
+  // Derived Values - Use centralized password validation from sanitize.js
+  const passwordValidation = formData.password ? validatePasswordStrength(formData.password) : { isValid: false, errors: [] };
+  const passwordErrors = passwordValidation.errors;
+  const isPasswordValid = formData.password.length > 0 && passwordValidation.isValid;
 
   return {
     state: {
@@ -118,14 +109,14 @@ export const useRegister = () => {
       showPassword,
       showConfirm,
       passwordErrors,
-      isPasswordValid
+      isPasswordValid,
     },
     actions: {
       handleFieldChange,
       setAccountType,
       handleRegister,
       togglePasswordVisibility,
-      toggleConfirmVisibility
-    }
+      toggleConfirmVisibility,
+    },
   };
 };

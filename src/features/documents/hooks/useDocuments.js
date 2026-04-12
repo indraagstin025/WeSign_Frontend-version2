@@ -112,8 +112,8 @@ export const useDocuments = () => {
       case 'download':
         try {
           const response = await getDocumentFile(doc.id, 'download');
-          if (response.success && response.url) {
-            window.location.assign(response.url);
+          if (response.status === 'success' && response.data?.url) {
+            window.location.assign(response.data.url);
           }
         } catch (err) {
           console.error(`Gagal mengunduh dokumen:`, err);

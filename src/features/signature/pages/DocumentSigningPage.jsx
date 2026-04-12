@@ -198,16 +198,18 @@ const DocumentSigningPage = () => {
       />
 
       {/* 4. MOBILE BOTTOM BAR (Baru & Modular) */}
-      <SigningMobileBar 
-        pageNumber={pageNumber}
-        numPages={numPages}
-        setPageNumber={setPageNumber}
-        onOpenSheet={() => setIsSheetOpen(true)}
-        onOpenCanvas={() => setIsCanvasOpen(true)}
-        onFinalize={handleFinalSign}
-        signatureCount={signatures.length}
-        isSubmitting={isSubmitting}
-      />
+      {!isSheetOpen && (
+        <SigningMobileBar 
+          pageNumber={pageNumber}
+          numPages={numPages}
+          setPageNumber={setPageNumber}
+          onOpenSheet={() => setIsSheetOpen(true)}
+          onOpenCanvas={() => setIsCanvasOpen(true)}
+          onFinalize={handleFinalSign}
+          signatureCount={signatures.length}
+          isSubmitting={isSubmitting}
+        />
+      )}
 
       {/* 5. MODALS AREA (Global Signature Modals) */}
       <SigningModals 

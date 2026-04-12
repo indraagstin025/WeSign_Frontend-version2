@@ -3,7 +3,7 @@
  * @description Wrapper Fetch API dengan dukungan Timeout dan Penanganan Jaringan.
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
 const DEFAULT_TIMEOUT = 15000; // 15 Detik (Batas wajar menunggu jaringan)
 
 let isRefreshing = false;
@@ -19,21 +19,44 @@ function onTokenRefreshed(token) {
 }
 
 /**
- * Wrapper fetch yang menangani JSON, token, timeout, dan error jaringan.
+ * Ambil CSRF token dari localStorage
+ */
+function getCsrfToken() {
+  return localStorage.getItem("wesign_csrf_token") || "";
+}
+
+/**
+ * Simpan CSRF token ke localStorage
+ */
+function setCsrfToken(token) {
+  if (token) {
+    localStorage.setItem("wesign_csrf_token", token);
+  }
+}
+
+/**
+ * Wrapper fetch yang menangani JSON, token, timeout, CSRF, dan error jaringan.
  */
 export async function apiFetch(endpoint, options = {}) {
-  const token = localStorage.getItem('wesign_token');
-  
+  const token = localStorage.getItem("wesign_token");
+  const csrfToken = getCsrfToken();
+
   // 1. Setup AbortController untuk handling Timeout
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), options.timeout || DEFAULT_TIMEOUT);
 
   const defaultHeaders = {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   };
 
   if (token) {
-    defaultHeaders['Authorization'] = `Bearer ${token}`;
+    defaultHeaders["Authorization"] = `Bearer ${token}`;
+  }
+
+  // Add CSRF token untuk non-GET requests
+  const isModifyingRequest = ["POST", "PUT", "DELETE", "PATCH"].includes(options.method?.toUpperCase());
+  if (isModifyingRequest && csrfToken) {
+    defaultHeaders["X-CSRF-Token"] = csrfToken;
   }
 
   const config = {
@@ -46,11 +69,11 @@ export async function apiFetch(endpoint, options = {}) {
   };
 
   const isFormData = config.body instanceof FormData;
-  if (config.body && typeof config.body === 'object' && !isFormData) {
+  if (config.body && typeof config.body === "object" && !isFormData) {
     config.body = JSON.stringify(config.body);
   }
   if (isFormData) {
-    delete config.headers['Content-Type'];
+    delete config.headers["Content-Type"];
   }
 
   try {
@@ -58,55 +81,84 @@ export async function apiFetch(endpoint, options = {}) {
     clearTimeout(timeoutId);
 
     // --- INTERCEPTOR 401 (UNAUTHORIZED) ---
-    if (response.status === 401 && !options._retry && endpoint !== '/auth/login') {
-      const refreshToken = localStorage.getItem('wesign_refresh_token');
+    if (response.status === 401 && !options._retry && endpoint !== "/auth/login") {
+      console.warn(`[apiFetch] 401 detected on ${options.method} ${endpoint}, attempting token refresh...`);
+      const refreshToken = localStorage.getItem("wesign_refresh_token");
 
       if (!refreshToken) {
+        console.error("[apiFetch] Missing refresh token, forcing logout");
         handleLogout();
-        throw new Error('Sesi berakhir. Silakan login kembali.');
+        throw new Error("Sesi berakhir. Silakan login kembali.");
       }
 
+      // ✅ PENTING: Daftarkan subscriber DULU sebelum memulai refresh
+      // Ini mencegah race condition dimana onTokenRefreshed() dipanggil
+      // sebelum subscriber terdaftar (menyebabkan Promise tidak pernah resolve)
+      const retryPromise = new Promise((resolve) => {
+        subscribeTokenRefresh((newToken) => {
+          console.log("[apiFetch] Retrying request after token refresh...");
+          resolve(apiFetch(endpoint, { ...options, _retry: true }));
+        });
+      });
+
+      // Mulai refresh hanya jika belum ada proses refresh yang berjalan
       if (!isRefreshing) {
         isRefreshing = true;
         try {
           const refreshRes = await fetch(`${API_BASE_URL}/auth/refresh-token`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ refresh_token: refreshToken })
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ refresh_token: refreshToken }),
           });
 
           if (refreshRes.ok) {
             const { data } = await refreshRes.json();
-            localStorage.setItem('wesign_token', data.token);
-            localStorage.setItem('wesign_refresh_token', data.refresh_token);
+            localStorage.setItem("wesign_token", data.token);
+            localStorage.setItem("wesign_refresh_token", data.refresh_token);
+
+            // ✅ Fetch CSRF token baru dari /auth/me setelah refresh berhasil
+            try {
+              const meRes = await fetch(`${API_BASE_URL}/auth/me`, {
+                method: "GET",
+                headers: { Authorization: `Bearer ${data.token}` },
+              });
+              if (meRes.ok) {
+                const meData = await meRes.json();
+                if (meData?.data?.csrfToken) {
+                  setCsrfToken(meData.data.csrfToken);
+                }
+              }
+            } catch {
+              console.warn("[apiFetch] Failed to refresh CSRF token after token refresh");
+            }
+
             isRefreshing = false;
-            onTokenRefreshed(data.token);
+            console.log("[apiFetch] Token refreshed successfully");
+            onTokenRefreshed(data.token); // Sekarang subscriber sudah terdaftar → callback akan dipanggil
           } else {
             isRefreshing = false;
+            refreshSubscribers = []; // Bersihkan subscriber yang menunggu
+            console.error("[apiFetch] Token refresh failed, forcing logout");
             handleLogout();
-            throw new Error('Sesi benar-benar berakhir.');
+            throw new Error("Sesi benar-benar berakhir.");
           }
         } catch (e) {
           isRefreshing = false;
+          refreshSubscribers = []; // Bersihkan subscriber yang menunggu
+          console.error("[apiFetch] Error during token refresh:", e.message);
           handleLogout();
           throw e;
         }
       }
 
-      // Tunggu refresh selesai, lalu ulangi request asli
-      return new Promise((resolve) => {
-        subscribeTokenRefresh((newToken) => {
-          config.headers['Authorization'] = `Bearer ${newToken}`;
-          resolve(apiFetch(endpoint, { ...options, _retry: true }));
-        });
-      });
+      return retryPromise;
     }
 
     let data;
     try {
       data = await response.json();
     } catch {
-      throw new Error('Server mengirimkan respons yang tidak dapat dibaca.');
+      throw new Error("Server mengirimkan respons yang tidak dapat dibaca.");
     }
 
     if (!response.ok) {
@@ -117,23 +169,38 @@ export async function apiFetch(endpoint, options = {}) {
       throw error;
     }
 
+    // Capture CSRF token dari response jika ada (dari /auth/me atau endpoint lain yang return csrfToken)
+    if (data?.data?.csrfToken) {
+      setCsrfToken(data.data.csrfToken);
+    }
+
     return data;
   } catch (err) {
     clearTimeout(timeoutId);
-    if (err.name === 'AbortError') throw new Error('Permintaan gagal: Waktu habis.');
-    if (err.message === 'Failed to fetch' || !navigator.onLine) {
-      throw new Error('Koneksi internet terputus atau tidak stabil.');
+    console.error("[apiFetch] Error caught:", {
+      errorName: err.name,
+      errorMessage: err.message,
+      endpoint,
+      method: options.method,
+      stack: err.stack,
+    });
+
+    if (err.name === "AbortError") throw new Error("Permintaan gagal: Waktu habis.");
+    if (err.message === "Failed to fetch" || !navigator.onLine) {
+      console.error("[apiFetch] Network error detected");
+      throw new Error("Koneksi internet terputus atau tidak stabil.");
     }
     throw err;
   }
 }
 
 function handleLogout() {
-  localStorage.removeItem('wesign_token');
-  localStorage.removeItem('wesign_refresh_token');
-  localStorage.removeItem('wesign_user');
+  localStorage.removeItem("wesign_token");
+  localStorage.removeItem("wesign_refresh_token");
+  localStorage.removeItem("wesign_csrf_token");
+  localStorage.removeItem("wesign_user");
   // Hindari loop redirect jika sudah di login
-  if (window.location.pathname !== '/login') {
-    window.location.href = '/login?expired=true';
+  if (window.location.pathname !== "/login") {
+    window.location.href = "/login?expired=true";
   }
 }

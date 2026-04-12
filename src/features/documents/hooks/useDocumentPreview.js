@@ -33,8 +33,8 @@ export const useDocumentPreview = () => {
 
         // 2. Fetch secure view URL
         const urlResponse = await getDocumentFile(id, 'view');
-        if (urlResponse.success && urlResponse.url) {
-          setUrl(urlResponse.url);
+        if (urlResponse.status === 'success' && urlResponse.data?.url) {
+          setUrl(urlResponse.data.url);
         } else {
           throw new Error('Gagal mendapatkan akses ke file dokumen.');
         }
@@ -55,8 +55,8 @@ export const useDocumentPreview = () => {
   const handleDownload = async () => {
     try {
       const response = await getDocumentFile(id, 'download');
-      if (response.success && response.url) {
-        window.location.assign(response.url);
+      if (response.status === 'success' && response.data?.url) {
+        window.location.assign(response.data.url);
       }
     } catch (err) {
       alert('Gagal mengunduh dokumen.');

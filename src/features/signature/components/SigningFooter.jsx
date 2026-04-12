@@ -9,11 +9,15 @@ const SigningFooter = ({
   pageNumber, 
   numPages, 
   setPageNumber,
-  isReadOnly = false
+  isReadOnly = false,
+  rightContent = null
 }) => {
   return (
-    <footer className="flex h-14 bg-white dark:bg-black border-t border-slate-200 dark:border-emerald-500/10 items-center justify-center gap-8 px-6 shrink-0 z-[120]">
-      <div className="flex items-center gap-4">
+    <footer className="flex h-16 bg-white/80 dark:bg-black/80 backdrop-blur-md border-t border-slate-200 dark:border-emerald-500/10 items-center justify-between px-6 shrink-0 z-[120] relative">
+      {/* Spacer for left symmetry if needed */}
+      <div className="hidden sm:block w-32" />
+
+      <div className="flex items-center gap-4 mx-auto sm:mx-0">
         <button 
           disabled={pageNumber <= 1} 
           onClick={() => setPageNumber(p => Math.max(p - 1, 1))} 
@@ -48,11 +52,15 @@ const SigningFooter = ({
           <ArrowRight size={20} />
         </button>
       </div>
+  
+      <div className="w-32 flex justify-end">
+        {rightContent}
+      </div>
 
-      {/* Hint Shortcut (Only for signing mode) */}
-      {!isReadOnly && (
-        <p className="hidden lg:block text-[10px] font-bold text-slate-400 uppercase tracking-widest absolute right-8">
-          Klik Area PDF untuk Menempel Tanda Tangan
+      {/* Hint Shortcut (Only for desktop signing mode) */}
+      {!isReadOnly && !rightContent && (
+        <p className="hidden md:block text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em] absolute right-8">
+          Klik PDF untuk Menempel Tanda Tangan
         </p>
       )}
     </footer>

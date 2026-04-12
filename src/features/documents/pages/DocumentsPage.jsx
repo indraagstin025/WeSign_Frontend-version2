@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileText, RefreshCcw } from 'lucide-react';
+import { FileText, RefreshCcw, Plus } from 'lucide-react';
 
 // --- COMPONENTS & HOOKS ---
 import { useDocuments } from '../hooks/useDocuments';
@@ -93,7 +93,10 @@ const DocumentsPage = () => {
               </p>
             </div>
             {!filters.search && !filters.status && (
-               <button onClick={() => modals.upload.setOpen(true)} className="flex items-center gap-3 bg-primary text-white px-8 py-4 rounded-2xl text-sm font-bold border-none cursor-pointer hover:bg-primary-dark transition-all shadow-xl shadow-primary/20">
+               <button 
+                 onClick={() => modals.upload.setOpen(true)} 
+                 className="flex items-center gap-3 bg-primary/10 dark:bg-primary/20 hover:bg-primary/20 text-primary px-10 py-4 rounded-full text-sm font-bold border border-primary/20 dark:border-primary/40 backdrop-blur-sm cursor-pointer transition-all active:scale-95 shadow-sm"
+               >
                  <Plus size={20} strokeWidth={2.5} /> Unggah File Pertama
                </button>
             )}

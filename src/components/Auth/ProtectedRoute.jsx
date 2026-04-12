@@ -5,9 +5,9 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import ConfirmModal from '../UI/ConfirmModal';
-import { getMe } from '../../features/auth/api/authService';
 import { ShieldCheck, Loader2, Clock } from 'lucide-react';
 import { useIdleTimeout } from '../../hooks/useIdleTimeout';
+import { useUser } from '../../context/UserContext';
 
 const SESSION_MAX_AGE = 10 * 60 * 60 * 1000; // 10 jam (PRODUKSI)
 
@@ -19,6 +19,7 @@ const ProtectedRoute = ({ children }) => {
   const navigate = useNavigate();
   const timerRef = useRef(null);
   
+  const { user, loading: isUserLoading, clearUser } = useUser();
   const [showExpiredModal, setShowExpiredModal] = useState(false);
   const [modalConfig, setModalConfig] = useState({
     title: "Sesi Anda Telah Berakhir",
@@ -26,17 +27,23 @@ const ProtectedRoute = ({ children }) => {
   });
   
   // Validasi jika ada token ATAU ada refresh token (untuk silent refresh di awal)
-  const [isValidating, setIsValidating] = useState(!!(token || refreshToken)); 
+  const [isValidating, setIsValidating] = useState(true); 
 
   const clearSession = useCallback(() => {
-    localStorage.clear(); // Bersihkan semua untuk keamanan total
+    // Hanya hapus keys terkait autentikasi, bukan SEMUA localStorage
+    localStorage.removeItem('wesign_token');
+    localStorage.removeItem('wesign_refresh_token');
+    localStorage.removeItem('wesign_csrf_token');
+    localStorage.removeItem('wesign_user');
+    localStorage.removeItem('wesign_login_at');
   }, []);
 
   const handleExpiredConfirm = useCallback(() => {
-    clearSession();
+    clearUser(); // Bersihkan context
+    clearSession(); // Bersihkan localStorage
     setShowExpiredModal(false);
     navigate('/login', { replace: true });
-  }, [clearSession, navigate]);
+  }, [clearSession, clearUser, navigate]);
 
   // --- IDLE TIMEOUT: AUTO-LOGOUT SETELAH 1 JAM (TEST: 10 DETIK) ---
   const handleIdle = useCallback(() => {
@@ -51,29 +58,18 @@ const ProtectedRoute = ({ children }) => {
   useIdleTimeout(handleIdle, 3600000); // 1 JAM (Produksi)
 
   // Efek 1: Validasi Integritas Token dengan Backend saat pertama kali mount
+  // Efek 1: Sinkronisasi status validasi dengan UserContext
   useEffect(() => {
-    const verifyTokenIntegrity = async () => {
-      // Jika benar-benar tidak ada kunci akses sama sekali
-      if (!token && !refreshToken) {
-        setIsValidating(false);
-        return;
-      }
-
-      try {
-        // getMe() memanggil apiFetch, yang punya interceptor silent refresh
-        await getMe(); 
-        setIsValidating(false);
-      } catch (err) {
-        console.error("Token integrity check failed:", err.message);
-        // Jika getMe gagal (bahkan setelah percobaan refresh)
-        // maka sesi benar-benar tidak sah
+    if (!isUserLoading) {
+      // Jika loading context selesai, kita cek apakah user berhasil didapat
+      if (!user && (token || refreshToken)) {
+        // Jika ada token tapi user null, berarti session bermasalah
         clearSession();
         navigate('/login', { state: { from: location }, replace: true });
       }
-    };
-
-    verifyTokenIntegrity();
-  }, []); // Hanya jalankan sekali saat mount (refresh)
+      setIsValidating(false);
+    }
+  }, [isUserLoading, user, token, refreshToken, clearSession, navigate, location]);
 
   // Efek 2: Timer Auto-Expiry (Lama Sesi Total)
   useEffect(() => {
