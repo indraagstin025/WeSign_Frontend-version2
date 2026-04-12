@@ -77,7 +77,7 @@ export async function getDocumentFile(id, purpose = 'view') {
 export async function updateDocument(id, data) {
   return apiFetch(`/documents/${id}`, {
     method: 'PUT',
-    body: JSON.stringify(data),
+    body: data,
   });
 }
 

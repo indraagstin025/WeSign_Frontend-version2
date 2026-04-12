@@ -49,8 +49,8 @@ export const useVersionHistory = (isOpen, document, onRollbackSuccess, onClose) 
   const handleDownload = async (versionId) => {
     try {
       const resp = await getVersionFile(document.id, versionId);
-      if (resp && resp.url) {
-        window.location.assign(resp.url);
+      if (resp?.status === 'success' && resp.data?.url) {
+        window.location.assign(resp.data.url);
       }
     } catch (err) {
       alert("Gagal mengunduh file versi dokumen.");

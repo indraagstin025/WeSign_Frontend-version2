@@ -40,10 +40,7 @@ export async function getPackageDetails(packageId) {
 export async function signPackage(packageId, signaturesPayload) {
   return apiFetch(`/packages/${packageId}/sign`, {
     method: 'POST',
-    body: JSON.stringify({ signatures: signaturesPayload }),
-    headers: {
-        'Content-Type': 'application/json'
-    }
+    body: { signatures: signaturesPayload },
   });
 }
 
@@ -55,10 +52,7 @@ export async function signPackage(packageId, signaturesPayload) {
 export async function updatePackage(packageId, data) {
   return apiFetch(`/packages/${packageId}`, {
     method: 'PUT',
-    body: JSON.stringify(data),
-    headers: {
-        'Content-Type': 'application/json'
-    }
+    body: data,
   });
 }
 
