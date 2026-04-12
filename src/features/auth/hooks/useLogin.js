@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { loginUser } from '../api/authService';
 import { sanitizeEmail, isValidEmail } from '../../../utils/sanitize';
+import { useUser } from '../../../context/UserContext';
 
 /**
  * Hook to manage the logic of the Login Form.
@@ -17,6 +18,7 @@ export const useLogin = () => {
 
   const navigate = useNavigate();
   const location = useLocation();
+  const { refreshUser } = useUser();
   const from = location.state?.from?.pathname || '/dashboard';
 
   const handleLogin = async (e) => {
@@ -43,6 +45,9 @@ export const useLogin = () => {
       const result = await loginUser({ email: cleanEmail, password, rememberMe });
       
       if (result?.success) {
+        // [PENTING] Sinkronkan UserContext dengan token baru di localStorage
+        await refreshUser();
+        
         // Successful login -> redirect
         navigate(from, { replace: true });
       }
