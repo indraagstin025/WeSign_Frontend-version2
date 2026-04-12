@@ -187,46 +187,50 @@ const SignPackagePage = () => {
 
       {/* 5. FOOTER (Pagination & Mobile Actions) */}
       <div className="bg-white dark:bg-[#111b21] border-t border-slate-200 dark:border-white/10 z-[110] flex flex-col shrink-0">
-          {/* Action Bar Mobile */}
-          <div className="lg:hidden flex items-center justify-between px-6 py-4 gap-4">
-              <button 
-                onClick={() => signingStates.setIsSheetOpen(true)}
-                className="w-12 h-12 flex items-center justify-center rounded-2xl bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-400 border-none cursor-pointer active:scale-90 transition-all shadow-sm"
-                title="Buka Panel Playlist"
-              >
-                <Layers size={22} />
-              </button>
+          {/* Action Bar Mobile (Simplified) */}
+          {!signingStates.isSheetOpen && (
+            <div className="lg:hidden flex items-center justify-center px-6 py-3 gap-4">
+                <button 
+                  onClick={() => signingStates.setIsSheetOpen(true)}
+                  className="w-11 h-11 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400 border-none cursor-pointer active:scale-90 transition-all"
+                  title="Buka Playlist"
+                >
+                  <Layers size={20} />
+                </button>
 
-              <button 
-                onClick={() => signingStates.setIsCanvasOpen(true)}
-                className="flex-1 h-12 flex items-center justify-center gap-2 rounded-2xl bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-none font-black text-[11px] uppercase tracking-widest cursor-pointer active:scale-95 transition-all"
-              >
-                <PenTool size={18} />
-                <span>Tambah Ttd</span>
-              </button>
-
-              <button 
-                onClick={isLastDoc ? actions.handleSubmit : actions.nextDocument}
-                disabled={signingStates.isSubmitting}
-                className={`w-12 h-12 flex items-center justify-center rounded-2xl text-white border-none cursor-pointer shadow-lg active:scale-90 transition-all
-                  ${(isLastDoc && signingStates.signatures.length === 0) || signingStates.isSubmitting
-                    ? 'bg-slate-300 dark:bg-slate-800 text-slate-500 shadow-none cursor-not-allowed' 
-                    : 'bg-emerald-600 shadow-emerald-600/20'
-                  }
-                `}
-              >
-                {signingStates.isSubmitting ? (
-                   <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                ) : (
-                  isLastDoc ? <CheckCircle2 size={22} /> : <ChevronRight size={26} />
-                )}
-              </button>
-          </div>
+                <button 
+                  onClick={() => signingStates.setIsCanvasOpen(true)}
+                  className="flex-1 h-11 flex items-center justify-center gap-2 rounded-xl bg-emerald-600 text-white border-none font-bold text-xs uppercase tracking-widest cursor-pointer active:scale-95 transition-all shadow-md shadow-emerald-600/20"
+                >
+                  <PenTool size={16} />
+                  <span>Tambah Tanda Tangan</span>
+                </button>
+            </div>
+          )}
 
           <SigningFooter 
             pageNumber={pdfStates.pageNumber}
             numPages={pdfStates.numPages}
             setPageNumber={pdfStates.setPageNumber}
+            rightContent={(
+              <button 
+                onClick={isLastDoc ? actions.handleSubmit : actions.nextDocument}
+                disabled={signingStates.isSubmitting}
+                className={`p-2.5 rounded-xl text-white border-none cursor-pointer shadow-lg active:scale-90 transition-all flex items-center justify-center
+                  ${(isLastDoc && signingStates.signatures.length === 0) || signingStates.isSubmitting
+                    ? 'bg-slate-300 dark:bg-slate-800 text-slate-500 shadow-none cursor-not-allowed' 
+                    : 'bg-emerald-600 shadow-emerald-600/20'
+                  }
+                `}
+                title={isLastDoc ? "Selesaikan" : "Dokumen Berikutnya"}
+              >
+                {signingStates.isSubmitting ? (
+                   <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                ) : (
+                  isLastDoc ? <CheckCircle2 size={24} /> : <ChevronRight size={28} />
+                )}
+              </button>
+            )}
           />
       </div>
 

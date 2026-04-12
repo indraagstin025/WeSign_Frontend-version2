@@ -23,43 +23,9 @@ const SigningMobileBar = ({
   isSubmitting 
 }) => {
   return (
-    <div className="sm:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-[#202c33] border-t border-slate-200 dark:border-white/5 z-30 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] animate-in slide-in-from-bottom duration-500">
-      
-      {/* 1. Page Navigation Row */}
-      <div className="flex items-center justify-center gap-1 px-3 pt-2.5 pb-1">
-        <button 
-          disabled={pageNumber <= 1} 
-          onClick={() => setPageNumber(p => Math.max(p - 1, 1))} 
-          className={`p-2 rounded-lg border transition-all flex items-center justify-center shrink-0
-            ${pageNumber <= 1 
-              ? 'bg-slate-50 dark:bg-slate-800/30 text-slate-300 dark:text-white/20 border-slate-100 dark:border-white/5 cursor-not-allowed' 
-              : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-200 border-slate-200 dark:border-slate-700 cursor-pointer active:scale-90 active:bg-emerald-50 dark:active:bg-emerald-900/30'
-            }
-          `}
-        >
-          <ArrowLeft size={16} />
-        </button>
-        
-        <span className="text-xs font-extrabold text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800 px-4 py-1.5 rounded-full min-w-[70px] text-center border border-slate-200 dark:border-slate-700">
-          {pageNumber} / {numPages || '?'}
-        </span>
-
-        <button 
-          disabled={pageNumber >= numPages} 
-          onClick={() => setPageNumber(p => Math.min(p + 1, numPages))} 
-          className={`p-2 rounded-lg border transition-all flex items-center justify-center shrink-0
-            ${pageNumber >= numPages 
-              ? 'bg-slate-50 dark:bg-slate-800/30 text-slate-300 dark:text-white/20 border-slate-100 dark:border-white/5 cursor-not-allowed' 
-              : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-200 border-slate-200 dark:border-slate-700 cursor-pointer active:scale-90 active:bg-emerald-50 dark:active:bg-emerald-900/30'
-            }
-          `}
-        >
-          <ArrowRight size={16} />
-        </button>
-      </div>
-
-      {/* 2. Primary Actions Row */}
-      <div className="flex items-center gap-2 px-3 pb-3 pt-1">
+    <div className="sm:hidden fixed bottom-1 left-4 right-4 bg-white/95 dark:bg-[#202c33]/95 backdrop-blur-md border border-slate-200 dark:border-white/5 z-[130] shadow-[0_8px_30px_rgb(0,0,0,0.12)] rounded-2xl animate-in slide-in-from-bottom duration-500 mb-20 pointer-events-auto">
+      {/* 1. Action Buttons Only (Pagination removed as it is in the footer) */}
+      <div className="flex items-center gap-2 p-2">
         
         {/* Panel Toggle (Control Sheet) */}
         <button 

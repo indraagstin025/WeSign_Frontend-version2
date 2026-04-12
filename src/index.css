@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+/* GOOGLE FONTS FOR SIGNATURES */
+@import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&family=Caveat:wght@400;700&family=Sacramento&family=Inter:wght@400;700&display=swap');
+
+.dancing { font-family: 'Dancing Script', cursive; }
+.caveat { font-family: 'Caveat', cursive; }
+.sacramento { font-family: 'Sacramento', cursive; }
+.inter { font-family: 'Inter', sans-serif; }
+
+
 :root {
   --color-text-main: hsl(220, 20%, 15%);
   --color-text-muted: hsl(220, 20%, 45%);

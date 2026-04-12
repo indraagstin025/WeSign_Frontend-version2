@@ -93,8 +93,8 @@ export const useSignPackage = (packageId) => {
       
       try {
         const fileResponse = await getDocumentFile(documentId, 'view');
-        if (fileResponse.success && fileResponse.url) {
-          setPdfUrl(fileResponse.url);
+        if (fileResponse.status === 'success' && fileResponse.data?.url) {
+          setPdfUrl(fileResponse.data.url);
         } else {
           throw new Error('Gagal mendapatkan akses file dokumen.');
         }
@@ -114,9 +114,11 @@ export const useSignPackage = (packageId) => {
   const measureContainer = useCallback(() => {
     if (!containerRef.current) return;
     const el = containerRef.current;
+    const style = window.getComputedStyle(el);
+    const paddingX = (parseFloat(style.paddingLeft) || 0) + (parseFloat(style.paddingRight) || 0);
     const targetWidth = el.clientWidth;
     if (targetWidth > 0) {
-      const availableWidth = targetWidth - 64; // Padding
+      const availableWidth = targetWidth - paddingX;
       setContainerWidth(Math.floor(Math.max(100, Math.min(availableWidth, 800))));
       setIsReady(true);
     }
@@ -150,19 +152,16 @@ export const useSignPackage = (packageId) => {
     const clickX = (e.clientX - rect.left) / rect.width;
     const clickY = (e.clientY - rect.top) / rect.height;
 
-    const aspectRatio = pageDimensions.width > 0 ? pageDimensions.height / pageDimensions.width : 1.41;
-    const currentHeight = containerWidth * aspectRatio;
-
-    const defWidth = Math.min(0.35, Math.max(0.1, 120 / containerWidth));
-    const defHeight = Math.min(0.2, Math.max(0.05, 60 / currentHeight));
+    // Default 25% lebar container — sama dengan personal signing
+    const defaultWidth = 0.25;
 
     const newSig = {
       id: Date.now(),
       pageNumber,
-      positionX: Math.max(0, Math.min(1 - defWidth, clickX - (defWidth / 2))),
-      positionY: Math.max(0, Math.min(1 - defHeight, clickY - (defHeight / 2))),
-      width: defWidth,
-      height: defHeight,
+      positionX: Math.max(0, Math.min(1 - defaultWidth, clickX - (defaultWidth / 2))),
+      positionY: Math.max(0, clickY - 0.05),
+      width: defaultWidth,
+      height: 0.1, // Placeholder, di-update otomatis oleh handleImageLoad di DraggableSignature
       signatureImageUrl: currentSignature,
       method: 'canvas'
     };
@@ -194,9 +193,18 @@ export const useSignPackage = (packageId) => {
     }));
   };
 
-  // --- Submission ---
+    // --- Auto-Save Persistence (Draft) ---
+    const { clearDraft } = usePackageSignatureDraft(
+      packageId,
+      signaturesMap,
+      setSignaturesMap,
+      currentSignature,
+      setCurrentSignature
+    );
 
-  const handleSubmit = async () => {
+    // --- Submission ---
+
+    const handleSubmit = async () => {
     const allDocIds = Object.keys(signaturesMap);
     if (allDocIds.length === 0) {
       setStatusModal({
@@ -215,13 +223,13 @@ export const useSignPackage = (packageId) => {
         signaturesMap[pDocId].forEach(s => {
           signaturesPayload.push({
             packageDocId: pDocId, 
-            pageNumber: s.pageNumber,
-            positionX: s.positionX,
-            positionY: s.positionY,
-            width: s.width,
-            height: s.height,
+            pageNumber: Number(s.pageNumber),
+            positionX: parseFloat(s.positionX),
+            positionY: parseFloat(s.positionY),
+            width: parseFloat(s.width),
+            height: parseFloat(s.height),
             signatureImageUrl: s.signatureImageUrl,
-            method: s.method,
+            method: s.method || 'canvas',
             displayQrCode: true
           });
         });
@@ -229,6 +237,9 @@ export const useSignPackage = (packageId) => {
 
       const res = await signPackage(packageId, signaturesPayload);
       if (res.status === 'success') {
+        // Clear draft on success
+        clearDraft();
+
         setStatusModal({
           isOpen: true,
           type: 'success',
@@ -307,4 +318,53 @@ export const useSignPackage = (packageId) => {
       handleCloseStatusModal: () => setStatusModal(prev => ({ ...prev, isOpen: false }))
     }
   };
+};
+
+/**
+ * LOGIKA PERSISTENSI DRAFT BATCH (Anti-Refresh)
+ */
+const PKG_STORAGE_KEY_PREFIX = 'wesign_draft_pkg_';
+
+const usePackageSignatureDraft = (packageId, signaturesMap, setSignaturesMap, currentSignature, setCurrentSignature) => {
+  const isInitialMount = useRef(true);
+
+  // 1. Restore on Mount
+  useEffect(() => {
+    if (!packageId) return;
+    const saved = localStorage.getItem(`${PKG_STORAGE_KEY_PREFIX}${packageId}`);
+    if (saved) {
+      try {
+        const { map, current } = JSON.parse(saved);
+        if (map && Object.keys(map).length > 0) setSignaturesMap(map);
+        if (current) setCurrentSignature(current);
+        console.log('[Draft Pkg] Berhasil memulihkan draft paket.');
+      } catch (e) {
+        console.error('[Draft Pkg] Gagal memulihkan draft:', e);
+      }
+    }
+  }, [packageId, setSignaturesMap, setCurrentSignature]);
+
+  // 2. Save on Change
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    if (!packageId) return;
+
+    const hasSigs = Object.values(signaturesMap).some(sigs => sigs.length > 0);
+    if (hasSigs || currentSignature) {
+      const data = JSON.stringify({ map: signaturesMap, current: currentSignature });
+      localStorage.setItem(`${PKG_STORAGE_KEY_PREFIX}${packageId}`, data);
+    } else {
+      localStorage.removeItem(`${PKG_STORAGE_KEY_PREFIX}${packageId}`);
+    }
+  }, [packageId, signaturesMap, currentSignature]);
+
+  // 3. Clear Utility
+  const clearDraft = useCallback(() => {
+    localStorage.removeItem(`${PKG_STORAGE_KEY_PREFIX}${packageId}`);
+  }, [packageId]);
+
+  return { clearDraft };
 };

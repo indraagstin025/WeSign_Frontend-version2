@@ -10,11 +10,15 @@ import {
   LogOut,
   ShieldCheck,
   Layers,
+  User,
   X
 } from 'lucide-react';
 
+import { useUser } from '../../context/UserContext';
+
 const Sidebar = ({ isOpen, setIsOpen }) => {
   const navigate = useNavigate();
+  const { user, clearUser } = useUser();
   const [loggingOut, setLoggingOut] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
@@ -22,10 +26,12 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
     setLoggingOut(true);
     try {
       await logoutUser();
+      clearUser(); // Bersihkan context
     } catch {
       // Tetap hapus token meskipun API gagal
       localStorage.removeItem('wesign_token');
       localStorage.removeItem('wesign_refresh_token');
+      clearUser();
     } finally {
       navigate('/login', { replace: true });
     }
@@ -35,7 +41,6 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
     { title: "Brankas Dokumen", icon: <FileText size={18} />, path: "/dashboard/documents" },
     { title: "Paket (Batch)", icon: <Layers size={18} />, path: "/dashboard/packages" },
     { title: "Grup Kolaborasi", icon: <Users size={18} />, path: "/dashboard/groups" },
-    { title: "Pengaturan Akun", icon: <Settings size={18} />, path: "/dashboard/settings" },
   ];
 
   return (
@@ -88,31 +93,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
             </NavLink>
           ))}
         </nav>
-
-        {/* Bagian Bawah: Profil/Keluar */}
-        <div className="p-4 border-t border-slate-200 dark:border-slate-800">
-          <button 
-            onClick={() => setShowLogoutModal(true)}
-            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10 transition-colors border-none bg-transparent cursor-pointer text-left"
-          >
-            <LogOut size={18} />
-            Keluarkan Sesi
-          </button>
-        </div>
       </aside>
-
-      {/* Modal Konfirmasi Logout */}
-      <ConfirmModal
-        isOpen={showLogoutModal}
-        onClose={() => setShowLogoutModal(false)}
-        onConfirm={handleLogout}
-        title="Keluar dari WeSign?"
-        message="Sesi aktif Anda akan diakhiri dan Anda perlu memasukkan kredensial kembali untuk mengakses ruang kerja."
-        confirmText="Ya, Keluarkan Saya"
-        cancelText="Tetap di Sini"
-        variant="danger"
-        loading={loggingOut}
-      />
     </>
   );
 };
