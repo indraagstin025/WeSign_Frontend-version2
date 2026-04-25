@@ -70,7 +70,7 @@ const DocumentSigningPage = () => {
 
   if (loading) {
     return (
-      <div className="fixed inset-0 bg-slate-100 dark:bg-[#0b141a] flex flex-col items-center justify-center space-y-6">
+      <div className="fixed inset-0 bg-zinc-100 dark:bg-[#0b141a] flex flex-col items-center justify-center space-y-6">
         <div className="relative">
           <div className="w-20 h-20 border-4 border-emerald-500/10 border-t-emerald-500 rounded-full animate-spin shadow-[0_0_30px_rgba(16,185,129,0.2)]" />
           <div className="absolute inset-0 flex items-center justify-center">
@@ -78,8 +78,8 @@ const DocumentSigningPage = () => {
           </div>
         </div>
         <div className="flex flex-col items-center space-y-2">
-           <p className="text-[10px] font-black text-slate-400 dark:text-emerald-500/50 uppercase tracking-[0.4em] animate-pulse">Inisialisasi</p>
-           <p className="text-xs font-bold text-slate-600 dark:text-slate-300">Menyiapkan Ruang Tanda Tangan</p>
+           <p className="text-[10px] font-black text-zinc-400 dark:text-emerald-500/50 uppercase tracking-[0.4em] animate-pulse">Inisialisasi</p>
+           <p className="text-xs font-bold text-zinc-600 dark:text-zinc-300">Menyiapkan Ruang Tanda Tangan</p>
         </div>
       </div>
     );
@@ -87,17 +87,17 @@ const DocumentSigningPage = () => {
 
   if (error) {
     return (
-      <div className="fixed inset-0 bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center p-6 text-center">
+      <div className="fixed inset-0 bg-zinc-50 dark:bg-zinc-950 flex flex-col items-center justify-center p-6 text-center">
         <AlertCircle size={48} className="text-rose-500 mb-4" />
-        <h3 className="text-lg font-bold text-slate-900 dark:text-white">Gagal Memuat</h3>
-        <p className="text-sm text-slate-500 mt-2">{error}</p>
+        <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Gagal Memuat</h3>
+        <p className="text-sm text-zinc-500 mt-2">{error}</p>
         <button onClick={() => navigate('/dashboard/documents')} className="mt-6 px-6 py-2 bg-emerald-600 text-white font-bold rounded-xl border-none cursor-pointer">Kembali</button>
       </div>
     );
   }
 
   return (
-    <div className="fixed inset-0 z-[150] bg-slate-100 dark:bg-[#0b141a] flex flex-col overflow-hidden selection:bg-emerald-500/20 selection:text-emerald-500">
+    <div className="fixed inset-0 z-[150] bg-zinc-100 dark:bg-[#0b141a] flex flex-col overflow-hidden selection:bg-emerald-500/20 selection:text-emerald-500">
       
       {/* 1. HEADER */}
       <SigningNavbar 
@@ -119,18 +119,18 @@ const DocumentSigningPage = () => {
         />
 
         <main 
-          className="flex-1 overflow-y-scroll no-scrollbar bg-slate-100 dark:bg-[#0b141a] p-4 sm:p-8 flex items-start justify-center relative select-none pb-28 sm:pb-8 min-w-0" 
+          className="flex-1 overflow-y-scroll no-scrollbar bg-zinc-100 dark:bg-[#0b141a] p-4 sm:p-8 flex items-start justify-center relative select-none pb-28 sm:pb-8 min-w-0" 
           ref={containerRef}
         >
           <div 
-            className="relative shadow-2xl bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-800 transition-all duration-500 min-h-[500px] flex items-center justify-center overflow-hidden mx-auto"
+            className="relative shadow-2xl bg-white dark:bg-zinc-900 ring-1 ring-zinc-200 dark:ring-zinc-800 transition-all duration-500 min-h-[500px] flex items-center justify-center overflow-hidden mx-auto"
             style={{ width: containerWidth > 0 ? `${containerWidth}px` : '100%', maxWidth: '800px' }}
           >
               {/* Aurora Loading Overlay */}
               <div className={`absolute inset-0 bg-white/90 dark:bg-[#0b141a]/95 backdrop-blur-[6px] z-[60] transition-all duration-700 ease-in-out ${ (loading || isRendering) ? 'opacity-100' : 'opacity-0 pointer-events-none' }`}>
                   <div className="sticky top-0 h-[60vh] flex flex-col items-center justify-center">
                     <div className="w-12 h-12 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin mb-4 shadow-[0_0_20px_rgba(16,185,129,0.3)]" />
-                    <p className="text-[10px] items-center font-black text-slate-500 dark:text-emerald-500 uppercase tracking-[0.3em] animate-pulse pr-2 text-center">Menyiapkan Dokumen...</p>
+                    <p className="text-[10px] items-center font-black text-zinc-500 dark:text-emerald-500 uppercase tracking-[0.3em] animate-pulse pr-2 text-center">Menyiapkan Dokumen...</p>
                   </div>
               </div>
 
@@ -180,10 +180,10 @@ const DocumentSigningPage = () => {
               ) : null}
 
               {loadError && (
-                <div className="absolute inset-0 bg-white dark:bg-slate-900 flex flex-col items-center justify-center p-6 text-center z-50">
+                <div className="absolute inset-0 bg-white dark:bg-zinc-900 flex flex-col items-center justify-center p-6 text-center z-50">
                    <AlertCircle size={32} className="text-rose-500 mb-2" />
-                   <p className="text-sm font-bold text-slate-700 dark:text-slate-200">Gagal Memuat PDF</p>
-                   <p className="text-xs text-slate-500 mt-1 max-w-sm">{loadError}</p>
+                   <p className="text-sm font-bold text-zinc-700 dark:text-zinc-200">Gagal Memuat PDF</p>
+                   <p className="text-xs text-zinc-500 mt-1 max-w-sm">{loadError}</p>
                 </div>
               )}
             </div>

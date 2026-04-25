@@ -56,14 +56,14 @@ const ConfirmModal = ({
       />
 
       {/* Modal Card */}
-      <div className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl animate-[modalIn_0.2s_ease-out] overflow-hidden">
+      <div className="relative w-full max-w-sm bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-2xl animate-[modalIn_0.2s_ease-out] overflow-hidden">
         
         {/* Tombol X (Tutup) */}
         {showClose && (
           <button 
             onClick={onClose}
             disabled={loading}
-            className="absolute top-4 right-4 p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors bg-transparent border-none cursor-pointer disabled:opacity-50"
+            className="absolute top-4 right-4 p-1 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors bg-transparent border-none cursor-pointer disabled:opacity-50"
           >
             <X size={18} />
           </button>
@@ -76,10 +76,10 @@ const ConfirmModal = ({
             <AlertTriangle size={28} strokeWidth={2} />
           </div>
 
-          <h3 className="text-lg font-bold text-slate-900 dark:text-white font-heading mb-2">
+          <h3 className="text-lg font-bold text-zinc-900 dark:text-white font-heading mb-2">
             {title}
           </h3>
-          <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed max-w-xs">
+          <p className="text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed max-w-xs">
             {message}
           </p>
         </div>
@@ -90,7 +90,7 @@ const ConfirmModal = ({
             <button
               onClick={onClose}
               disabled={loading}
-              className="flex-1 py-2.5 px-4 rounded-xl text-sm font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors border-none cursor-pointer disabled:opacity-50"
+              className="flex-1 py-2.5 px-4 rounded-xl text-sm font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors border-none cursor-pointer disabled:opacity-50"
             >
               {cancelText}
             </button>

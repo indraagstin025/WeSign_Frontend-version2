@@ -55,10 +55,10 @@ const DocumentModals = ({ modals, actions }) => {
 
       {/* Global Loading Overlay for Detail Fetching */}
       {modals.info.isLoading && (
-        <div className="fixed inset-0 z-[110] bg-slate-900/20 backdrop-blur-[2px] flex items-center justify-center">
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-2xl flex items-center gap-4 animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[110] bg-zinc-900/20 backdrop-blur-[2px] flex items-center justify-center">
+          <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-2xl flex items-center gap-4 animate-in zoom-in-95 duration-200">
             <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-            <span className="text-sm font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Menyiapkan Detail...</span>
+            <span className="text-sm font-bold text-zinc-700 dark:text-zinc-200 uppercase tracking-wider">Menyiapkan Detail...</span>
           </div>
         </div>
       )}

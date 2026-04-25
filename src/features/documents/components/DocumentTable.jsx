@@ -23,7 +23,7 @@ const ActionButton = ({ icon, label, onClick, variant = 'default' }) => (
     className={`w-full flex items-center gap-3.5 px-5 py-3 text-[13px] font-bold transition-all border-none bg-transparent cursor-pointer group/item
       ${variant === 'danger' 
         ? 'text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20' 
-        : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50'
+        : 'text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50'
       }`}
   >
     <span className="shrink-0 transition-transform group-hover/item:scale-110">{icon}</span>
@@ -43,11 +43,11 @@ const DocumentTable = ({ documents, onAction, modals = {} }) => {
     <div className="w-full relative">
       
       {/* A. MOBILE VIEW (Legacy List Style) */}
-      <div className="lg:hidden space-y-0 divide-y divide-slate-100 dark:divide-slate-800">
+      <div className="lg:hidden space-y-0 divide-y divide-zinc-100 dark:divide-zinc-800">
         {documents.map((doc, index) => (
           <div 
             key={doc.id} 
-            className="py-4 px-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group cursor-pointer" 
+            className="py-4 px-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors group cursor-pointer" 
             onClick={() => helpers.handleAction('view', doc)}
           >
             <div className="flex items-center justify-between gap-4">
@@ -56,11 +56,11 @@ const DocumentTable = ({ documents, onAction, modals = {} }) => {
                   <FileText size={20} className="text-red-500" />
                 </div>
                 <div className="truncate">
-                  <h4 className="text-sm font-medium text-slate-900 dark:text-white truncate mb-0.5">{doc.title}</h4>
+                  <h4 className="text-sm font-medium text-zinc-900 dark:text-white truncate mb-0.5">{doc.title}</h4>
                   <div className="flex items-center gap-2">
-                     <span className="text-[10px] text-slate-400 font-medium">{helpers.formatDate(doc.createdAt)}</span>
-                     <span className="text-slate-300 dark:text-slate-600">·</span>
-                     <span className="text-[10px] text-slate-400 truncate">{doc.type || 'General'}</span>
+                     <span className="text-[10px] text-zinc-400 font-medium">{helpers.formatDate(doc.createdAt)}</span>
+                     <span className="text-zinc-300 dark:text-zinc-600">·</span>
+                     <span className="text-[10px] text-zinc-400 truncate">{doc.type || 'General'}</span>
                   </div>
                 </div>
               </div>
@@ -83,10 +83,10 @@ const DocumentTable = ({ documents, onAction, modals = {} }) => {
             return (
               <div 
                 key={doc.id} 
-                className="flex items-center px-6 py-4 border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-200/30 dark:hover:bg-slate-800/40 transition-all duration-300 group"
+                className="flex items-center px-6 py-4 border-b border-zinc-100 dark:border-zinc-800/50 hover:bg-zinc-200/30 dark:hover:bg-zinc-800/40 transition-all duration-300 group"
               >
                 {/* 0. Nomor (5%) */}
-                <div className="w-[5%] text-[11px] font-bold text-slate-400 dark:text-slate-600 pl-2">
+                <div className="w-[5%] text-[11px] font-bold text-zinc-400 dark:text-zinc-600 pl-2">
                   {String(index + 1).padStart(2, '0')}
                 </div>
 
@@ -96,7 +96,7 @@ const DocumentTable = ({ documents, onAction, modals = {} }) => {
                     <FileText size={18} className="text-red-500" />
                   </div>
                   <div className="flex flex-col min-w-0">
-                    <span className="text-sm font-medium text-slate-900 dark:text-white truncate transition-colors group-hover:text-primary">
+                    <span className="text-sm font-medium text-zinc-900 dark:text-white truncate transition-colors group-hover:text-primary">
                       {doc.title}
                     </span>
                   </div>
@@ -111,14 +111,14 @@ const DocumentTable = ({ documents, onAction, modals = {} }) => {
 
                 {/* 3. Tipe (15%) */}
                 <div className="w-[15%] flex justify-center">
-                  <div className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-tight">
+                  <div className="text-[11px] text-zinc-500 dark:text-zinc-400 font-semibold uppercase tracking-tight">
                     {doc.type || 'General'}
                   </div>
                 </div>
 
                 {/* 4. Tanggal (18%) */}
                 <div className="w-[18%] flex justify-center">
-                  <div className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-tight">
+                  <div className="text-[11px] text-zinc-500 dark:text-zinc-400 font-semibold uppercase tracking-tight">
                     {helpers.formatDate(doc.createdAt)}
                   </div>
                 </div>
@@ -130,12 +130,12 @@ const DocumentTable = ({ documents, onAction, modals = {} }) => {
                       e.stopPropagation();
                       state.setOpenMenuId(state.openMenuId === doc.id ? null : doc.id);
                     }}
-                    className="p-2.5 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 bg-transparent border-none cursor-pointer text-slate-400 hover:text-slate-800 dark:hover:text-white transition-all opacity-100 shadow-sm"
+                    className="p-2.5 rounded-2xl hover:bg-zinc-100 dark:hover:bg-zinc-800 bg-transparent border-none cursor-pointer text-zinc-400 hover:text-zinc-800 dark:hover:text-white transition-all opacity-100 shadow-sm"
                   >
                     <MoreVertical size={20} />
                   </button>
                   {state.openMenuId === doc.id && (
-                    <div className={`absolute right-0 w-56 bg-white dark:bg-slate-800 rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.18)] dark:shadow-[0_20px_60px_rgba(0,0,0,0.4)] border border-slate-100 dark:border-slate-700 z-[100] overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300 ${isNearBottom ? 'bottom-full mb-3' : 'top-full mt-3'}`}>
+                    <div className={`absolute right-0 w-56 bg-white dark:bg-zinc-800 rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.18)] dark:shadow-[0_20px_60px_rgba(0,0,0,0.4)] border border-zinc-100 dark:border-zinc-700 z-[100] overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300 ${isNearBottom ? 'bottom-full mb-3' : 'top-full mt-3'}`}>
                       <ActionButton icon={<Info size={16} />} label="Info Detail" onClick={() => helpers.handleAction('info', doc)} />
                       {doc.status.toLowerCase() !== 'completed' && (
                         <ActionButton icon={<PenTool size={16} className="text-primary" />} label="Tanda Tangani" onClick={() => helpers.handleAction('sign', doc)} />
@@ -144,7 +144,7 @@ const DocumentTable = ({ documents, onAction, modals = {} }) => {
                       {modals.version && <ActionButton icon={<History size={16} />} label="Riwayat Versi" onClick={() => helpers.handleAction('history', doc)} />}
                       <ActionButton icon={<FileEdit size={16} />} label="Ubah Judul" onClick={() => helpers.handleAction('edit', doc)} />
                       <ActionButton icon={<Download size={16} />} label="Unduh PDF" onClick={() => helpers.handleAction('download', doc)} />
-                      <div className="h-px bg-slate-50 dark:bg-slate-700/50 my-1 mx-2" />
+                      <div className="h-px bg-zinc-50 dark:bg-zinc-700/50 my-1 mx-2" />
                       <ActionButton icon={<Trash2 size={16} />} label="Hapus" onClick={() => helpers.handleAction('delete', doc)} variant="danger" />
                     </div>
                   )}

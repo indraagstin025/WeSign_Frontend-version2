@@ -56,25 +56,25 @@ const CreatePackageModal = ({ isOpen, onClose, onSuccess }) => {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 drop-shadow-2xl animate-in fade-in duration-300">
-      <div className="absolute inset-0 bg-slate-900/60 dark:bg-black/80 backdrop-blur-sm" onClick={handleClose} />
+      <div className="absolute inset-0 bg-zinc-900/60 dark:bg-black/80 backdrop-blur-sm" onClick={handleClose} />
       
-      <div className="relative w-full max-w-2xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 flex flex-col max-h-[90vh]">
+      <div className="relative w-full max-w-2xl bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl overflow-hidden border border-zinc-200 dark:border-zinc-800 flex flex-col max-h-[90vh]">
         
         {/* Header */}
-        <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0 bg-slate-50/50 dark:bg-slate-900/50">
+        <div className="px-6 py-5 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between shrink-0 bg-zinc-50/50 dark:bg-zinc-900/50">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
               <Layers size={20} />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white font-heading tracking-tight text-left">Buat Paket Baru</h3>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 text-left">Maksimal 5 dokumen • Hingga 50MB per file • PDF Digital</p>
+              <h3 className="text-lg font-bold text-zinc-900 dark:text-white font-heading tracking-tight text-left">Buat Paket Baru</h3>
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 text-left">Maksimal 5 dokumen • Hingga 50MB per file • PDF Digital</p>
             </div>
           </div>
           <button 
             disabled={loading}
             onClick={handleClose} 
-            className="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-400 dark:text-slate-500 transition-colors border-none bg-transparent cursor-pointer"
+            className="p-2 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-400 dark:text-zinc-500 transition-colors border-none bg-transparent cursor-pointer"
           >
             <X size={20} />
           </button>
@@ -89,8 +89,8 @@ const CreatePackageModal = ({ isOpen, onClose, onSuccess }) => {
                   <CheckCircle2 size={56} className="animate-bounce" />
                 </div>
                 <div>
-                  <h4 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Paket Berhasil Dibuat!</h4>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">{files.length} dokumen telah masuk ke dalam brankas paket.</p>
+                  <h4 className="text-xl font-bold text-zinc-900 dark:text-white mb-2">Paket Berhasil Dibuat!</h4>
+                  <p className="text-sm text-zinc-500 dark:text-zinc-400">{files.length} dokumen telah masuk ke dalam brankas paket.</p>
                 </div>
               </div>
             ) : (
@@ -100,16 +100,16 @@ const CreatePackageModal = ({ isOpen, onClose, onSuccess }) => {
                   onDragOver={handleDragOver}
                   onDrop={handleDrop}
                   onClick={() => !loading && fileInputRef.current?.click()}
-                  className={`group relative border-2 border-dashed ${error && files.length === 0 ? 'border-rose-300 bg-rose-50/30' : 'border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/20'} rounded-3xl p-10 flex flex-col items-center justify-center gap-4 hover:bg-primary/5 hover:border-primary/50 transition-all cursor-pointer shadow-sm`}
+                  className={`group relative border-2 border-dashed ${error && files.length === 0 ? 'border-rose-300 bg-rose-50/30' : 'border-zinc-300 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-800/20'} rounded-3xl p-10 flex flex-col items-center justify-center gap-4 hover:bg-primary/5 hover:border-primary/50 transition-all cursor-pointer shadow-sm`}
                 >
-                  <div className={`w-20 h-20 ${error && files.length === 0 ? 'bg-rose-100 text-rose-500' : 'bg-white dark:bg-slate-800 text-slate-400 border border-slate-100 dark:border-slate-700'} rounded-2xl flex items-center justify-center group-hover:text-primary group-hover:scale-110 group-hover:rotate-3 group-hover:shadow-xl group-hover:shadow-primary/20 transition-all shadow-md`}>
+                  <div className={`w-20 h-20 ${error && files.length === 0 ? 'bg-rose-100 text-rose-500' : 'bg-white dark:bg-zinc-800 text-zinc-400 border border-zinc-100 dark:border-zinc-700'} rounded-2xl flex items-center justify-center group-hover:text-primary group-hover:scale-110 group-hover:rotate-3 group-hover:shadow-xl group-hover:shadow-primary/20 transition-all shadow-md`}>
                     <UploadCloud size={40} strokeWidth={1.5} />
                   </div>
                   <div className="text-center">
-                    <p className="text-base font-bold text-slate-700 dark:text-slate-200">
+                    <p className="text-base font-bold text-zinc-700 dark:text-zinc-200">
                       Tarik & Lepas File PDF ke Sini
                     </p>
-                    <p className="text-[12px] text-slate-500 mt-1 max-w-sm font-medium leading-relaxed">
+                    <p className="text-[12px] text-zinc-500 mt-1 max-w-sm font-medium leading-relaxed">
                       Atau klik untuk menelusuri. Maksimal <strong className="text-primary font-bold">5 dokumen</strong> sekaligus (Hingga <strong className="text-primary font-bold">50MB per file</strong>).
                     </p>
                   </div>
@@ -127,7 +127,7 @@ const CreatePackageModal = ({ isOpen, onClose, onSuccess }) => {
                 {files.length > 0 && (
                   <div className="space-y-3 animate-in fade-in slide-in-from-bottom-4 duration-500">
                     <div className="flex items-center justify-between px-2">
-                       <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Antrean Dokumen ({files.length}/5)</h4>
+                       <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Antrean Dokumen ({files.length}/5)</h4>
                        {!loading && (
                            <button type="button" onClick={clearFiles} className="text-[11px] font-bold text-rose-500 hover:text-rose-600 dark:hover:text-rose-400 bg-transparent border-none cursor-pointer transition-colors px-2 py-1 rounded-md hover:bg-rose-50 dark:hover:bg-rose-900/30">Hapus Semua</button>
                        )}
@@ -135,19 +135,19 @@ const CreatePackageModal = ({ isOpen, onClose, onSuccess }) => {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[220px] overflow-y-auto pr-2 rounded-xl custom-scrollbar">
                       {files.map((f, idx) => (
-                         <div key={`${f.name}-${idx}`} className="flex items-center gap-3 p-3 bg-white dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700/80 hover:border-primary/30 transition-colors group shadow-sm">
+                         <div key={`${f.name}-${idx}`} className="flex items-center gap-3 p-3 bg-white dark:bg-zinc-800/80 rounded-2xl border border-zinc-200 dark:border-zinc-700/80 hover:border-primary/30 transition-colors group shadow-sm">
                            <div className="w-10 h-10 bg-rose-50 dark:bg-rose-900/20 rounded-xl flex items-center justify-center text-rose-500 shrink-0 border border-rose-100 dark:border-rose-800">
                              <FileText size={20} />
                            </div>
                            <div className="flex-1 truncate min-w-0">
-                             <p className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">{f.name}</p>
-                             <p className="text-[10px] text-slate-500 font-medium font-mono">{(f.size / 1024 / 1024).toFixed(2)} MB</p>
+                             <p className="text-sm font-bold text-zinc-800 dark:text-zinc-200 truncate">{f.name}</p>
+                             <p className="text-[10px] text-zinc-500 font-medium font-mono">{(f.size / 1024 / 1024).toFixed(2)} MB</p>
                            </div>
                            {!loading && (
                              <button
                                type="button" 
                                onClick={() => removeFile(idx)}
-                               className="w-8 h-8 rounded-full bg-slate-50 dark:bg-slate-900 flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30 border-none cursor-pointer opacity-0 group-hover:opacity-100 transition-all shrink-0"
+                               className="w-8 h-8 rounded-full bg-zinc-50 dark:bg-zinc-900 flex items-center justify-center text-zinc-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30 border-none cursor-pointer opacity-0 group-hover:opacity-100 transition-all shrink-0"
                              >
                                <Trash2 size={14} />
                              </button>
@@ -161,24 +161,24 @@ const CreatePackageModal = ({ isOpen, onClose, onSuccess }) => {
                 {/* 3. Package Title & Category Input */}
                 <div className="pt-2 grid grid-cols-1 md:grid-cols-2 gap-4">
                    <div>
-                     <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 ml-1 text-left">Nama Paket (Opsional)</label>
+                     <label className="block text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-2 ml-1 text-left">Nama Paket (Opsional)</label>
                      <input 
                        type="text"
                        disabled={loading}
                        value={title}
                        onChange={(e) => setTitle(e.target.value)}
                        placeholder="Contoh: Paket Kontrak"
-                       className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 dark:text-white placeholder:text-slate-400 font-medium transition-all shadow-inner"
+                       className="w-full px-5 py-4 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700/80 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 dark:text-white placeholder:text-zinc-400 font-medium transition-all shadow-inner"
                      />
-                     <p className="text-[11px] text-slate-500 mt-2 ml-2">Jika dikosongkan, nama paket akan mengikuti nama file dokumen pertama Anda.</p>
+                     <p className="text-[11px] text-zinc-500 mt-2 ml-2">Jika dikosongkan, nama paket akan mengikuti nama file dokumen pertama Anda.</p>
                    </div>
                    <div>
-                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 ml-1 text-left">Label / Kategori</label>
+                      <label className="block text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-2 ml-1 text-left">Label / Kategori</label>
                       <select 
                         disabled={loading}
                         value={category}
                         onChange={(e) => setCategory(e.target.value)}
-                        className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 dark:text-white font-medium transition-all shadow-inner cursor-pointer"
+                        className="w-full px-5 py-4 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700/80 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 dark:text-white font-medium transition-all shadow-inner cursor-pointer"
                       >
                         <option value="General">Umum (General)</option>
                         <option value="Contract">Kontrak / Perjanjian</option>
@@ -201,12 +201,12 @@ const CreatePackageModal = ({ isOpen, onClose, onSuccess }) => {
 
         {/* Footer Actions */}
         {!success && (
-          <div className="p-6 pt-0 mt-4 shrink-0 flex gap-4 bg-white dark:bg-slate-900">
+          <div className="p-6 pt-0 mt-4 shrink-0 flex gap-4 bg-white dark:bg-zinc-900">
             <button 
               type="button"
               disabled={loading}
               onClick={handleClose}
-              className="flex-1 px-4 py-4 text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-2xl transition-all border border-slate-200 dark:border-slate-800 bg-transparent cursor-pointer"
+              className="flex-1 px-4 py-4 text-sm font-bold text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-2xl transition-all border border-zinc-200 dark:border-zinc-800 bg-transparent cursor-pointer"
             >
               Kembali
             </button>

@@ -57,17 +57,17 @@ const StatusModal = ({
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
+        className="absolute inset-0 bg-zinc-900/40 dark:bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
         onClick={onClose}
       />
 
       {/* Modal Card */}
-      <div className={`relative w-full max-w-sm bg-white dark:bg-[#111b21] rounded-[2.5rem] border border-slate-200 dark:border-white/5 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 ${current.glow}`}>
+      <div className={`relative w-full max-w-sm bg-white dark:bg-[#111b21] rounded-[2.5rem] border border-zinc-200 dark:border-white/5 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 ${current.glow}`}>
         
         {/* Tombol Tutup X */}
         <button 
           onClick={onClose}
-          className="absolute top-6 right-6 p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5 transition-all border-none cursor-pointer"
+          className="absolute top-6 right-6 p-2 rounded-xl text-zinc-400 hover:text-zinc-600 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 transition-all border-none cursor-pointer"
         >
           <X size={18} />
         </button>
@@ -80,10 +80,10 @@ const StatusModal = ({
              <div className="absolute inset-0 rounded-[2rem] border border-current opacity-20 animate-ping duration-[3s]" />
           </div>
 
-          <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight mb-3">
+          <h3 className="text-xl font-black text-zinc-900 dark:text-white uppercase tracking-tight mb-3">
             {title}
           </h3>
-          <p className="text-sm font-medium text-slate-500 dark:text-slate-400 leading-relaxed mb-8 px-2">
+          <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400 leading-relaxed mb-8 px-2">
             {message}
           </p>
 

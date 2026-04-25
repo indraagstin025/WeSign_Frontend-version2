@@ -46,9 +46,11 @@ export const useLogin = () => {
       
       if (result?.success) {
         // [PENTING] Sinkronkan UserContext dengan token baru di localStorage
+        // GuestRoute akan otomatis redirect ke /groups/join jika ada pending join token,
+        // atau ke /dashboard jika tidak ada.
         await refreshUser();
-        
-        // Successful login -> redirect
+
+        // Fallback navigate (GuestRoute biasanya yang handle redirect)
         navigate(from, { replace: true });
       }
     } catch (err) {

@@ -10,8 +10,8 @@ import './App.css';
 // --- LAZY LOADED PAGES ---
 // Kita pisahkan halaman-halaman berat agar tidak membebani bundle utama
 const HomePage = lazy(() => import('./pages/public/HomePage'));
-const LoginPage = lazy(() => import('./pages/auth/LoginPage'));
-const RegisterPage = lazy(() => import('./pages/auth/RegisterPage'));
+const LoginPage = lazy(() => import('./features/auth/pages/LoginPage'));
+const RegisterPage = lazy(() => import('./features/auth/pages/RegisterPage'));
 const OverviewPage = lazy(() => import('./features/dashboard/pages/OverviewPage'));
 const DashboardLayout = lazy(() => import('./components/Layout/DashboardLayout'));
 const DocumentsPage = lazy(() => import('./features/documents/pages/DocumentsPage'));
@@ -21,12 +21,17 @@ const DocumentSigningPage = lazy(() => import('./features/signature/pages/Docume
 const SignPackagePage = lazy(() => import('./features/packages/pages/SignPackagePage'));
 const PackagePreviewPage = lazy(() => import('./features/packages/pages/PackagePreviewPage'));
 const ProfilePage = lazy(() => import('./features/user/pages/ProfilePage'));
+const GroupSigningPage = lazy(() => import('./features/groups/pages/GroupSigningPage'));
+const GroupDetailPage = lazy(() => import('./features/groups/pages/GroupDetailPage'));
+const GroupsPage = lazy(() => import('./features/groups/pages/GroupsPage'));
+const JoinGroupPage = lazy(() => import('./features/groups/pages/JoinGroupPage'));
+const GroupDocumentPreviewPage = lazy(() => import('./features/groups/pages/GroupDocumentPreviewPage'));
 
 // Komponen Loading sederhana untuk transisi Lazy Loading
 const PageLoader = () => (
-  <div className="fixed inset-0 flex flex-col items-center justify-center bg-white dark:bg-slate-950 z-[9999]">
+  <div className="fixed inset-0 flex flex-col items-center justify-center bg-white dark:bg-zinc-950 z-[9999]">
     <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin mb-3" />
-    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Menyiapkan Halaman...</p>
+    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Menyiapkan Halaman...</p>
   </div>
 );
 
@@ -66,6 +71,8 @@ function App() {
               <Route path="packages" element={<PackagesPage />} />
               <Route path="profile" element={<ProfilePage />} />
               <Route path="documents/preview/:id" element={<DocumentPreviewPage />} />
+              <Route path="groups" element={<GroupsPage />} />
+              <Route path="groups/:groupId" element={<GroupDetailPage />} />
             </Route>
 
             {/* STANDALONE FOCUSED ROUTES */}
@@ -86,6 +93,21 @@ function App() {
                 <PackagePreviewPage />
               </ProtectedRoute>
             } />
+
+            <Route path="/dashboard/groups/:groupId/documents/:documentId/sign" element={
+              <ProtectedRoute>
+                <GroupSigningPage />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/dashboard/groups/:groupId/documents/:documentId/preview" element={
+              <ProtectedRoute>
+                <GroupDocumentPreviewPage />
+              </ProtectedRoute>
+            } />
+
+            {/* PUBLIC — Join group via invitation link */}
+            <Route path="/groups/join" element={<JoinGroupPage />} />
           </Routes>
         </Suspense>
       </UserProvider>

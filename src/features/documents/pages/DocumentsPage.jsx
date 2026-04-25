@@ -34,13 +34,13 @@ const DocumentsPage = () => {
         <DocumentToolbar filters={filters} />
 
         {/* 1.1 TABLE COLUMN HEADERS (Fixed Visual) */}
-        <div className="hidden lg:flex items-center px-6 py-4 mt-6 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#0B1120] transition-colors rounded-t-2xl shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">
-           <div className="w-[5%] text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-2 font-heading">No.</div>
-           <div className="w-[36%] text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest text-left font-heading">Nama Dokumen</div>
-           <div className="w-[15%] text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center font-heading">Status</div>
-           <div className="w-[15%] text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center font-heading">Tipe</div>
-           <div className="w-[18%] text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center font-heading">Tanggal</div>
-           <div className="w-[11%] text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest text-right pr-6 font-heading">Aksi</div>
+        <div className="hidden lg:flex items-center px-6 py-4 mt-6 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 transition-colors rounded-t-2xl shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">
+           <div className="w-[5%] text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest pl-2 font-heading">No.</div>
+           <div className="w-[36%] text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest text-left font-heading">Nama Dokumen</div>
+           <div className="w-[15%] text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest text-center font-heading">Status</div>
+           <div className="w-[15%] text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest text-center font-heading">Tipe</div>
+           <div className="w-[18%] text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest text-center font-heading">Tanggal</div>
+           <div className="w-[11%] text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest text-right pr-6 font-heading">Aksi</div>
         </div>
       </div>
 
@@ -49,12 +49,12 @@ const DocumentsPage = () => {
         {loading ? (
           <div className="h-full flex flex-col items-center justify-center p-12 space-y-5 animate-in fade-in duration-500">
              <div className="relative">
-                <div className="w-16 h-16 border-4 border-slate-100 dark:border-slate-800 border-t-primary rounded-full animate-spin"></div>
+                <div className="w-16 h-16 border-4 border-zinc-100 dark:border-zinc-800 border-t-primary rounded-full animate-spin"></div>
                 <FileText size={28} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-primary" />
              </div>
              <div className="text-center animate-pulse">
-               <p className="text-sm font-bold text-slate-800 dark:text-slate-200 tracking-wider uppercase">Memproses Data</p>
-               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Mohon tunggu sebentar...</p>
+               <p className="text-sm font-bold text-zinc-800 dark:text-zinc-200 tracking-wider uppercase">Memproses Data</p>
+               <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Mohon tunggu sebentar...</p>
              </div>
           </div>
         ) : error ? (
@@ -63,10 +63,10 @@ const DocumentsPage = () => {
                 <RefreshCcw size={32} />
              </div>
              <div>
-               <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Terjadi Gangguan</h3>
-               <p className="text-sm text-slate-500 dark:text-slate-400 max-w-xs mx-auto leading-relaxed">{error}</p>
+               <h3 className="text-xl font-bold text-zinc-900 dark:text-white mb-2">Terjadi Gangguan</h3>
+               <p className="text-sm text-zinc-500 dark:text-zinc-400 max-w-xs mx-auto leading-relaxed">{error}</p>
              </div>
-             <button onClick={actions.refresh} className="px-8 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-sm font-bold rounded-2xl border-none cursor-pointer hover:bg-slate-800 transition-all active:scale-95 shadow-lg shadow-slate-900/20 dark:shadow-white/10">
+             <button onClick={actions.refresh} className="px-8 py-3 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-sm font-bold rounded-2xl border-none cursor-pointer hover:bg-zinc-800 transition-all active:scale-95 shadow-lg shadow-zinc-900/20 dark:shadow-white/10">
                 Muat Ulang Halaman
              </button>
           </div>
@@ -79,14 +79,14 @@ const DocumentsPage = () => {
           </div>
         ) : (
           <div className="h-full flex flex-col items-center justify-center p-12 text-center space-y-8 animate-in fade-in duration-700">
-            <div className="w-28 h-28 bg-slate-50 dark:bg-slate-800/40 rounded-[40px] flex items-center justify-center text-slate-200 dark:text-slate-700 border-2 border-dashed border-slate-200 dark:border-slate-800 shadow-inner">
+            <div className="w-28 h-28 bg-zinc-50 dark:bg-zinc-800/40 rounded-[40px] flex items-center justify-center text-zinc-200 dark:text-zinc-700 border-2 border-dashed border-zinc-200 dark:border-zinc-800 shadow-inner">
               <FileText size={48} />
             </div>
             <div className="space-y-3">
-              <h3 className="text-2xl font-bold text-slate-900 dark:text-white font-heading">
+              <h3 className="text-2xl font-bold text-zinc-900 dark:text-white font-heading">
                 {filters.search || filters.status ? 'Pencarian Nihil' : 'Belum Ada Dokumen'}
               </h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto leading-relaxed">
+              <p className="text-sm text-zinc-500 dark:text-zinc-400 max-w-sm mx-auto leading-relaxed">
                 {filters.search || filters.status 
                   ? 'Kami tidak menemukan berkas yang sesuai dengan kriteria filter atau pencarian Anda.' 
                   : 'Sistem belum menemukan dokumen apapun di akun Anda. Ayo mulai amankan dokumen Anda hari ini.'}

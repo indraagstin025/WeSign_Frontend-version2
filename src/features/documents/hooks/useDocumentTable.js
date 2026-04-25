@@ -23,7 +23,7 @@ export const useDocumentTable = (onAction) => {
    * Helper for status chip CSS classes
    */
   const getStatusStyles = (status) => {
-    if (!status) return 'bg-slate-400 text-white border-transparent';
+    if (!status) return 'bg-zinc-400 text-white border-transparent';
     
     switch (status.toLowerCase()) {
       case 'completed':
@@ -37,9 +37,9 @@ export const useDocumentTable = (onAction) => {
       case 'waiting':
       case 'menunggu':
       case 'draft':
-        return 'bg-slate-400 text-white border-transparent shadow-sm';
+        return 'bg-zinc-400 text-white border-transparent shadow-sm';
       default:
-        return 'bg-slate-400 text-white border-transparent';
+        return 'bg-zinc-400 text-white border-transparent';
     }
   };
 

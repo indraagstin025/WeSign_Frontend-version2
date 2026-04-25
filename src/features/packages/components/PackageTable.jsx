@@ -23,20 +23,20 @@ const PackageTable = ({ packages, onAction }) => {
   return (
     <div className="w-full relative">
       {/* 1. MOBILE VIEW (List Style yang Responsif) */}
-      <div className="lg:hidden divide-y divide-slate-100 dark:divide-slate-800/60">
+      <div className="lg:hidden divide-y divide-zinc-100 dark:divide-zinc-800/60">
         {packages.map((pkg) => (
-          <div key={pkg.id} className="py-5 px-3 bg-white dark:bg-slate-900/40 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-all group border-b border-slate-100 dark:border-slate-800/50 last:border-none">
+          <div key={pkg.id} className="py-5 px-3 bg-white dark:bg-zinc-900/40 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 transition-all group border-b border-zinc-100 dark:border-zinc-800/50 last:border-none">
             <div className="flex items-start justify-between gap-4 overflow-hidden" onClick={() => onAction('info', pkg)}>
               <div className="flex items-center gap-4 shrink-0 flex-1 min-w-0">
                 <div className="w-12 h-12 bg-primary/10 dark:bg-primary/20 rounded-2xl flex items-center justify-center shrink-0 border border-primary-100 dark:border-primary-900/20 shadow-sm transition-transform group-hover:scale-105">
                   <Layers size={22} className="text-primary" />
                 </div>
                 <div className="truncate flex-1">
-                  <h4 className="text-[15px] font-bold text-slate-900 dark:text-white truncate mb-1 leading-tight">{pkg.title || 'Tanpa Judul'}</h4>
+                  <h4 className="text-[15px] font-bold text-zinc-900 dark:text-white truncate mb-1 leading-tight">{pkg.title || 'Tanpa Judul'}</h4>
                   <div className="flex items-center gap-2">
-                    <span className="text-[11px] text-slate-400 font-medium">{helpers.formatDate(pkg.createdAt)}</span>
-                    <span className="text-slate-300 dark:text-slate-700">·</span>
-                    <span className="text-[11px] text-slate-400 font-black uppercase tracking-tight">{pkg.label || 'Umum'}</span>
+                    <span className="text-[11px] text-zinc-400 font-medium">{helpers.formatDate(pkg.createdAt)}</span>
+                    <span className="text-zinc-300 dark:text-zinc-700">·</span>
+                    <span className="text-[11px] text-zinc-400 font-black uppercase tracking-tight">{pkg.label || 'Umum'}</span>
                   </div>
                 </div>
               </div>
@@ -44,20 +44,20 @@ const PackageTable = ({ packages, onAction }) => {
                 <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${helpers.getStatusStyles(pkg.status)}`}>
                   {pkg.status}
                 </span>
-                <span className="text-[10px] font-bold text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+                <span className="text-[10px] font-bold text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-md">
                   {pkg.documentCount || 0} File
                 </span>
               </div>
             </div>
 
             {/* Quick Actions Mobile */}
-            <div className="mt-5 flex items-center gap-2 pt-4 border-t border-slate-50 dark:border-slate-800/40">
+            <div className="mt-5 flex items-center gap-2 pt-4 border-t border-zinc-50 dark:border-zinc-800/40">
                 <button 
                   onClick={(e) => {
                     e.stopPropagation();
                     onAction('preview', pkg);
                   }}
-                  className="flex-1 h-11 flex items-center justify-center gap-2 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-600 dark:text-slate-300 rounded-xl text-[11px] font-black uppercase tracking-widest border-none cursor-pointer transition-all active:scale-95"
+                  className="flex-1 h-11 flex items-center justify-center gap-2 bg-zinc-100 dark:bg-white/5 hover:bg-zinc-200 dark:hover:bg-white/10 text-zinc-600 dark:text-zinc-300 rounded-xl text-[11px] font-black uppercase tracking-widest border-none cursor-pointer transition-all active:scale-95"
                 >
                   <Eye size={18} className="text-primary" />
                   <span>Preview</span>
@@ -82,7 +82,7 @@ const PackageTable = ({ packages, onAction }) => {
                       e.stopPropagation();
                       onAction('download', pkg);
                     }}
-                    className="flex-1 h-11 flex items-center justify-center gap-2 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 text-slate-600 dark:text-slate-300 rounded-xl text-[11px] font-black uppercase tracking-widest border-none cursor-pointer transition-all active:scale-95"
+                    className="flex-1 h-11 flex items-center justify-center gap-2 bg-zinc-100 dark:bg-white/5 hover:bg-zinc-200 text-zinc-600 dark:text-zinc-300 rounded-xl text-[11px] font-black uppercase tracking-widest border-none cursor-pointer transition-all active:scale-95"
                   >
                     <Download size={18} />
                     <span>Download</span>
@@ -101,10 +101,10 @@ const PackageTable = ({ packages, onAction }) => {
           return (
             <div 
               key={pkg.id} 
-              className="flex items-center px-6 py-4 border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-200/30 dark:hover:bg-slate-800/40 transition-all duration-300 group"
+              className="flex items-center px-6 py-4 border-b border-zinc-100 dark:border-zinc-800/50 hover:bg-zinc-200/30 dark:hover:bg-zinc-800/40 transition-all duration-300 group"
             >
               {/* 0. Nomor (5%) */}
-              <div className="w-[5%] text-[11px] font-bold text-slate-400 dark:text-slate-600 pl-2">
+              <div className="w-[5%] text-[11px] font-bold text-zinc-400 dark:text-zinc-600 pl-2">
                 {String(index + 1).padStart(2, '0')}
               </div>
 
@@ -114,16 +114,16 @@ const PackageTable = ({ packages, onAction }) => {
                   <Layers size={18} className="text-primary" />
                 </div>
                 <div className="flex flex-col min-w-0 pointer-events-auto cursor-pointer" onClick={() => onAction('info', pkg)}>
-                  <span className="text-sm font-medium text-slate-900 dark:text-white truncate transition-colors group-hover:text-primary">
+                  <span className="text-sm font-medium text-zinc-900 dark:text-white truncate transition-colors group-hover:text-primary">
                     {pkg.title || 'Tanpa Judul'}
                   </span>
-                  <span className="text-[10px] text-slate-400 font-medium">{helpers.formatDate(pkg.createdAt)}</span>
+                  <span className="text-[10px] text-zinc-400 font-medium">{helpers.formatDate(pkg.createdAt)}</span>
                 </div>
               </div>
 
               {/* 2. Kategori (15%) */}
               <div className="w-[15%] flex justify-center">
-                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/50 px-2.5 py-1 rounded-md uppercase tracking-tight">
+                <span className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800/50 px-2.5 py-1 rounded-md uppercase tracking-tight">
                   {pkg.label || 'Umum'}
                 </span>
               </div>
@@ -149,37 +149,37 @@ const PackageTable = ({ packages, onAction }) => {
                     e.stopPropagation();
                     setOpenMenuId(openMenuId === pkg.id ? null : pkg.id);
                   }}
-                  className="p-2.5 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 bg-transparent border-none cursor-pointer text-slate-400 hover:text-slate-800 dark:hover:text-white transition-all opacity-100 shadow-sm"
+                  className="p-2.5 rounded-2xl hover:bg-zinc-100 dark:hover:bg-zinc-800 bg-transparent border-none cursor-pointer text-zinc-400 hover:text-zinc-800 dark:hover:text-white transition-all opacity-100 shadow-sm"
                 >
                   <MoreVertical size={20} />
                 </button>
 
                 {openMenuId === pkg.id && (
-                  <div className={`absolute right-0 w-56 bg-white dark:bg-slate-800 rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.18)] dark:shadow-[0_20px_60px_rgba(0,0,0,0.4)] border border-slate-100 dark:border-slate-700 z-[100] overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300 ${isNearBottom ? 'bottom-full mb-3' : 'top-full mt-3'}`}>
+                  <div className={`absolute right-0 w-56 bg-white dark:bg-zinc-800 rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.18)] dark:shadow-[0_20px_60px_rgba(0,0,0,0.4)] border border-zinc-100 dark:border-zinc-700 z-[100] overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300 ${isNearBottom ? 'bottom-full mb-3' : 'top-full mt-3'}`}>
                     <button 
                       onClick={() => handleActionClick('info', pkg)}
-                      className="w-full flex items-center gap-3.5 px-5 py-3 text-[13px] font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all border-none bg-transparent cursor-pointer group/item"
+                      className="w-full flex items-center gap-3.5 px-5 py-3 text-[13px] font-bold text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 transition-all border-none bg-transparent cursor-pointer group/item"
                     >
                       <Eye size={16} className="shrink-0 transition-transform group-hover/item:scale-110" />
                       <span className="flex-1 text-left uppercase tracking-wider">Info Detail</span>
                     </button>
 
-                    <div className="h-px bg-slate-50 dark:bg-slate-700/50 my-1 mx-2" />
+                    <div className="h-px bg-zinc-50 dark:bg-zinc-700/50 my-1 mx-2" />
 
                     <button 
                       onClick={() => handleActionClick('preview', pkg)}
-                      className="w-full flex items-center gap-3.5 px-5 py-3 text-[13px] font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all border-none bg-transparent cursor-pointer group/item"
+                      className="w-full flex items-center gap-3.5 px-5 py-3 text-[13px] font-bold text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 transition-all border-none bg-transparent cursor-pointer group/item"
                     >
                       <Eye size={16} className="text-primary shrink-0 transition-transform group-hover/item:scale-110" />
                       <span className="flex-1 text-left uppercase tracking-wider">Preview Paket</span>
                     </button>
 
-                    <div className="h-px bg-slate-50 dark:bg-slate-700/50 my-1 mx-2" />
+                    <div className="h-px bg-zinc-50 dark:bg-zinc-700/50 my-1 mx-2" />
 
                     {pkg.status === 'draft' && (
                       <button 
                         onClick={() => handleActionClick('sign', pkg)}
-                        className="w-full flex items-center gap-3.5 px-5 py-3 text-[13px] font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all border-none bg-transparent cursor-pointer group/item"
+                        className="w-full flex items-center gap-3.5 px-5 py-3 text-[13px] font-bold text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 transition-all border-none bg-transparent cursor-pointer group/item"
                       >
                         <PenTool size={16} className="text-emerald-500 shrink-0 transition-transform group-hover/item:scale-110" />
                         <span className="flex-1 text-left uppercase tracking-wider">Sign Paket</span>
@@ -189,14 +189,14 @@ const PackageTable = ({ packages, onAction }) => {
                     {pkg.status === 'completed' && (
                       <button 
                         onClick={() => handleActionClick('download', pkg)}
-                        className="w-full flex items-center gap-3.5 px-5 py-3 text-[13px] font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all border-none bg-transparent cursor-pointer group/item"
+                        className="w-full flex items-center gap-3.5 px-5 py-3 text-[13px] font-bold text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 transition-all border-none bg-transparent cursor-pointer group/item"
                       >
                         <Download size={16} className="shrink-0 transition-transform group-hover/item:scale-110" />
                         <span className="flex-1 text-left uppercase tracking-wider">Unduh (.zip)</span>
                       </button>
                     )}
 
-                    <div className="h-px bg-slate-50 dark:bg-slate-700/50 my-1 mx-2" />
+                    <div className="h-px bg-zinc-50 dark:bg-zinc-700/50 my-1 mx-2" />
 
                     <button 
                       onClick={() => handleActionClick('delete', pkg)}

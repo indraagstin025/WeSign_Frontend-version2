@@ -30,19 +30,19 @@ const AvatarUploadModal = ({ isOpen, onClose, onUpload, isUploading }) => {
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6 animate-fade-in">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" 
+        className="absolute inset-0 bg-zinc-900/60 backdrop-blur-sm" 
         onClick={!isUploading ? resetAndClose : undefined}
       />
 
       {/* Modal Content */}
-      <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden animate-zoom-in">
+      <div className="relative w-full max-w-md bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl overflow-hidden animate-zoom-in">
         {/* Header */}
-        <div className="px-6 py-4 flex items-center justify-between border-b border-slate-100 dark:border-slate-800">
-          <h3 className="text-lg font-bold text-slate-800 dark:text-white uppercase tracking-tight">Ganti Foto Profil</h3>
+        <div className="px-6 py-4 flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800">
+          <h3 className="text-lg font-bold text-zinc-800 dark:text-white uppercase tracking-tight">Ganti Foto Profil</h3>
           {!isUploading && (
             <button 
               onClick={resetAndClose}
-              className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors text-slate-400"
+              className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl transition-colors text-zinc-400"
             >
               <X size={20} />
             </button>
@@ -56,13 +56,13 @@ const AvatarUploadModal = ({ isOpen, onClose, onUpload, isUploading }) => {
               onDragOver={handleDragOver}
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
-              className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-3xl p-10 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all group"
+              className="flex flex-col items-center justify-center border-2 border-dashed border-zinc-200 dark:border-zinc-700 rounded-3xl p-10 cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-all group"
             >
               <div className="p-4 bg-primary/5 rounded-full mb-4 group-hover:scale-110 transition-transform">
                 <Upload className="text-primary" size={32} />
               </div>
-              <p className="text-sm font-bold text-slate-700 dark:text-slate-200">Klik atau seret foto ke sini</p>
-              <p className="text-xs text-slate-400 mt-2">JPG, PNG, atau WEBP</p>
+              <p className="text-sm font-bold text-zinc-700 dark:text-zinc-200">Klik atau seret foto ke sini</p>
+              <p className="text-xs text-zinc-400 mt-2">JPG, PNG, atau WEBP</p>
               <input 
                 type="file" 
                 ref={fileInputRef}
@@ -84,7 +84,7 @@ const AvatarUploadModal = ({ isOpen, onClose, onUpload, isUploading }) => {
               {!isUploading && (
                 <button 
                   onClick={clearSelection}
-                  className="text-xs font-bold text-slate-400 hover:text-red-500 uppercase tracking-widest transition-colors"
+                  className="text-xs font-bold text-zinc-400 hover:text-red-500 uppercase tracking-widest transition-colors"
                 >
                   Ganti Pilihan
                 </button>
@@ -93,13 +93,13 @@ const AvatarUploadModal = ({ isOpen, onClose, onUpload, isUploading }) => {
           )}
 
           {/* Requirements Info */}
-          <div className="bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-2xl p-4 flex gap-3">
+          <div className="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 rounded-2xl p-4 flex gap-3">
             <div className="text-primary mt-0.5">
               <FileImage size={18} />
             </div>
             <div className="space-y-1">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Persyaratan Upload</p>
-              <ul className="text-xs text-slate-600 dark:text-slate-400 space-y-1">
+              <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Persyaratan Upload</p>
+              <ul className="text-xs text-zinc-600 dark:text-zinc-400 space-y-1">
                 <li>• Format: **JPG, PNG, WEBP**</li>
                 <li>• Ukuran Maksimal: **5 MB**</li>
               </ul>
@@ -120,7 +120,7 @@ const AvatarUploadModal = ({ isOpen, onClose, onUpload, isUploading }) => {
               <>
                 <button 
                   onClick={resetAndClose}
-                  className="flex-1 py-3 px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 font-bold uppercase tracking-widest text-[10px] hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                  className="flex-1 py-3 px-4 rounded-xl border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 font-bold uppercase tracking-widest text-[10px] hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
                 >
                   Batal
                 </button>

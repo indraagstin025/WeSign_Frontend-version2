@@ -19,24 +19,24 @@ const EditDocModal = ({
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
       <div 
-        className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
+        className="absolute inset-0 bg-zinc-900/40 backdrop-blur-sm transition-opacity"
         onClick={!loading ? onClose : undefined}
       />
 
-      <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden">
+      <div className="relative w-full max-w-md bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden">
         
         {/* Header */}
-        <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50">
+        <div className="px-6 py-5 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between bg-zinc-50/50 dark:bg-zinc-800/50">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
               <FileEdit size={20} />
             </div>
-            <h3 className="font-bold text-slate-900 dark:text-white">Ubah Metadata</h3>
+            <h3 className="font-bold text-zinc-900 dark:text-white">Ubah Metadata</h3>
           </div>
           <button 
             onClick={onClose}
             disabled={loading}
-            className="p-2 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border-none bg-transparent cursor-pointer"
+            className="p-2 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors border-none bg-transparent cursor-pointer"
           >
             <X size={20} />
           </button>
@@ -46,7 +46,7 @@ const EditDocModal = ({
         <form onSubmit={actions.handleSubmit} className="p-6 space-y-5">
           {/* Input Judul */}
           <div className="space-y-1.5 text-left">
-            <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">
+            <label className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest ml-1">
               Judul Dokumen
             </label>
             <input 
@@ -55,7 +55,7 @@ const EditDocModal = ({
               disabled={loading}
               onChange={(e) => actions.setTitle(e.target.value)}
               placeholder="Masukkan judul baru..."
-              className={`w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border ${state.error ? 'border-rose-400 focus:ring-rose-500/20' : 'border-slate-200 dark:border-slate-700 focus:ring-primary/20'} rounded-2xl focus:outline-none focus:ring-2 dark:text-white transition-all`}
+              className={`w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border ${state.error ? 'border-rose-400 focus:ring-rose-500/20' : 'border-zinc-200 dark:border-zinc-700 focus:ring-primary/20'} rounded-2xl focus:outline-none focus:ring-2 dark:text-white transition-all`}
             />
             {state.error && (
               <div className="flex items-center gap-1.5 text-rose-500 text-[10px] font-bold mt-1 ml-1">
@@ -67,7 +67,7 @@ const EditDocModal = ({
 
           {/* Select Kategori */}
           <div className="space-y-1.5 text-left">
-            <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">
+            <label className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest ml-1">
               Kategori Dokumen
             </label>
             <div className="relative">
@@ -75,14 +75,14 @@ const EditDocModal = ({
                 value={state.type}
                 disabled={loading}
                 onChange={(e) => actions.setType(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/20 dark:text-white transition-all appearance-none cursor-pointer"
+                className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/20 dark:text-white transition-all appearance-none cursor-pointer"
               >
                 <option value="General">Umum (General)</option>
                 <option value="Contract">Kontrak / Perjanjian</option>
                 <option value="Invoice">Invoice / Faktur</option>
                 <option value="Certificate">Sertifikat / Bukti</option>
               </select>
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-400">
                 <Tag size={16} />
               </div>
             </div>
@@ -94,7 +94,7 @@ const EditDocModal = ({
               type="button"
               onClick={onClose}
               disabled={loading}
-              className="flex-1 py-3 px-4 rounded-2xl text-sm font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors border-none cursor-pointer"
+              className="flex-1 py-3 px-4 rounded-2xl text-sm font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors border-none cursor-pointer"
             >
               Batal
             </button>
