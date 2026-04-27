@@ -1,5 +1,6 @@
 import React from 'react';
 import { Mail, Lock, Eye, EyeOff, User, Building2, UserPlus, Loader2, CheckCircle, ArrowRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useRegister } from '../hooks/useRegister';
 
 /**
@@ -193,9 +194,9 @@ const RegisterForm = () => {
       {/* Footer / Switcher */}
       <div className="mt-2 text-center text-[13px] text-zinc-500 font-medium">
         Sudah punya akun?
-        <a href="/login" className="font-bold text-primary hover:text-primary-dark ml-2 transition-colors">
+        <Link to="/login" className="font-bold text-primary hover:text-primary-dark ml-2 transition-colors">
           Masuk Sekarang <ArrowRight size={12} className="inline ml-1" />
-        </a>
+        </Link>
       </div>
     </form>
   );

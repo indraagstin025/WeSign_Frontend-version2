@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { ShieldCheck, LogIn, Menu, Moon, Sun, Feather } from 'lucide-react';
 import { useTheme } from '../../hooks/useTheme';
 
@@ -42,9 +43,9 @@ const Navbar = () => {
           </button>
           
           <div className="hidden md:flex items-center border-l border-zinc-200 dark:border-zinc-800 ml-2 pl-4 gap-4">
-            <a href="/login" className="text-sm font-bold text-zinc-600 dark:text-zinc-400 hover:text-primary transition-colors">
+            <Link to="/login" className="text-sm font-bold text-zinc-600 dark:text-zinc-400 hover:text-primary transition-colors">
               Masuk
-            </a>
+            </Link>
             <button className="bg-primary hover:bg-primary-dark text-white px-6 py-2.5 rounded-full text-sm font-bold shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all">
               Daftar Gratis
             </button>

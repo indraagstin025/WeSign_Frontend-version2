@@ -1,5 +1,6 @@
 import React from 'react';
 import { Feather, Sun, Moon, ArrowLeft, ShieldCheck } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useTheme } from '../../hooks/useTheme';
 
 const AuthLayout = ({ children, title, subtitle, imageNode, quote, maxWidth = "max-w-[440px]" }) => {
@@ -73,12 +74,12 @@ const AuthLayout = ({ children, title, subtitle, imageNode, quote, maxWidth = "m
         <div className="lg:w-[70%] flex flex-col justify-center items-center py-12 px-8 sm:px-16 lg:p-20 relative bg-white dark:bg-zinc-900">
           {/* Tombol Kembali */}
           <div className="absolute top-8 left-8 flex items-center gap-2 z-10">
-            <a href="/" className="flex items-center gap-2 text-zinc-400 hover:text-primary transition-all no-underline font-bold text-xs group">
+            <Link to="/" className="flex items-center gap-2 text-zinc-400 hover:text-primary transition-all no-underline font-bold text-xs group">
               <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
                 <ArrowLeft size={14} /> 
               </div>
               Kembali
-            </a>
+            </Link>
           </div>
 
           <div className={`w-full ${maxWidth} relative z-10`}>
