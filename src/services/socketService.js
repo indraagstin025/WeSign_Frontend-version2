@@ -7,7 +7,7 @@
 
 import { io } from 'socket.io-client';
 
-const SOCKET_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api')
+const SOCKET_URL = (import.meta.env.VITE_API_URL || 'https://wesign-backend-production.up.railway.app/api')
   .replace(/\/api\/?$/, '');
 
 let socket = null;
