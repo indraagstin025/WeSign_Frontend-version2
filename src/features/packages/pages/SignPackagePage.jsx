@@ -26,7 +26,7 @@ import SigningFooter from '../../signature/components/SigningFooter';
 import SignatureCanvas from '../../signature/components/SignatureCanvas';
 import DraggableSignature from '../../signature/components/DraggableSignature';
 import PackageDocSidebar from '../components/PackageDocSidebar';
-import StatusModal from '../../../components/UI/StatusModal';
+import StatusModal from '../../../components/ui/StatusModal';
 import MobilePackageBottomSheet from '../components/MobilePackageBottomSheet';
 
 /**

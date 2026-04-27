@@ -11,7 +11,7 @@ import PackageTable from '../components/PackageTable';
 import CreatePackageModal from '../components/CreatePackageModal';
 import PackageInfoModal from '../components/PackageInfoModal';
 import DocumentFilter from '../../documents/components/DocumentFilter';
-import ConfirmModal from '../../../components/UI/ConfirmModal';
+import ConfirmModal from '../../../components/ui/ConfirmModal';
 
 const PackagesPage = () => {
     const {

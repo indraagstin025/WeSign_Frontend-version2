@@ -1,7 +1,7 @@
 import React from 'react';
 import SignatureCanvas from './SignatureCanvas';
 import MobileBottomSheet from './MobileBottomSheet';
-import StatusModal from '../../../components/UI/StatusModal';
+import StatusModal from '../../../components/ui/StatusModal';
 
 /**
  * @component SigningModals
