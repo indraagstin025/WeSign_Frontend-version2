@@ -6,9 +6,10 @@ import { useDashboard } from '../hooks/useDashboard';
 // Components
 import DashboardHeader from '../components/DashboardHeader';
 import StatCards from '../components/StatCards';
-import PendingActions from '../components/PendingActions';
-import DashboardCalendar from '../components/DashboardCalendar';
-import ActivityHistory from '../components/ActivityHistory';
+import RecentDocuments from '../components/RecentDocuments';
+import ActiveSignings from '../components/ActiveSignings';
+import OverviewChart from '../components/OverviewChart';
+import QuickActions from '../components/QuickActions';
 
 const OverviewPage = () => {
   const { counts, actions, activities, loading, error, refresh } = useDashboard();
@@ -25,54 +26,50 @@ const OverviewPage = () => {
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-zinc-100 dark:bg-zinc-950">
+      <div className="flex-1 flex items-center justify-center bg-zinc-50 dark:bg-zinc-950">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-10 h-10 text-primary animate-spin" />
-          <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Sinkronisasi Data...</p>
+          <Loader2 className="w-10 h-10 text-emerald-500 animate-spin" />
+          <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Synchronizing Data...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 overflow-y-auto no-scrollbar bg-zinc-100 dark:bg-zinc-950 transition-colors duration-300 relative">
+    <div className="flex-1 overflow-y-auto no-scrollbar bg-zinc-50/50 dark:bg-zinc-950 transition-colors duration-300 relative">
       
-      {/* AREA HEADER & STATS */}
-      <div className="px-6 lg:px-10 pt-6 lg:pt-8 pb-6">
+      <div className="px-6 lg:px-8 py-6 lg:py-8">
         <motion.div 
           variants={containerVariants}
           initial="hidden"
           animate="visible"
-          className="max-w-[1600px] mx-auto space-y-8"
+          className="max-w-[1700px] mx-auto space-y-8"
         >
-          <DashboardHeader itemVariants={itemVariants} />
-          <StatCards counts={counts} itemVariants={itemVariants} />
-        </motion.div>
-      </div>
+          {/* Header & Stats Section */}
+          <section className="space-y-6">
+            <DashboardHeader itemVariants={itemVariants} />
+            <StatCards counts={counts} itemVariants={itemVariants} />
+          </section>
 
-      {/* AREA CONTENT */}
-      <div className="px-6 lg:px-10 pb-10">
-        <motion.div 
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="max-w-[1600px] mx-auto"
-        >
-          <div className="grid grid-cols-12 gap-10 items-stretch">
-            
-            <PendingActions actions={actions} itemVariants={itemVariants} />
+          {/* Documents & Signings Section */}
+          <section className="grid grid-cols-12 gap-6 items-stretch">
+            <RecentDocuments documents={actions} itemVariants={itemVariants} />
+            <ActiveSignings signings={activities} itemVariants={itemVariants} />
+          </section>
 
-            <div className="col-span-12 lg:col-span-4 flex flex-col gap-10">
-              <DashboardCalendar itemVariants={itemVariants} />
-              <ActivityHistory activities={activities} itemVariants={itemVariants} />
-            </div>
+          {/* Overview & Quick Actions Section */}
+          <section className="grid grid-cols-12 gap-6 items-stretch">
+            <OverviewChart itemVariants={itemVariants} />
+            <QuickActions itemVariants={itemVariants} />
+          </section>
 
-          </div>
         </motion.div>
       </div>
 
     </div>
   );
+
 };
 
 export default OverviewPage;
+

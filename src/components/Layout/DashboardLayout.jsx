@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Outlet, useNavigate, Link } from 'react-router-dom';
 import Sidebar from './Sidebar';
-import { Menu, Sun, Moon, Bell, User as UserIcon, Settings, LogOut, ChevronDown } from 'lucide-react';
+import { Menu, Sun, Moon, Bell, User as UserIcon, Settings, LogOut, ChevronDown, Search } from 'lucide-react';
 import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
 import { logoutUser } from '../../features/auth/api/authService';
@@ -50,44 +50,62 @@ const DashboardLayout = () => {
   };
 
   return (
-    <div className="min-h-screen flex bg-zinc-100 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 transition-colors duration-300 font-sans">
+    <div className="min-h-screen flex bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 transition-colors duration-300 font-sans">
       
       <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
 
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
         
-        <header className="h-20 flex-shrink-0 bg-white/90 dark:bg-zinc-800/90 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-700/50 flex items-center justify-between px-4 lg:px-10 z-40 transition-all sticky top-0">
+        <header className="h-20 flex-shrink-0 bg-white dark:bg-zinc-900 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between px-6 lg:px-10 z-40 transition-all sticky top-0">
           
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-1">
             <button 
-              className="lg:hidden p-1.5 rounded-md text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 border-none bg-transparent cursor-pointer"
+              className="lg:hidden p-2 rounded-xl text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors border-none bg-transparent cursor-pointer"
               onClick={() => setIsSidebarOpen(true)}
             >
-              <Menu size={20} />
+              <Menu size={24} />
             </button>
+
+            {/* SEARCH BAR */}
+            <div className="hidden md:flex items-center relative max-w-md w-full group">
+              <div className="absolute left-4 text-zinc-400 group-focus-within:text-emerald-500 transition-colors">
+                <Search size={18} />
+              </div>
+              <input 
+                type="text" 
+                placeholder="Search documents, packages, groups..." 
+                className="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-700/50 rounded-2xl py-2.5 pl-12 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+              />
+            </div>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-4">
-            <button onClick={toggleTheme} className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400 transition-colors border-none bg-transparent cursor-pointer">
-              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-            </button>
-            
-            <button className="relative p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400 transition-colors border-none bg-transparent cursor-pointer">
-              <Bell size={18} />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-emerald-500 rounded-full border border-white dark:border-zinc-900"></span>
-            </button>
+          <div className="flex items-center gap-3 sm:gap-6">
+            <div className="flex items-center gap-1 sm:gap-2">
+              <button onClick={toggleTheme} className="p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400 transition-colors border-none bg-transparent cursor-pointer">
+                {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+              </button>
+              
+              <button className="relative p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400 transition-colors border-none bg-transparent cursor-pointer">
+                <Bell size={20} />
+                <span className="absolute top-2 right-2 w-5 h-5 bg-emerald-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-white dark:border-zinc-900 shadow-sm">3</span>
+              </button>
+            </div>
 
             {/* Profile Dropdown Container */}
-            <div className="relative ml-2" ref={dropdownRef}>
+            <div className="relative" ref={dropdownRef}>
               <button 
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="flex items-center gap-2 p-1 pr-3 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all border border-transparent hover:border-zinc-200 dark:hover:border-zinc-700 bg-transparent cursor-pointer group"
+                className="flex items-center gap-3 p-1.5 rounded-2xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all border border-transparent bg-transparent cursor-pointer group"
               >
-                <div className="w-9 h-9 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center overflow-hidden shadow-sm ring-2 ring-emerald-500 ring-offset-2 dark:ring-offset-zinc-900 transition-transform group-hover:scale-105">
+                <div className="flex flex-col items-end hidden sm:flex mr-1">
+                  <p className="text-xs font-bold text-zinc-900 dark:text-white leading-none mb-1">{user?.name || 'John Doe'}</p>
+                  <p className="text-[10px] text-zinc-400 leading-none">{user?.email || 'john.doe@email.com'}</p>
+                </div>
+                <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-500/20 border border-emerald-200 dark:border-emerald-500/30 flex items-center justify-center overflow-hidden shadow-sm transition-transform group-hover:scale-105">
                   {user?.profilePictureUrl ? (
                     <img src={user.profilePictureUrl} alt="Me" className="w-full h-full object-cover" />
                   ) : (
-                    <span className="text-primary font-bold text-xs">
+                    <span className="text-emerald-600 dark:text-emerald-400 font-bold text-xs uppercase">
                       {loading ? '...' : getInitials(user?.name)}
                     </span>
                   )}
@@ -146,7 +164,7 @@ const DashboardLayout = () => {
           </div>
         </header>
 
-        <main className="flex-1 flex flex-col bg-zinc-100 dark:bg-zinc-950 overflow-hidden no-scrollbar">
+        <main className="flex-1 flex flex-col bg-zinc-50 dark:bg-zinc-950 overflow-hidden no-scrollbar">
           <div className="flex-1 flex flex-col min-h-0 w-full">
             <Outlet />
           </div>

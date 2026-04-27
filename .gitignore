@@ -33,3 +33,11 @@ tests/
 
 playwright-report
 test-results
+
+# Installers & Binaries
+*.msi
+*.exe
+*.dmg
+*.pkg
+*.zip
+*.rar

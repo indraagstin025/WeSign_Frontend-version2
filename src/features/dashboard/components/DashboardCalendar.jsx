@@ -26,11 +26,11 @@ const DashboardCalendar = ({ itemVariants }) => {
           {format(currentDate, 'MMMM yyyy', { locale: id })}
         </h3>
         <div className="flex gap-2">
-          <button onClick={prevMonth} className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded-lg text-zinc-500 transition-colors border-none bg-transparent cursor-pointer">
-            <ChevronLeft size={18} />
+          <button onClick={prevMonth} className="w-8 h-8 flex items-center justify-center hover:bg-violet-50 dark:hover:bg-violet-900/20 rounded-full text-zinc-400 hover:text-violet-600 transition-all border-none bg-transparent cursor-pointer">
+            <ChevronLeft size={16} />
           </button>
-          <button onClick={nextMonth} className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded-lg text-zinc-500 transition-colors border-none bg-transparent cursor-pointer">
-            <ChevronRight size={18} />
+          <button onClick={nextMonth} className="w-8 h-8 flex items-center justify-center hover:bg-violet-50 dark:hover:bg-violet-900/20 rounded-full text-zinc-400 hover:text-violet-600 transition-all border-none bg-transparent cursor-pointer">
+            <ChevronRight size={16} />
           </button>
         </div>
       </div>
@@ -51,9 +51,9 @@ const DashboardCalendar = ({ itemVariants }) => {
           return (
             <div 
               key={i} 
-              className={`aspect-square flex items-center justify-center rounded-xl text-xs font-bold transition-all
-                ${!isCurrentMonth ? 'text-zinc-300 dark:text-zinc-700' : 'text-zinc-700 dark:text-zinc-300'}
-                ${isToday ? 'bg-primary text-white shadow-lg shadow-primary/20 scale-110' : 'hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer'}
+              className={`aspect-square flex items-center justify-center rounded-full text-xs font-bold transition-all
+                ${!isCurrentMonth ? 'text-zinc-200 dark:text-zinc-700' : 'text-zinc-600 dark:text-zinc-300'}
+                ${isToday ? 'bg-violet-600 text-white shadow-lg shadow-violet-600/30 scale-105' : 'hover:bg-violet-50 dark:hover:bg-violet-900/10 cursor-pointer hover:text-violet-600'}
               `}
             >
               {format(day, 'd')}

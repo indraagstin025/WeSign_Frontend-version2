@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { X, Upload, FileText, Users, CheckSquare, Square, Loader2, Info } from 'lucide-react';
+import { X, Upload, FileText, Users, CheckSquare, Square, Loader2, Info, AlertTriangle, WifiOff, ServerCrash } from 'lucide-react';
 import { uploadGroupDocument } from '../api/groupService';
 
 /**
@@ -11,7 +11,7 @@ const UploadGroupDocModal = ({ isOpen, onClose, groupId, members = [], onSuccess
   const [file, setFile] = useState(null);
   const [selectedSigners, setSelectedSigners] = useState([]);
   const [isUploading, setIsUploading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState(null);  // { message, type: 'network'|'server'|'validation' }
   const [isDraggingFile, setIsDraggingFile] = useState(false);
   const fileInputRef = useRef(null);
 
@@ -20,11 +20,11 @@ const UploadGroupDocModal = ({ isOpen, onClose, groupId, members = [], onSuccess
   const handleFileSelect = (selectedFile) => {
     if (!selectedFile) return;
     if (selectedFile.type !== 'application/pdf') {
-      setError('Sistem hanya menerima berkas berformat PDF.');
+      setError({ message: 'Sistem hanya menerima berkas berformat PDF.', type: 'validation' });
       return;
     }
     if (selectedFile.size > 20 * 1024 * 1024) {
-      setError('Ukuran berkas tidak boleh melebihi 20MB.');
+      setError({ message: 'Ukuran berkas tidak boleh melebihi 20MB.', type: 'validation' });
       return;
     }
     setFile(selectedFile);
@@ -53,9 +53,9 @@ const UploadGroupDocModal = ({ isOpen, onClose, groupId, members = [], onSuccess
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!file) { setError('Pilih berkas PDF terlebih dahulu.'); return; }
-    if (!title.trim()) { setError('Berikan judul untuk dokumen Anda.'); return; }
+    e?.preventDefault();
+    if (!file) { setError({ message: 'Pilih berkas PDF terlebih dahulu.', type: 'validation' }); return; }
+    if (!title.trim()) { setError({ message: 'Berikan judul untuk dokumen Anda.', type: 'validation' }); return; }
 
     setIsUploading(true);
     setError(null);
@@ -73,7 +73,16 @@ const UploadGroupDocModal = ({ isOpen, onClose, groupId, members = [], onSuccess
         handleClose();
       }
     } catch (err) {
-      setError(err.message || 'Terjadi kesalahan saat mengunggah berkas.');
+      // Tentukan tipe error berdasarkan status atau pesan
+      let errorType = 'server';
+      if (err.status === 400 || err.status === 422) errorType = 'validation';
+      if (!navigator.onLine || err.message?.toLowerCase().includes('koneksi')) errorType = 'network';
+
+      setError({
+        message: err.message || 'Terjadi kesalahan saat mengunggah berkas. Silakan coba lagi.',
+        type: errorType,
+        retryable: errorType === 'server' || errorType === 'network',
+      });
     } finally {
       setIsUploading(false);
     }
@@ -85,6 +94,13 @@ const UploadGroupDocModal = ({ isOpen, onClose, groupId, members = [], onSuccess
     setSelectedSigners([]);
     setError(null);
     onClose();
+  };
+
+  // Tentukan ikon yang tepat berdasarkan tipe error
+  const getErrorIcon = (type) => {
+    if (type === 'network') return <WifiOff size={16} className="shrink-0 mt-0.5" />;
+    if (type === 'server') return <ServerCrash size={16} className="shrink-0 mt-0.5" />;
+    return <AlertTriangle size={16} className="shrink-0 mt-0.5" />;
   };
 
   const willBeDraft = selectedSigners.length === 0;
@@ -247,8 +263,21 @@ const UploadGroupDocModal = ({ isOpen, onClose, groupId, members = [], onSuccess
 
           {/* Error */}
           {error && (
-            <div className="p-4 bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/30 rounded-2xl">
-              <p className="text-xs font-bold text-rose-600 dark:text-rose-400 text-center">{error}</p>
+            <div className="p-4 bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/30 rounded-2xl space-y-3">
+              <div className="flex items-start gap-3 text-rose-600 dark:text-rose-400">
+                {getErrorIcon(error.type)}
+                <p className="text-xs font-bold leading-relaxed">{error.message}</p>
+              </div>
+              {error.retryable && (
+                <button
+                  onClick={handleSubmit}
+                  disabled={isUploading}
+                  className="w-full py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-[10px] font-black uppercase tracking-widest border-none cursor-pointer transition-all active:scale-95 disabled:opacity-50"
+                >
+                  {isUploading ? <Loader2 size={12} className="animate-spin inline mr-2" /> : null}
+                  Coba Lagi
+                </button>
+              )}
             </div>
           )}
         </div>
