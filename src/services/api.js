@@ -163,8 +163,14 @@ export async function apiFetch(endpoint, options = {}) {
 
     if (!response.ok) {
       if (response.status === 401) handleLogout();
-      const error = new Error(data?.message || data?.error || `Error status: ${response.status}`);
+
+      // Petakan error code dari backend ke pesan ramah pengguna
+      const errorCode = data?.code;
+      const friendlyMessage = getFriendlyErrorMessage(errorCode, response.status, data?.message);
+
+      const error = new Error(friendlyMessage);
       error.status = response.status;
+      error.code = errorCode;
       error.data = data;
       throw error;
     }
@@ -185,10 +191,10 @@ export async function apiFetch(endpoint, options = {}) {
       stack: err.stack,
     });
 
-    if (err.name === "AbortError") throw new Error("Permintaan gagal: Waktu habis.");
-    if (err.message === "Failed to fetch" || !navigator.onLine) {
+    if (err.name === "AbortError") throw new Error("Permintaan gagal: Waktu tunggu habis. Coba lagi dalam beberapa saat.");
+    if (err.message === "Failed to fetch" || err.message?.includes("fetch failed") || !navigator.onLine) {
       console.error("[apiFetch] Network error detected");
-      throw new Error("Koneksi internet terputus atau tidak stabil.");
+      throw new Error("Koneksi internet terputus atau tidak stabil. Periksa koneksi Anda dan coba lagi.");
     }
     throw err;
   }
@@ -203,4 +209,45 @@ function handleLogout() {
   if (window.location.pathname !== "/login") {
     window.location.href = "/login?expired=true";
   }
+}
+
+/**
+ * Memetakan error code dari backend atau HTTP status ke pesan yang ramah pengguna.
+ * @param {string|undefined} code - Error code dari backend (misal: 'SUPABASE_ERROR')
+ * @param {number} status - HTTP status code
+ * @param {string|undefined} originalMessage - Pesan asli dari backend
+ * @returns {string} Pesan error yang ramah pengguna
+ */
+function getFriendlyErrorMessage(code, status, originalMessage) {
+  // Peta error code spesifik dari backend
+  const codeMessages = {
+    SUPABASE_ERROR: "Gagal mengunggah berkas ke penyimpanan. Layanan penyimpanan sedang tidak tersedia, silakan coba beberapa saat lagi.",
+    UNAUTHORIZED: "Sesi Anda telah berakhir. Silakan login kembali.",
+    FORBIDDEN: "Anda tidak memiliki izin untuk melakukan aksi ini.",
+    NOT_FOUND: "Data yang diminta tidak ditemukan.",
+    VALIDATION_ERROR: originalMessage || "Data yang dikirimkan tidak valid.",
+    FILE_TOO_LARGE: "Ukuran berkas terlalu besar. Maksimal 20MB.",
+    INVALID_FILE_TYPE: "Format berkas tidak didukung. Gunakan format PDF.",
+  };
+
+  if (code && codeMessages[code]) {
+    return codeMessages[code];
+  }
+
+  // Peta berdasarkan HTTP status jika tidak ada error code spesifik
+  const statusMessages = {
+    400: originalMessage || "Permintaan tidak valid. Periksa kembali data yang dikirimkan.",
+    401: "Sesi Anda telah berakhir. Silakan login kembali.",
+    403: "Anda tidak memiliki izin untuk melakukan aksi ini.",
+    404: "Data yang diminta tidak ditemukan.",
+    408: "Permintaan gagal: Waktu tunggu habis. Coba lagi dalam beberapa saat.",
+    413: "Ukuran berkas terlalu besar. Maksimal 20MB.",
+    429: "Terlalu banyak permintaan. Tunggu sebentar sebelum mencoba lagi.",
+    500: "Terjadi kesalahan pada server. Tim kami sudah diberitahu. Silakan coba lagi.",
+    502: "Layanan sedang tidak tersedia (Bad Gateway). Silakan coba beberapa saat lagi.",
+    503: "Server sedang dalam pemeliharaan. Silakan coba beberapa menit lagi.",
+    504: "Server tidak merespons (Gateway Timeout). Periksa koneksi Anda dan coba lagi.",
+  };
+
+  return statusMessages[status] || originalMessage || `Terjadi kesalahan yang tidak terduga (${status}).`;
 }

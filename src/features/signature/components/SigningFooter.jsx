@@ -13,7 +13,7 @@ const SigningFooter = ({
   rightContent = null
 }) => {
   return (
-    <footer className="flex h-16 bg-white/80 dark:bg-black/80 backdrop-blur-md border-t border-slate-200 dark:border-emerald-500/10 items-center justify-between px-6 shrink-0 z-[120] relative">
+    <footer className="flex h-16 bg-white/80 dark:bg-black/80 backdrop-blur-md border-t border-zinc-200 dark:border-emerald-500/10 items-center justify-between px-6 shrink-0 z-[120] relative">
       {/* Spacer for left symmetry if needed */}
       <div className="hidden sm:block w-32" />
 
@@ -21,10 +21,10 @@ const SigningFooter = ({
         <button 
           disabled={pageNumber <= 1} 
           onClick={() => setPageNumber(p => Math.max(p - 1, 1))} 
-          className={`p-2 rounded-xl border border-slate-200 dark:border-slate-800 transition-all flex items-center justify-center shrink-0
+          className={`p-2 rounded-xl border border-zinc-200 dark:border-zinc-800 transition-all flex items-center justify-center shrink-0
             ${pageNumber <= 1 
-              ? 'bg-slate-50 text-slate-300 dark:text-white/20 cursor-not-allowed opacity-50' 
-              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:border-emerald-200 dark:hover:border-emerald-800 cursor-pointer'
+              ? 'bg-zinc-50 text-zinc-300 dark:text-white/20 cursor-not-allowed opacity-50' 
+              : 'bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-200 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:border-emerald-200 dark:hover:border-emerald-800 cursor-pointer'
             }
           `}
           title="Halaman Sebelumnya"
@@ -33,7 +33,7 @@ const SigningFooter = ({
         </button>
         
         <div className="flex flex-col items-center">
-          <span className="text-xs font-extrabold text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full min-w-[80px] text-center border border-slate-200 dark:border-slate-700">
+          <span className="text-xs font-extrabold text-zinc-900 dark:text-white bg-zinc-100 dark:bg-zinc-800 px-3 py-1 rounded-full min-w-[80px] text-center border border-zinc-200 dark:border-zinc-700">
             {pageNumber} / {numPages || '?'}
           </span>
         </div>
@@ -41,10 +41,10 @@ const SigningFooter = ({
         <button 
           disabled={pageNumber >= numPages} 
           onClick={() => setPageNumber(p => Math.min(p + 1, numPages))} 
-          className={`p-2 rounded-xl border border-slate-200 dark:border-slate-800 transition-all flex items-center justify-center shrink-0
+          className={`p-2 rounded-xl border border-zinc-200 dark:border-zinc-800 transition-all flex items-center justify-center shrink-0
             ${pageNumber >= numPages 
-              ? 'bg-slate-50 text-slate-300 dark:text-white/20 cursor-not-allowed opacity-50' 
-              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:border-emerald-200 dark:hover:border-emerald-800 cursor-pointer'
+              ? 'bg-zinc-50 text-zinc-300 dark:text-white/20 cursor-not-allowed opacity-50' 
+              : 'bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-200 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:border-emerald-200 dark:hover:border-emerald-800 cursor-pointer'
             }
           `}
           title="Halaman Berikutnya"
@@ -59,7 +59,7 @@ const SigningFooter = ({
 
       {/* Hint Shortcut (Only for desktop signing mode) */}
       {!isReadOnly && !rightContent && (
-        <p className="hidden md:block text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em] absolute right-8">
+        <p className="hidden md:block text-[9px] font-bold text-zinc-400 uppercase tracking-[0.2em] absolute right-8">
           Klik PDF untuk Menempel Tanda Tangan
         </p>
       )}

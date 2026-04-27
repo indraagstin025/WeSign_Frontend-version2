@@ -105,7 +105,7 @@ const ProtectedRoute = ({ children }) => {
   // 1. Screener Validasi (PENTING: Harus cek isValidating dulu sebelum cek !token)
   if (isValidating) {
     return (
-      <div className="fixed inset-0 bg-slate-50 dark:bg-[#0B1120] flex flex-col items-center justify-center z-[9999]">
+      <div className="fixed inset-0 bg-zinc-50 dark:bg-[#0B1120] flex flex-col items-center justify-center z-[9999]">
         <div className="flex flex-col items-center gap-4 animate-in fade-in duration-500">
            <div className="relative">
               <ShieldCheck size={48} className="text-primary animate-pulse" />
@@ -114,8 +114,8 @@ const ProtectedRoute = ({ children }) => {
               </div>
            </div>
            <div className="text-center px-4">
-             <h3 className="text-lg font-bold text-slate-900 dark:text-white font-heading tracking-tight">Menyiapkan Ruang Kerja</h3>
-             <p className="text-sm text-slate-500 dark:text-slate-400">Verifikasi pemulihan sesi keamanan...</p>
+             <h3 className="text-lg font-bold text-zinc-900 dark:text-white font-heading tracking-tight">Menyiapkan Ruang Kerja</h3>
+             <p className="text-sm text-zinc-500 dark:text-zinc-400">Verifikasi pemulihan sesi keamanan...</p>
            </div>
         </div>
       </div>

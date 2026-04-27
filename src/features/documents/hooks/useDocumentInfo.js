@@ -8,7 +8,7 @@ export const useDocumentInfo = (document) => {
    * Helper to get status metadata for Badge
    */
   const getStatusConfig = (status) => {
-    if (!status) return { label: '-', className: 'bg-slate-100 text-slate-700 dark:bg-slate-800' };
+    if (!status) return { label: '-', className: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800' };
     
     switch (status.toLowerCase()) {
       case 'completed':
@@ -24,12 +24,12 @@ export const useDocumentInfo = (document) => {
       case 'draft':
         return {
           label: 'Draf',
-          className: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400'
+          className: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400'
         };
       default:
         return {
           label: status,
-          className: 'bg-slate-100 text-slate-700 dark:bg-slate-800'
+          className: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800'
         };
     }
   };

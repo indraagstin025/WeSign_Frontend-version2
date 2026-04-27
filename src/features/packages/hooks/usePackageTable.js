@@ -25,7 +25,7 @@ export const usePackageTable = (onAction) => {
    * Helper to get CSS classes based on signature status
    */
   const getStatusStyles = (status) => {
-    if (!status) return 'bg-slate-100 text-slate-700 dark:bg-slate-800';
+    if (!status) return 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800';
     
     switch (status.toLowerCase()) {
       case 'completed':
@@ -34,7 +34,7 @@ export const usePackageTable = (onAction) => {
       case 'pending':
         return 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400';
       default:
-        return 'bg-slate-100 text-slate-700 dark:bg-slate-800';
+        return 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800';
     }
   };
 

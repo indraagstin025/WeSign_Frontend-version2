@@ -68,7 +68,7 @@ const ProfilePage = () => {
                     <ShieldCheck size={32} className="text-red-500" />
                 </div>
                 <h3 className="text-xl font-heading font-bold text-red-600 mb-2 font-bold uppercase tracking-tight">Koneksi Gagal</h3>
-                <p className="text-slate-400 text-sm mb-6 max-w-sm mx-auto">{error}</p>
+                <p className="text-zinc-400 text-sm mb-6 max-w-sm mx-auto">{error}</p>
                 <button 
                   onClick={refreshQuota}
                   className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-all shadow-lg hover:scale-105 cursor-pointer font-bold uppercase tracking-widest text-[10px]"
@@ -93,7 +93,7 @@ const ProfilePage = () => {
                 <div className="lg:col-span-4 space-y-6">
                     <div className="glass-panel p-6 shadow-xl shadow-black/5 animate-fade-in-up">
                         <div className="flex items-center justify-between mb-6">
-                           <h2 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Tentang Saya</h2>
+                           <h2 className="text-sm font-bold text-zinc-400 uppercase tracking-widest">Tentang Saya</h2>
                            <span className="p-1 rounded-md bg-primary/10 text-primary">
                              <User size={16} />
                            </span>
@@ -106,16 +106,16 @@ const ProfilePage = () => {
                             <InfoItem icon={<MapPin size={16} />} label="Lokasi" value={formData.address} />
                         </div>
                         
-                        <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800">
-                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Keanggotaan</p>
+                        <div className="mt-8 pt-6 border-t border-zinc-100 dark:border-zinc-800">
+                           <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-3">Keanggotaan</p>
                            <div className="p-3 bg-gradient-to-br from-primary/5 to-primary/20 border border-primary/20 rounded-xl flex items-center justify-between">
                               <div className="flex items-center gap-3">
-                                 <div className="p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
+                                 <div className="p-2 bg-white dark:bg-zinc-800 rounded-lg shadow-sm">
                                     <ShieldCheck size={18} className="text-primary" />
                                  </div>
-                                 <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{quota?.userStatus}</span>
+                                 <span className="text-sm font-bold text-zinc-700 dark:text-zinc-200">{quota?.userStatus}</span>
                               </div>
-                              <ChevronRight size={14} className="text-slate-400" />
+                              <ChevronRight size={14} className="text-zinc-400" />
                            </div>
                         </div>
                     </div>
@@ -124,7 +124,7 @@ const ProfilePage = () => {
                 {/* --- SISI KANAN: SETTINGS & TABS --- */}
                 <div className="lg:col-span-8 flex flex-col gap-6">
                     {/* Tab Navigation */}
-                    <div className="flex p-1.5 bg-slate-100 dark:bg-slate-900 rounded-2xl w-fit self-center sm:self-start border border-slate-200 dark:border-slate-800 animate-fade-in-up gap-1">
+                    <div className="flex p-1.5 bg-zinc-100 dark:bg-zinc-900 rounded-2xl w-fit self-center sm:self-start border border-zinc-200 dark:border-zinc-800 animate-fade-in-up gap-1">
                         <TabButton 
                             active={activeTab === 'pribadi'} 
                             onClick={() => setActiveTab('pribadi')} 
@@ -155,7 +155,7 @@ const ProfilePage = () => {
                         {/* TAB: INFO PRIBADI */}
                         {activeTab === 'pribadi' && (
                             <div className="glass-panel p-8 space-y-8 animate-fade-in-up">
-                                <header className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-6 mb-6">
+                                <header className="flex justify-between items-center border-b border-zinc-100 dark:border-zinc-800 pb-6 mb-6">
                                    <button 
                                       onClick={handleSave}
                                       disabled={isUpdating}
@@ -213,23 +213,23 @@ const ProfilePage = () => {
                         {/* TAB: KOLEKSI FOTO */}
                         {activeTab === 'koleksi' && (
                             <div className="glass-panel p-8 animate-fade-in-up">
-                                <header className="border-b border-slate-100 dark:border-slate-800 pb-6 mb-8">
-                                    <h3 className="text-lg font-bold text-slate-800 dark:text-white uppercase tracking-tight">Koleksi Foto Profil</h3>
-                                    <p className="text-xs text-slate-400 mt-1">Ganti profil dengan koleksi lama Anda atau hapus riwayat yang tidak perlu.</p>
+                                <header className="border-b border-zinc-100 dark:border-zinc-800 pb-6 mb-8">
+                                    <h3 className="text-lg font-bold text-zinc-800 dark:text-white uppercase tracking-tight">Koleksi Foto Profil</h3>
+                                    <p className="text-xs text-zinc-400 mt-1">Ganti profil dengan koleksi lama Anda atau hapus riwayat yang tidak perlu.</p>
                                 </header>
 
                                 {pictureHistory.length === 0 ? (
-                                    <div className="text-center py-16 bg-slate-50/50 dark:bg-slate-900/20 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800">
-                                        <div className="p-4 bg-white dark:bg-slate-800 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4 shadow-sm">
-                                            <Camera size={24} className="text-slate-300" />
+                                    <div className="text-center py-16 bg-zinc-50/50 dark:bg-zinc-900/20 rounded-3xl border border-dashed border-zinc-200 dark:border-zinc-800">
+                                        <div className="p-4 bg-white dark:bg-zinc-800 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4 shadow-sm">
+                                            <Camera size={24} className="text-zinc-300" />
                                         </div>
-                                        <p className="text-slate-500 text-sm font-medium">Belum ada riwayat foto profil.</p>
-                                        <p className="text-slate-400 text-xs mt-1">Unggah foto baru untuk memulai koleksi Anda.</p>
+                                        <p className="text-zinc-500 text-sm font-medium">Belum ada riwayat foto profil.</p>
+                                        <p className="text-zinc-400 text-xs mt-1">Unggah foto baru untuk memulai koleksi Anda.</p>
                                     </div>
                                 ) : (
                                     <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
                                         {pictureHistory.map((pic) => (
-                                            <div key={pic.id} className={`group relative aspect-square rounded-3xl overflow-hidden border-2 transition-all duration-300 ${pic.isActive ? 'border-primary shadow-lg shadow-primary/10' : 'border-transparent bg-slate-50 dark:bg-slate-900 hover:border-slate-200 dark:hover:border-slate-700 shadow-sm hover:shadow-md'}`}>
+                                            <div key={pic.id} className={`group relative aspect-square rounded-3xl overflow-hidden border-2 transition-all duration-300 ${pic.isActive ? 'border-primary shadow-lg shadow-primary/10' : 'border-transparent bg-zinc-50 dark:bg-zinc-900 hover:border-zinc-200 dark:hover:border-zinc-700 shadow-sm hover:shadow-md'}`}>
                                                 <img 
                                                     src={pic.url} 
                                                     alt="History" 
@@ -248,10 +248,10 @@ const ProfilePage = () => {
 
                                                 {/* Action Hover Overlay */}
                                                 {!pic.isActive && (
-                                                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col items-center justify-center gap-3">
+                                                    <div className="absolute inset-0 bg-zinc-900/60 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col items-center justify-center gap-3">
                                                         <button 
                                                             onClick={() => onSelectOldAvatar(pic.id)}
-                                                            className="w-24 py-2 bg-white text-slate-900 text-[10px] font-bold rounded-xl hover:bg-primary hover:text-white transition-all uppercase tracking-widest shadow-xl"
+                                                            className="w-24 py-2 bg-white text-zinc-900 text-[10px] font-bold rounded-xl hover:bg-primary hover:text-white transition-all uppercase tracking-widest shadow-xl"
                                                         >
                                                             Gunakan
                                                         </button>
@@ -293,12 +293,12 @@ const ProfilePage = () => {
                                 
                                 <div className="glass-panel p-6 border-primary/10 bg-primary/5 animate-fade-in-up delay-75">
                                    <div className="flex gap-4 items-start">
-                                      <div className="p-3 bg-white dark:bg-slate-800 rounded-xl shadow-md border border-slate-100 dark:border-slate-700">
+                                      <div className="p-3 bg-white dark:bg-zinc-800 rounded-xl shadow-md border border-zinc-100 dark:border-zinc-700">
                                          <ShieldCheck className="text-primary" size={24} />
                                       </div>
                                       <div>
-                                         <h4 className="font-heading font-extrabold text-slate-800 dark:text-white tracking-tight">Akun Sigify Unlimited</h4>
-                                         <p className="text-sm text-slate-500 mt-1">Saat ini semua pembatasan kuota dinonaktifkan dalam mode pengembangan. Nikmati akses penuh tanpa batas!</p>
+                                         <h4 className="font-heading font-extrabold text-zinc-800 dark:text-white tracking-tight">Akun Sigify Unlimited</h4>
+                                         <p className="text-sm text-zinc-500 mt-1">Saat ini semua pembatasan kuota dinonaktifkan dalam mode pengembangan. Nikmati akses penuh tanpa batas!</p>
                                       </div>
                                    </div>
                                 </div>
@@ -308,11 +308,11 @@ const ProfilePage = () => {
                         {/* TAB: KEAMANAN (Placeholder) */}
                         {activeTab === 'keamanan' && (
                              <div className="glass-panel p-8 text-center animate-fade-in-up">
-                                 <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-6 border border-slate-200 dark:border-slate-800">
-                                     <Lock size={32} className="text-slate-300 dark:text-slate-600" />
+                                 <div className="w-20 h-20 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center mx-auto mb-6 border border-zinc-200 dark:border-zinc-800">
+                                     <Lock size={32} className="text-zinc-300 dark:text-zinc-600" />
                                  </div>
-                                 <h3 className="text-lg font-heading font-bold text-slate-400 font-bold uppercase tracking-widest text-[10px]">Fitur Keamanan Segera Hadir</h3>
-                                 <p className="text-sm text-slate-400 mt-2 max-w-xs mx-auto">Kami sedang mempersiapkan sistem autentikasi dua faktor dan manajemen PIN yang lebih aman.</p>
+                                 <h3 className="text-lg font-heading font-bold text-zinc-400 font-bold uppercase tracking-widest text-[10px]">Fitur Keamanan Segera Hadir</h3>
+                                 <p className="text-sm text-zinc-400 mt-2 max-w-xs mx-auto">Kami sedang mempersiapkan sistem autentikasi dua faktor dan manajemen PIN yang lebih aman.</p>
                              </div>
                         )}
                     </div>
@@ -352,8 +352,8 @@ const TabButton = ({ active, onClick, label, icon }) => (
         onClick={onClick}
         className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all duration-300 border-none cursor-pointer ${
             active 
-            ? "bg-white dark:bg-slate-800 text-primary shadow-lg shadow-black/5" 
-            : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+            ? "bg-white dark:bg-zinc-800 text-primary shadow-lg shadow-black/5" 
+            : "text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
         }`}
     >
         {icon}
@@ -363,12 +363,12 @@ const TabButton = ({ active, onClick, label, icon }) => (
 
 const InfoItem = ({ icon, label, value }) => (
     <div className="flex items-center gap-4 group">
-        <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded-lg text-slate-400 group-hover:text-primary transition-colors">
+        <div className="p-2 bg-zinc-50 dark:bg-zinc-800 rounded-lg text-zinc-400 group-hover:text-primary transition-colors">
             {icon}
         </div>
         <div>
-            <p className="text-[9px] font-black text-slate-300 dark:text-slate-700 uppercase tracking-widest leading-none mb-1">{label}</p>
-            <p className="text-sm font-bold text-slate-600 dark:text-slate-300 leading-none">{value || "-"}</p>
+            <p className="text-[9px] font-black text-zinc-300 dark:text-zinc-700 uppercase tracking-widest leading-none mb-1">{label}</p>
+            <p className="text-sm font-bold text-zinc-600 dark:text-zinc-300 leading-none">{value || "-"}</p>
         </div>
     </div>
 );
@@ -376,7 +376,7 @@ const InfoItem = ({ icon, label, value }) => (
 const FormInput = ({ label, value, placeholder, disabled, onChange, error }) => (
     <div className="space-y-2">
         <div className="flex justify-between items-center ml-1">
-            <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{label}</label>
+            <label className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">{label}</label>
             {error && (
                 <span className="text-[9px] font-bold text-red-500 animate-pulse uppercase tracking-tight">
                     {error}
@@ -390,16 +390,16 @@ const FormInput = ({ label, value, placeholder, disabled, onChange, error }) => 
                 onChange={onChange}
                 placeholder={placeholder}
                 disabled={disabled}
-                className={`w-full px-5 py-3.5 bg-slate-50 dark:bg-slate-900 border rounded-xl text-sm font-medium transition-all focus:ring-2 outline-none ${
+                className={`w-full px-5 py-3.5 bg-zinc-50 dark:bg-zinc-900 border rounded-xl text-sm font-medium transition-all focus:ring-2 outline-none ${
                     error 
                     ? "border-red-500/50 focus:ring-red-500/10 focus:border-red-500 bg-red-50/10" 
-                    : "border-slate-200 dark:border-slate-800 focus:ring-primary/20 focus:border-primary group-hover:border-slate-300 dark:group-hover:border-slate-700"
+                    : "border-zinc-200 dark:border-zinc-800 focus:ring-primary/20 focus:border-primary group-hover:border-zinc-300 dark:group-hover:border-zinc-700"
                 } ${
                     disabled ? "opacity-60 cursor-not-allowed" : "cursor-text"
                 }`}
             />
             {disabled && (
-               <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-700">
+               <div className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-300 dark:text-zinc-700">
                   <Lock size={14} />
                </div>
             )}

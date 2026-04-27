@@ -23,14 +23,14 @@ const SigningMobileBar = ({
   isSubmitting 
 }) => {
   return (
-    <div className="sm:hidden fixed bottom-1 left-4 right-4 bg-white/95 dark:bg-[#202c33]/95 backdrop-blur-md border border-slate-200 dark:border-white/5 z-[130] shadow-[0_8px_30px_rgb(0,0,0,0.12)] rounded-2xl animate-in slide-in-from-bottom duration-500 mb-20 pointer-events-auto">
+    <div className="sm:hidden fixed bottom-1 left-4 right-4 bg-white/95 dark:bg-[#202c33]/95 backdrop-blur-md border border-zinc-200 dark:border-white/5 z-[130] shadow-[0_8px_30px_rgb(0,0,0,0.12)] rounded-2xl animate-in slide-in-from-bottom duration-500 mb-20 pointer-events-auto">
       {/* 1. Action Buttons Only (Pagination removed as it is in the footer) */}
       <div className="flex items-center gap-2 p-2">
         
         {/* Panel Toggle (Control Sheet) */}
         <button 
           onClick={onOpenSheet}
-          className="relative w-11 h-11 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 cursor-pointer active:scale-90 transition-all border-none"
+          className="relative w-11 h-11 flex items-center justify-center rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700 cursor-pointer active:scale-90 transition-all border-none"
           title="Panel Kontrol"
         >
           <PanelBottomOpen size={18} />
@@ -56,7 +56,7 @@ const SigningMobileBar = ({
           disabled={signatureCount === 0 || isSubmitting}
           className={`w-11 h-11 flex items-center justify-center rounded-xl transition-all border-none cursor-pointer shadow-lg
             ${signatureCount === 0 || isSubmitting 
-              ? 'bg-slate-100 dark:bg-slate-800/50 text-slate-400 border border-slate-200 dark:border-white/5 cursor-not-allowed shadow-none' 
+              ? 'bg-zinc-100 dark:bg-zinc-800/50 text-zinc-400 border border-zinc-200 dark:border-white/5 cursor-not-allowed shadow-none' 
               : 'bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 active:scale-90 shadow-emerald-500/20'
             }
           `}

@@ -37,7 +37,7 @@ const ProfileBanner = ({ user, onOpenModal, isUploading }) => {
           <button 
             onClick={onOpenModal}
             disabled={isUploading}
-            className={`absolute bottom-2 right-2 p-2 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-100 dark:border-slate-700 text-primary transition-all cursor-pointer ${isUploading ? 'opacity-50 cursor-not-allowed' : 'hover:scale-110 active:scale-95'}`}
+            className={`absolute bottom-2 right-2 p-2 bg-white dark:bg-zinc-800 rounded-lg shadow-lg border border-zinc-100 dark:border-zinc-700 text-primary transition-all cursor-pointer ${isUploading ? 'opacity-50 cursor-not-allowed' : 'hover:scale-110 active:scale-95'}`}
             title="Ganti Foto Profil"
           >
             <Camera size={16} />
@@ -46,12 +46,12 @@ const ProfileBanner = ({ user, onOpenModal, isUploading }) => {
 
         {/* Basic Info (Floating Beside Avatar) */}
         <div className="pb-2 hidden sm:block">
-          <h1 className="text-3xl font-heading font-extrabold text-slate-800 dark:text-white tracking-tight">
+          <h1 className="text-3xl font-heading font-extrabold text-zinc-800 dark:text-white tracking-tight">
             {user?.name || "Memuat..."}
           </h1>
           <div className="flex items-center gap-2 mt-1">
             <ShieldCheck size={16} className="text-primary" />
-            <span className="text-sm font-medium text-slate-500 dark:text-slate-400">
+            <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
               {user?.userStatus || "Akun Standar"}
             </span>
           </div>

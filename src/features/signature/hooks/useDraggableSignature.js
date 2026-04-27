@@ -14,7 +14,7 @@ import { useRef, useState, useEffect } from 'react';
  *   1px (outer border) + 16px (CSS p-4 padding) + 1px (inner border) = 18px
  *   Total per axis = 36px
  */
-export const useDraggableSignature = (sig, containerWidth, containerHeight, onUpdatePosition, onUpdateSize) => {
+export const useDraggableSignature = (sig, containerWidth, containerHeight, onUpdatePosition, onUpdateSize, onResizeMove) => {
   const nodeRef = useRef(null);
   const handleNWRef = useRef(null);
   const handleNERef = useRef(null);
@@ -156,6 +156,16 @@ export const useDraggableSignature = (sig, containerWidth, containerHeight, onUp
             nodeRef.current.style.height = `${Math.round(newH)}px`;
             nodeRef.current.style.transform = `translate(${Math.round(newPosX)}px, ${Math.round(newPosY)}px)`;
           }
+          // Emit realtime resize ke socket (throttled dari parent)
+          if (onResizeMove) {
+            const cw = containerWidthRef.current;
+            const ch = containerHeightRef.current;
+            const innerW = Math.max(0, newW - TOTAL_PADDING) / cw;
+            const innerH = Math.max(0, newH - TOTAL_PADDING) / ch;
+            const innerX = (newPosX + VISUAL_PADDING) / cw;
+            const innerY = (newPosY + VISUAL_PADDING) / ch;
+            onResizeMove(innerW, innerH, innerX, innerY);
+          }
         };
 
         const onEnd = () => {
@@ -187,7 +197,7 @@ export const useDraggableSignature = (sig, containerWidth, containerHeight, onUp
       cleanups.push(() => { el.removeEventListener('mousedown', onStart); el.removeEventListener('touchstart', onStart); });
     });
     return () => cleanups.forEach(fn => fn());
-  }, [isActive, onUpdatePosition, onUpdateSize]);
+  }, [isActive, onUpdatePosition, onUpdateSize, onResizeMove]);
 
   return {
     state: { nodeRef, handleNWRef, handleNERef, handleSWRef, handleSERef, isActive, isDragging, isResizing: isResizingRef.current, localSize, controlledPosition: dragPos, isReady },
