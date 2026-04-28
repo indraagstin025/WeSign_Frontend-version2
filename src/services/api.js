@@ -3,7 +3,8 @@
  * @description Wrapper Fetch API dengan dukungan Timeout dan Penanganan Jaringan.
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+import { API_BASE_URL } from "@/config/env";
+
 const DEFAULT_TIMEOUT = 15000; // 15 Detik (Batas wajar menunggu jaringan)
 
 let isRefreshing = false;
@@ -44,6 +45,14 @@ export async function apiFetch(endpoint, options = {}) {
   // 1. Setup AbortController untuk handling Timeout
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), options.timeout || DEFAULT_TIMEOUT);
+
+  // External signal support — caller bisa membatalkan request lebih awal
+  // (dipakai oleh withRetryCoalesce untuk membatalkan request lama saat
+  // request baru datang untuk signature yang sama).
+  if (options.signal) {
+    if (options.signal.aborted) controller.abort();
+    else options.signal.addEventListener('abort', () => controller.abort(), { once: true });
+  }
 
   const defaultHeaders = {
     "Content-Type": "application/json",
@@ -191,7 +200,12 @@ export async function apiFetch(endpoint, options = {}) {
       stack: err.stack,
     });
 
-    if (err.name === "AbortError") throw new Error("Permintaan gagal: Waktu tunggu habis. Coba lagi dalam beberapa saat.");
+    if (err.name === "AbortError") {
+      // Bedakan: kalau caller intentionally cancel (external signal aborted),
+      // propagate AbortError agar withRetryCoalesce bisa membedakan dari timeout.
+      if (options.signal?.aborted) throw err;
+      throw new Error("Permintaan gagal: Waktu tunggu habis. Coba lagi dalam beberapa saat.");
+    }
     if (err.message === "Failed to fetch" || err.message?.includes("fetch failed") || !navigator.onLine) {
       console.error("[apiFetch] Network error detected");
       throw new Error("Koneksi internet terputus atau tidak stabil. Periksa koneksi Anda dan coba lagi.");

@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { socketService } from '../../../services/socketService';
+import { drainOutbox } from '../../../services/outboxDrain';
+import { toast } from '../../../services/toast';
 
 /**
  * @hook useGroupSocket
@@ -58,9 +60,23 @@ export const useGroupSocket = ({
     socketService.joinGroupRoom(groupId);
 
     // ── Status koneksi ────────────────────────────────────────────────────
-    const unsubConn = socketService.onConnectionChange((status) =>
-      setSocketStatus(status)
-    );
+    // Track previous connected state untuk deteksi transisi disconnect→connect
+    // (reconnect). Saat reconnect, kita refetch data agar state lokal sinkron
+    // dengan server — bisa saja selama disconnect ada perubahan signature,
+    // member, atau finalisasi yang event-nya tidak kita terima.
+    let wasConnected = socketService.isConnected();
+    const unsubConn = socketService.onConnectionChange((status) => {
+      setSocketStatus(status);
+      if (status.connected && !wasConnected) {
+        // Reconnect terdeteksi → reconcile state via silent refetch.
+        // onRefresh menerima param `silent` (true = tanpa loading spinner).
+        if (typeof onRefresh === 'function') onRefresh(true);
+        if (typeof onRefreshSigning === 'function') onRefreshSigning(true);
+        // Tier 2: drain outbox (mutation HTTP yang gagal saat offline)
+        drainOutbox();
+      }
+      wasConnected = !!status.connected;
+    });
 
     // ── User online (document room) ───────────────────────────────────────
     const handleUserJoined = (data) => {
@@ -125,11 +141,8 @@ export const useGroupSocket = ({
         );
       }
 
-      setStatusModal?.({
-        isOpen: true, type: 'info',
+      toast.info(`${data.userName || 'Seseorang'} telah menandatangani dokumen.`, {
         title: 'Tanda Tangan Masuk',
-        message: `${data.userName || 'Seseorang'} telah menandatangani dokumen.`,
-        onConfirm: null,
       });
     };
 
@@ -150,11 +163,8 @@ export const useGroupSocket = ({
         case 'finalized':
           setDocumentStatus?.('COMPLETED');
           setReadyToFinalize?.(false);
-          setStatusModal?.({
-            isOpen: true, type: 'success',
-            title: 'Dokumen Difinalisasi!',
-            message: 'Admin telah menyelesaikan dokumen. PDF final sudah tersedia.',
-            onConfirm: null,
+          toast.success('Admin telah menyelesaikan dokumen. PDF final sudah tersedia.', {
+            title: 'Dokumen Difinalisasi',
           });
           onRefreshSigning?.();
           onRefresh?.(true);

@@ -8,6 +8,7 @@ import {
 } from '../api/groupSignatureService';
 import { finalizeGroupDocument } from '../api/groupService';
 import { socketService } from '../../../services/socketService';
+import { toast } from '../../../services/toast';
 
 /**
  * @hook useGroupSignatureActions
@@ -77,14 +78,30 @@ export const useGroupSignatureActions = ({
         });
 
         const serverSig = res.data;
+        // PENTING: preserve s.width/s.height dari state lokal — handleImageLoad
+        // di useDraggableSignature mungkin sudah update width/height ke nilai
+        // AR-correct sebelum response saveDraft sampai (saveDraft ~40ms,
+        // image cached load ~5ms). Tanpa ini, ...serverSig akan menimpa nilai
+        // AR-correct dengan placeholder (mis. height: 0.1) yang kita kirim
+        // ke backend saat drop.
+        let localSnapshot = null;
         setSignatures((prev) =>
-          prev.map((s) =>
-            s.id === tempId ? { ...newSig, ...serverSig, userId: currentUser.id } : s
-          )
+          prev.map((s) => {
+            if (s.id !== tempId) return s;
+            localSnapshot = s;
+            return {
+              ...newSig,
+              ...serverSig,
+              userId: currentUser.id,
+              width: s.width,
+              height: s.height,
+            };
+          })
         );
 
         socketService.emitAddSignature(documentId, {
           ...newSig,
+          ...(localSnapshot ? { width: localSnapshot.width, height: localSnapshot.height } : {}),
           id: serverSig?.id || tempId,
         });
       } catch (err) {
@@ -96,33 +113,45 @@ export const useGroupSignatureActions = ({
   );
 
   // ── Update Posisi TTD (Drag End) ─────────────────────────────────
-  // Fire-and-forget: update state dulu (smooth UI), API call di background
+  // Fire-and-forget: update state dulu (smooth UI), API call di background.
+  // Guard ownership: hanya boleh PATCH signature milik user sendiri — kalau bukan,
+  // backend akan tolak 403 (lihat handleDeleteSignature untuk pola yang sama).
   const handleUpdateSignature = useCallback(
     (id, x, y) => {
+      const sig = signatures.find((s) => s.id === id);
+      if (!sig) return;
+      if (String(sig.userId) !== String(currentUser?.id)) return;
+
       // 1. Update state langsung — tidak ada await agar drag smooth
       setSignatures((prev) =>
         prev.map((s) => s.id === id ? { ...s, positionX: x, positionY: y } : s)
       );
-      // 2. Persist ke backend di background (non-blocking)
-      updateDraftPosition(id, { positionX: x, positionY: y }).catch((err) =>
-        console.error('[updateSignature] background save error:', err.message)
-      );
+      // 2. Persist ke backend di background (non-blocking, dengan retry+coalesce)
+      updateDraftPosition(id, { positionX: x, positionY: y }).catch((err) => {
+        if (err?.name === 'AbortError') return; // coalesced, ada PATCH yang lebih baru
+        console.error('[updateSignature] background save error:', err.message);
+      });
     },
-    [setSignatures]
+    [setSignatures, signatures, currentUser?.id]
   );
 
   // ── Update Ukuran TTD (Resize End) ───────────────────────────────
-  // Fire-and-forget: sama seperti updateSignature
+  // Fire-and-forget: sama seperti updateSignature, dengan guard ownership.
   const handleUpdateSize = useCallback(
     (id, w, h) => {
+      const sig = signatures.find((s) => s.id === id);
+      if (!sig) return;
+      if (String(sig.userId) !== String(currentUser?.id)) return;
+
       setSignatures((prev) =>
         prev.map((s) => s.id === id ? { ...s, width: w, height: h } : s)
       );
-      updateDraftPosition(id, { width: w, height: h }).catch((err) =>
-        console.error('[updateSize] background save error:', err.message)
-      );
+      updateDraftPosition(id, { width: w, height: h }).catch((err) => {
+        if (err?.name === 'AbortError') return; // coalesced, ada PATCH yang lebih baru
+        console.error('[updateSize] background save error:', err.message);
+      });
     },
-    [setSignatures]
+    [setSignatures, signatures, currentUser?.id]
   );
 
   // ── Hapus TTD (Hanya Draft Milik Sendiri) ─────────────────────────────────
@@ -148,10 +177,8 @@ export const useGroupSignatureActions = ({
   // ── Simpan TTD Final (Per User) ───────────────────────────────────────────
   const handleSaveMySignature = useCallback(async () => {
     if (!mySignature) {
-      setStatusModal({
-        isOpen: true, type: 'error',
+      toast.warn('Silakan letakkan tanda tangan Anda di dokumen terlebih dahulu.', {
         title: 'Belum Ada Tanda Tangan',
-        message: 'Silakan letakkan tanda tangan Anda di dokumen terlebih dahulu.',
       });
       return;
     }
@@ -179,24 +206,20 @@ export const useGroupSignatureActions = ({
 
       socketService.emitSignatureSaved(documentId, groupId);
 
-      setStatusModal({
-        isOpen: true, type: 'success',
-        title: 'Tanda Tangan Tersimpan!',
-        message:
-          remainingSigners > 0
-            ? `Tanda tangan Anda berhasil disimpan. Menunggu ${remainingSigners} orang lagi.`
-            : 'Semua penandatangan sudah selesai. Admin dapat melakukan finalisasi.',
-      });
+      toast.success(
+        remainingSigners > 0
+          ? `Tanda tangan Anda berhasil disimpan. Menunggu ${remainingSigners} orang lagi.`
+          : 'Semua penandatangan sudah selesai. Admin dapat melakukan finalisasi.',
+        { title: 'Tanda Tangan Tersimpan' }
+      );
     } catch (err) {
-      setStatusModal({
-        isOpen: true, type: 'error',
+      toast.error(err.message || 'Terjadi kesalahan. Silakan coba lagi.', {
         title: 'Gagal Menyimpan',
-        message: err.message || 'Terjadi kesalahan. Silakan coba lagi.',
       });
     } finally {
       setIsSubmitting(false);
     }
-  }, [mySignature, documentId, groupId, setSignatures, setHasMyFinalSig, setReadyToFinalize, setIsSubmitting, setStatusModal]);
+  }, [mySignature, documentId, groupId, setSignatures, setHasMyFinalSig, setReadyToFinalize, setIsSubmitting]);
 
   // ── Finalisasi Dokumen (Admin Only) ───────────────────────────────────────
   const handleFinalizeDocument = useCallback(async () => {
@@ -210,24 +233,24 @@ export const useGroupSignatureActions = ({
       setDocumentStatus('COMPLETED');
       socketService.emitDocumentFinalized(groupId, documentId, documentTitle);
 
-      setStatusModal({
-        isOpen: true, type: 'success',
-        title: 'Dokumen Difinalisasi!',
+      const pdfUrl = finalDoc?.currentVersion?.url || finalDoc?.pdfUrl;
+      toast.show({
+        type: 'success',
+        title: 'Dokumen Difinalisasi',
         message: `PDF final berhasil dibuat. Access code: ${finalDoc?.accessCode || '-'}`,
-        onConfirm: () => {
-          window.open(finalDoc?.currentVersion?.url || finalDoc?.pdfUrl, '_blank');
-        },
+        duration: 8000,
+        action: pdfUrl
+          ? { label: 'Buka PDF', onClick: () => window.open(pdfUrl, '_blank') }
+          : null,
       });
     } catch (err) {
-      setStatusModal({
-        isOpen: true, type: 'error',
+      toast.error(err.message || 'Terjadi kesalahan saat finalisasi.', {
         title: 'Gagal Finalisasi',
-        message: err.message || 'Terjadi kesalahan saat finalisasi.',
       });
     } finally {
       setIsFinalizing(false);
     }
-  }, [isAdmin, readyToFinalize, groupId, documentId, documentTitle, setDocumentStatus, setIsFinalizing, setStatusModal]);
+  }, [isAdmin, readyToFinalize, groupId, documentId, documentTitle, setDocumentStatus, setIsFinalizing]);
 
   return {
     handleAddSignature,
