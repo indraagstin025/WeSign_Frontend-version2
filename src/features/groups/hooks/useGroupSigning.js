@@ -119,6 +119,7 @@ export const useGroupSigning = ({ groupId, documentId, currentUser }) => {
     setSignatures,
     setHasMyFinalSig,
     setReadyToFinalize,
+    setPendingSigners,
     setDocumentStatus,
     setIsSubmitting,
     setIsFinalizing,

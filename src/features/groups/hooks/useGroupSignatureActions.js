@@ -33,6 +33,7 @@ export const useGroupSignatureActions = ({
   setSignatures,
   setHasMyFinalSig,
   setReadyToFinalize,
+  setPendingSigners,
   setDocumentStatus,
   setIsSubmitting,
   setIsFinalizing,
@@ -202,6 +203,16 @@ export const useGroupSignatureActions = ({
       );
       setHasMyFinalSig(true);
 
+      // Hapus diri dari pendingSigners agar progress bar lokal langsung
+      // bertambah tanpa menunggu refetch. Server tidak broadcast event
+      // signature_saved kembali ke sender, jadi update harus dilakukan
+      // langsung di sini.
+      if (setPendingSigners && currentUser?.id) {
+        setPendingSigners((prev) =>
+          prev.filter((s) => String(s.userId) !== String(currentUser.id))
+        );
+      }
+
       const { readyToFinalize: rdy, remainingSigners } = res.data || {};
       if (rdy || remainingSigners === 0) setReadyToFinalize(true);
 
@@ -224,7 +235,7 @@ export const useGroupSignatureActions = ({
     } finally {
       setIsSubmitting(false);
     }
-  }, [mySignature, documentId, groupId, setSignatures, setHasMyFinalSig, setReadyToFinalize, setIsSubmitting, setStatusModal]);
+  }, [mySignature, documentId, groupId, currentUser?.id, setSignatures, setHasMyFinalSig, setReadyToFinalize, setPendingSigners, setIsSubmitting, setStatusModal]);
 
   // ── Finalisasi Dokumen (Admin Only) ───────────────────────────────────────
   const handleFinalizeDocument = useCallback(async () => {
