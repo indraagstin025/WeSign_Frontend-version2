@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { useGroupData } from './useGroupData';
 import { useGroupSocket } from './useGroupSocket';
 import { useGroupSignatureActions } from './useGroupSignatureActions';
+import { socketService } from '../../../services/socketService';
 
 /**
  * @hook useGroupSigning
@@ -124,6 +125,36 @@ export const useGroupSigning = ({ groupId, documentId, currentUser }) => {
     setStatusModal,
     fetchGroupData,
   });
+
+  // ── Tier 2: Replay socket emit posisi terakhir saat reconnect ─────────────
+  // Saat socket reconnect (transisi disconnect→connect), kirim ulang posisi
+  // signature milik user ke server lewat `drag_signature` event. Ini memastikan
+  // user lain di room punya state mutakhir tanpa user owner harus menggerakkan
+  // signature lagi.
+  const wasConnectedReplayRef = useRef(socketStatus?.connected || false);
+  useEffect(() => {
+    const isConnected = !!socketStatus?.connected;
+    if (isConnected && !wasConnectedReplayRef.current && Array.isArray(signatures)) {
+      const owned = signatures.filter(
+        (s) => String(s.userId) === String(currentUser?.id) && s.status !== 'final'
+      );
+      if (owned.length > 0 && documentId) {
+        console.log('[useGroupSigning] socket reconnect → replay', owned.length, 'positions');
+        owned.forEach((sig) => {
+          socketService.emitDrag({
+            documentId,
+            signatureId: sig.id,
+            positionX: sig.positionX,
+            positionY: sig.positionY,
+            width: sig.width,
+            height: sig.height,
+            pageNumber: sig.pageNumber,
+          });
+        });
+      }
+    }
+    wasConnectedReplayRef.current = isConnected;
+  }, [socketStatus?.connected, signatures, currentUser?.id, documentId]);
 
   // ── Container Width Measurement ───────────────────────────────────────────
   const measureContainer = useCallback(() => {
