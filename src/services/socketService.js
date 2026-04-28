@@ -6,9 +6,7 @@
  */
 
 import { io } from 'socket.io-client';
-
-const SOCKET_URL = (import.meta.env.VITE_API_URL || 'https://wesign-backend-production.up.railway.app/api')
-  .replace(/\/api\/?$/, '');
+import { SOCKET_URL } from '@/config/env';
 
 let socket = null;
 

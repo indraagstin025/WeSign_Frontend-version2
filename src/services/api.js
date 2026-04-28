@@ -3,7 +3,8 @@
  * @description Wrapper Fetch API dengan dukungan Timeout dan Penanganan Jaringan.
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "https://wesign-backend-production.up.railway.app/api";
+import { API_BASE_URL } from "@/config/env";
+
 const DEFAULT_TIMEOUT = 15000; // 15 Detik (Batas wajar menunggu jaringan)
 
 let isRefreshing = false;
