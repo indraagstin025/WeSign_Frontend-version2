@@ -77,14 +77,30 @@ export const useGroupSignatureActions = ({
         });
 
         const serverSig = res.data;
+        // PENTING: preserve s.width/s.height dari state lokal — handleImageLoad
+        // di useDraggableSignature mungkin sudah update width/height ke nilai
+        // AR-correct sebelum response saveDraft sampai (saveDraft ~40ms,
+        // image cached load ~5ms). Tanpa ini, ...serverSig akan menimpa nilai
+        // AR-correct dengan placeholder (mis. height: 0.1) yang kita kirim
+        // ke backend saat drop.
+        let localSnapshot = null;
         setSignatures((prev) =>
-          prev.map((s) =>
-            s.id === tempId ? { ...newSig, ...serverSig, userId: currentUser.id } : s
-          )
+          prev.map((s) => {
+            if (s.id !== tempId) return s;
+            localSnapshot = s;
+            return {
+              ...newSig,
+              ...serverSig,
+              userId: currentUser.id,
+              width: s.width,
+              height: s.height,
+            };
+          })
         );
 
         socketService.emitAddSignature(documentId, {
           ...newSig,
+          ...(localSnapshot ? { width: localSnapshot.width, height: localSnapshot.height } : {}),
           id: serverSig?.id || tempId,
         });
       } catch (err) {

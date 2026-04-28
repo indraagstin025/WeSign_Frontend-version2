@@ -117,6 +117,21 @@ export const useDraggableSignature = (sig, containerWidth, containerHeight, onUp
     }
   };
 
+  // Cached-image fallback: kalau <img> sudah loaded SEBELUM React sempat
+  // pasang handler onLoad (umum terjadi ketika user baru drop signature
+  // miliknya sendiri — image data: URL atau cached URL), event onLoad tidak
+  // akan fire lagi. Cek manual via .complete + .naturalWidth setelah mount,
+  // panggil handleImageLoad dengan synthetic target supaya AR tetap dihitung.
+  useEffect(() => {
+    if (isReadyRef.current) return;
+    const node = nodeRef.current;
+    if (!node) return;
+    const img = node.querySelector('img');
+    if (img && img.complete && img.naturalWidth > 0) {
+      handleImageLoad({ target: img });
+    }
+  }, [containerWidth, containerHeight]);
+
   // --- RESIZE LOGIC ---
   useEffect(() => {
     if (!isActive) return;
