@@ -23,6 +23,8 @@ import SigningFooter from '../../signature/components/SigningFooter';
 import SigningSidebar from '../../signature/components/SigningSidebar';
 import SigningMobileBar from '../../signature/components/SigningMobileBar';
 import SigningModals from '../../signature/components/SigningModals';
+import SaveIndicator from '../../../components/UI/SaveIndicator';
+import { useOutboxDrain } from '../../../hooks/useOutboxDrain';
 
 /**
  * @page GroupSigningPage
@@ -87,7 +89,16 @@ const GroupSigningPage = () => {
     handleFinalizeDocument,
     onDocumentLoadSuccess,
     handlePageLoadSuccess,
+    refreshData,
   } = useGroupSigning({ groupId, documentId, currentUser });
+
+  // Tier 2: drain outbox saat mount + saat 'online' event. Kalau ada entry
+  // yang gagal terus (mencapai MAX_DRAIN_ATTEMPTS), refetch state agar UI
+  // sinkron dengan server-truth (rollback optimistic update).
+  useOutboxDrain(React.useCallback(() => {
+    console.warn('[GroupSigningPage] outbox entry dropped → refetch state');
+    if (refreshData) refreshData(true);
+  }, [refreshData]));
 
   const [isSheetOpen, setIsSheetOpen] = React.useState(false);
 
@@ -168,7 +179,10 @@ const GroupSigningPage = () => {
 
   return (
     <div className="fixed inset-0 z-[150] bg-zinc-100 dark:bg-[#0b141a] flex flex-col overflow-hidden">
-      
+
+      {/* Indikator status simpan otomatis (Canva-style) */}
+      <SaveIndicator />
+
       {/* 1. HEADER (Reuse + Status Koneksi) */}
       <SigningNavbar 
         title={documentTitle}

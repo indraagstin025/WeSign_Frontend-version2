@@ -125,10 +125,11 @@ export const useGroupSignatureActions = ({
       setSignatures((prev) =>
         prev.map((s) => s.id === id ? { ...s, positionX: x, positionY: y } : s)
       );
-      // 2. Persist ke backend di background (non-blocking)
-      updateDraftPosition(id, { positionX: x, positionY: y }).catch((err) =>
-        console.error('[updateSignature] background save error:', err.message)
-      );
+      // 2. Persist ke backend di background (non-blocking, dengan retry+coalesce)
+      updateDraftPosition(id, { positionX: x, positionY: y }).catch((err) => {
+        if (err?.name === 'AbortError') return; // coalesced, ada PATCH yang lebih baru
+        console.error('[updateSignature] background save error:', err.message);
+      });
     },
     [setSignatures, signatures, currentUser?.id]
   );
@@ -144,9 +145,10 @@ export const useGroupSignatureActions = ({
       setSignatures((prev) =>
         prev.map((s) => s.id === id ? { ...s, width: w, height: h } : s)
       );
-      updateDraftPosition(id, { width: w, height: h }).catch((err) =>
-        console.error('[updateSize] background save error:', err.message)
-      );
+      updateDraftPosition(id, { width: w, height: h }).catch((err) => {
+        if (err?.name === 'AbortError') return; // coalesced, ada PATCH yang lebih baru
+        console.error('[updateSize] background save error:', err.message);
+      });
     },
     [setSignatures, signatures, currentUser?.id]
   );
