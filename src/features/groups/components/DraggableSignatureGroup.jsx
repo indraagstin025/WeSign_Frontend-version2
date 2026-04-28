@@ -87,8 +87,12 @@ const DraggableSignatureGroup = ({
   );
 
   // ── Wrap onUpdatePosition untuk emit socket setelah drag stop ────────────
+  // Guard: hanya owner yang boleh persist ke backend (HTTP PATCH).
+  // Tanpa guard ini, mount/load signature milik user lain bisa men-trigger PATCH
+  // yang akan ditolak backend dengan 403.
   const wrappedOnUpdatePosition = useMemo(
     () => (id, x, y) => {
+      if (!isOwner) return;
       onUpdatePosition(id, x, y);
       if (documentId) {
         socketService.emitDrag({
@@ -102,17 +106,18 @@ const DraggableSignatureGroup = ({
         });
       }
     },
-    [onUpdatePosition, documentId, sig.width, sig.height, sig.pageNumber]
+    [onUpdatePosition, documentId, sig.width, sig.height, sig.pageNumber, isOwner]
   );
 
   // ── Wrap onUpdateSize untuk emit socket saat resize ────────────────────
+  // Guard ownership sama seperti wrappedOnUpdatePosition.
   const wrappedOnUpdateSize = useMemo(
     () => (id, w, h) => {
+      if (!isOwner) return;
       onUpdateSize(id, w, h);
-      // Emit resize ke socket agar user lain melihat perubahan ukuran realtime
       emitResizeThrottled(w, h);
     },
-    [onUpdateSize, emitResizeThrottled]
+    [onUpdateSize, emitResizeThrottled, isOwner]
   );
 
   // ── Callback realtime resize → emit socket setiap onMove ─────────────────
