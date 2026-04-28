@@ -87,8 +87,12 @@ const DraggableSignatureGroup = ({
   );
 
   // ── Wrap onUpdatePosition untuk emit socket setelah drag stop ────────────
+  // Guard: hanya owner yang boleh persist ke backend (HTTP PATCH).
+  // Tanpa guard ini, mount/load signature milik user lain bisa men-trigger PATCH
+  // yang akan ditolak backend dengan 403.
   const wrappedOnUpdatePosition = useMemo(
     () => (id, x, y) => {
+      if (!isOwner) return;
       onUpdatePosition(id, x, y);
       if (documentId) {
         socketService.emitDrag({
@@ -102,17 +106,18 @@ const DraggableSignatureGroup = ({
         });
       }
     },
-    [onUpdatePosition, documentId, sig.width, sig.height, sig.pageNumber]
+    [onUpdatePosition, documentId, sig.width, sig.height, sig.pageNumber, isOwner]
   );
 
   // ── Wrap onUpdateSize untuk emit socket saat resize ────────────────────
+  // Guard ownership sama seperti wrappedOnUpdatePosition.
   const wrappedOnUpdateSize = useMemo(
     () => (id, w, h) => {
+      if (!isOwner) return;
       onUpdateSize(id, w, h);
-      // Emit resize ke socket agar user lain melihat perubahan ukuran realtime
       emitResizeThrottled(w, h);
     },
-    [onUpdateSize, emitResizeThrottled]
+    [onUpdateSize, emitResizeThrottled, isOwner]
   );
 
   // ── Callback realtime resize → emit socket setiap onMove ─────────────────
@@ -143,29 +148,45 @@ const DraggableSignatureGroup = ({
     onResizeMove   // ← callback realtime resize
   );
 
+  // Capture remote setters via ref supaya useEffect socket di bawah tidak
+  // re-subscribe setiap render (object `actions` baru di setiap render).
+  const setControlledPositionRef = useRef(actions.setControlledPosition);
+  const setControlledSizeRef = useRef(actions.setControlledSize);
+  useEffect(() => {
+    setControlledPositionRef.current = actions.setControlledPosition;
+    setControlledSizeRef.current = actions.setControlledSize;
+  });
+
   // ── Socket: Realtime drag dari user lain ──────────────────────────────
-  // DOM manipulation langsung = smooth realtime tanpa React re-render cycle
+  // PENTING: pakai React state setter, BUKAN DOM manipulation langsung.
+  // Sebelumnya kami men-set element.style.transform/width/height secara manual,
+  // tapi setIsRemoteActive(true) di handler yang sama memicu re-render yang
+  // langsung MENIMPA style itu kembali ke nilai dari React state (controlledPosition
+  // & localSize) — yang stale di sisi receiver karena tidak pernah di-update oleh
+  // event lokal. Akibatnya signature flicker antara posisi/ukuran sender dan
+  // posisi/ukuran drop awal, dan terlihat seperti "berubah bentuk" saat di-drag.
   useEffect(() => {
     const handleRemoteMove = (data) => {
       if (data.signatureId !== sig.id) return;
       if (isOwner) return; // Jangan override posisi milik sendiri
 
-      const element = state.nodeRef.current;
-      if (!element) return;
-
       // Konversi koordinat fraksi → pixel outer (dengan VISUAL_PADDING)
       const outerX = data.positionX * containerWidth - VISUAL_PADDING;
       const outerY = data.positionY * containerHeight - VISUAL_PADDING;
 
-      // Update transform — Draggable pakai translate(x,y)
-      element.style.transform = `translate(${Math.round(outerX)}px, ${Math.round(outerY)}px)`;
+      // Update React state — sumber kebenaran tunggal untuk render
+      setControlledPositionRef.current({
+        x: Math.round(outerX),
+        y: Math.round(outerY),
+      });
 
-      // Update ukuran jika ada
-      if (data.width !== undefined) {
+      if (data.width !== undefined && data.height !== undefined) {
         const outerW = data.width * containerWidth + TOTAL_PADDING;
         const outerH = data.height * containerHeight + TOTAL_PADDING;
-        element.style.width = `${Math.round(outerW)}px`;
-        element.style.height = `${Math.round(outerH)}px`;
+        setControlledSizeRef.current({
+          width: Math.round(outerW),
+          height: Math.round(outerH),
+        });
       }
 
       // Visual indicator: ring hijau + lock sementara
@@ -183,7 +204,7 @@ const DraggableSignatureGroup = ({
       socketService.off('update_signature_position', handleRemoteMove);
       if (remoteTimerRef.current) clearTimeout(remoteTimerRef.current);
     };
-  }, [sig.id, isOwner, containerWidth, containerHeight, state.nodeRef]);
+  }, [sig.id, isOwner, containerWidth, containerHeight]);
 
   // ── Emit socket saat drag move ───────────────────────────────────────────
   const handleDrag = (e, data) => {

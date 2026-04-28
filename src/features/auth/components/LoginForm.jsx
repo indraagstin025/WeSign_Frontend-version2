@@ -1,5 +1,6 @@
 import React from 'react';
 import { Mail, Lock, Eye, EyeOff, KeyRound, Loader2, ArrowRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useLogin } from '../hooks/useLogin';
 
 /**
@@ -44,7 +45,7 @@ const LoginForm = () => {
       <div className="flex flex-col gap-1.5 text-left">
         <div className="flex justify-between items-center px-1">
           <label className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Kata Sandi</label>
-          <a href="/forgot-password" className="text-[11px] font-bold text-primary hover:text-primary-dark transition-colors" tabIndex="-1">Lupa sandi?</a>
+          <Link to="/forgot-password" className="text-[11px] font-bold text-primary hover:text-primary-dark transition-colors" tabIndex="-1">Lupa sandi?</Link>
         </div>
         <div className="relative group">
           <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-400 group-focus-within:text-primary transition-colors">
@@ -103,9 +104,9 @@ const LoginForm = () => {
       {/* Footer / Switcher */}
       <div className="mt-2 text-center text-[13px] text-zinc-500 font-medium">
         Belum punya akun?
-        <a href="/register" className="font-bold text-primary hover:text-primary-dark ml-2 transition-colors inline-flex items-center gap-1">
+        <Link to="/register" className="font-bold text-primary hover:text-primary-dark ml-2 transition-colors inline-flex items-center gap-1">
           Daftar Gratis <ArrowRight size={12} />
-        </a>
+        </Link>
       </div>
     </form>
   );

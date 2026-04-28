@@ -354,6 +354,7 @@ const GroupDetailPage = () => {
         isOpen={isUploadModalOpen}
         onClose={() => setIsUploadModalOpen(false)}
         groupId={groupId}
+        members={groupData?.members || []}
         onSuccess={() => fetchGroup(true)}
       />
 

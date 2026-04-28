@@ -31,7 +31,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
     { title: "Dashboard", icon: <LayoutDashboard size={20} />, path: "/dashboard" },
     { title: "Packages", icon: <Package size={20} />, path: "/dashboard/packages" },
     { title: "Groups / MultiSign", icon: <Users size={20} />, path: "/dashboard/groups" },
-    { title: "Documents", icon: <FileText size={20} />, path: "/dashboard/documents", isComingSoon: true },
+    { title: "Documents", icon: <FileText size={20} />, path: "/dashboard/documents" },
     { title: "Templates", icon: <FileCheck size={20} />, path: "/dashboard/templates", isComingSoon: true },
     { title: "History", icon: <Clock size={20} />, path: "/dashboard/history", isComingSoon: true },
     { title: "Contacts", icon: <UserCircle size={20} />, path: "/dashboard/contacts", isComingSoon: true },

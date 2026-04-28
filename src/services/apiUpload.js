@@ -4,7 +4,7 @@
  * Sesuai untuk file besar (PDF) guna memberikan feedback visual kepada pengguna.
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+import { API_BASE_URL } from '@/config/env';
 
 /**
  * Mengunggah FormData dengan monitor progress.

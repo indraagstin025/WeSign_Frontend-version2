@@ -77,14 +77,30 @@ export const useGroupSignatureActions = ({
         });
 
         const serverSig = res.data;
+        // PENTING: preserve s.width/s.height dari state lokal — handleImageLoad
+        // di useDraggableSignature mungkin sudah update width/height ke nilai
+        // AR-correct sebelum response saveDraft sampai (saveDraft ~40ms,
+        // image cached load ~5ms). Tanpa ini, ...serverSig akan menimpa nilai
+        // AR-correct dengan placeholder (mis. height: 0.1) yang kita kirim
+        // ke backend saat drop.
+        let localSnapshot = null;
         setSignatures((prev) =>
-          prev.map((s) =>
-            s.id === tempId ? { ...newSig, ...serverSig, userId: currentUser.id } : s
-          )
+          prev.map((s) => {
+            if (s.id !== tempId) return s;
+            localSnapshot = s;
+            return {
+              ...newSig,
+              ...serverSig,
+              userId: currentUser.id,
+              width: s.width,
+              height: s.height,
+            };
+          })
         );
 
         socketService.emitAddSignature(documentId, {
           ...newSig,
+          ...(localSnapshot ? { width: localSnapshot.width, height: localSnapshot.height } : {}),
           id: serverSig?.id || tempId,
         });
       } catch (err) {
@@ -96,9 +112,15 @@ export const useGroupSignatureActions = ({
   );
 
   // ── Update Posisi TTD (Drag End) ─────────────────────────────────
-  // Fire-and-forget: update state dulu (smooth UI), API call di background
+  // Fire-and-forget: update state dulu (smooth UI), API call di background.
+  // Guard ownership: hanya boleh PATCH signature milik user sendiri — kalau bukan,
+  // backend akan tolak 403 (lihat handleDeleteSignature untuk pola yang sama).
   const handleUpdateSignature = useCallback(
     (id, x, y) => {
+      const sig = signatures.find((s) => s.id === id);
+      if (!sig) return;
+      if (String(sig.userId) !== String(currentUser?.id)) return;
+
       // 1. Update state langsung — tidak ada await agar drag smooth
       setSignatures((prev) =>
         prev.map((s) => s.id === id ? { ...s, positionX: x, positionY: y } : s)
@@ -108,13 +130,17 @@ export const useGroupSignatureActions = ({
         console.error('[updateSignature] background save error:', err.message)
       );
     },
-    [setSignatures]
+    [setSignatures, signatures, currentUser?.id]
   );
 
   // ── Update Ukuran TTD (Resize End) ───────────────────────────────
-  // Fire-and-forget: sama seperti updateSignature
+  // Fire-and-forget: sama seperti updateSignature, dengan guard ownership.
   const handleUpdateSize = useCallback(
     (id, w, h) => {
+      const sig = signatures.find((s) => s.id === id);
+      if (!sig) return;
+      if (String(sig.userId) !== String(currentUser?.id)) return;
+
       setSignatures((prev) =>
         prev.map((s) => s.id === id ? { ...s, width: w, height: h } : s)
       );
@@ -122,7 +148,7 @@ export const useGroupSignatureActions = ({
         console.error('[updateSize] background save error:', err.message)
       );
     },
-    [setSignatures]
+    [setSignatures, signatures, currentUser?.id]
   );
 
   // ── Hapus TTD (Hanya Draft Milik Sendiri) ─────────────────────────────────
