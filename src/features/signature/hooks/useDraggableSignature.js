@@ -47,11 +47,14 @@ export const useDraggableSignature = (sig, containerWidth, containerHeight, onUp
   };
 
   // Display size (OUTER = inner + padding + borders)
+  // Inisialisasi tinggi dari sig.height kalau ada — jangan hardcode 60 supaya
+  // signature di sisi receiver tidak "lonjong tipis" sebelum image load.
   const [localSize, setLocalSize] = useState(() => {
     const innerW = sig.width * containerWidth;
+    const innerH = (sig.height || 0) * containerHeight;
     return {
       width: Math.round(innerW + TOTAL_PADDING) || 160,
-      height: 60
+      height: innerH > 0 ? Math.round(innerH + TOTAL_PADDING) : 60,
     };
   });
 
@@ -201,8 +204,13 @@ export const useDraggableSignature = (sig, containerWidth, containerHeight, onUp
 
   return {
     state: { nodeRef, handleNWRef, handleNERef, handleSWRef, handleSERef, isActive, isDragging, isResizing: isResizingRef.current, localSize, controlledPosition: dragPos, isReady },
-    actions: { 
+    actions: {
       setIsActive, setIsDragging, handleImageLoad,
+      // Setter untuk update posisi/size dari sumber eksternal (mis. event socket
+      // dari user lain). Pakai ini supaya React render jadi sumber kebenaran
+      // tunggal — tidak ada konflik dengan DOM manipulation.
+      setControlledPosition: setDragPos,
+      setControlledSize: setLocalSize,
       onDragStart: (e) => { if (isResizingRef.current) return false; e.stopPropagation(); setIsDragging(true); setIsActive(true); },
       onDrag: (e, data) => setDragPos({ x: data.x, y: data.y }),
       onDragStop: (e, data) => {
