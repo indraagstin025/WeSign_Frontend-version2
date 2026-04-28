@@ -58,9 +58,21 @@ export const useGroupSocket = ({
     socketService.joinGroupRoom(groupId);
 
     // ── Status koneksi ────────────────────────────────────────────────────
-    const unsubConn = socketService.onConnectionChange((status) =>
-      setSocketStatus(status)
-    );
+    // Track previous connected state untuk deteksi transisi disconnect→connect
+    // (reconnect). Saat reconnect, kita refetch data agar state lokal sinkron
+    // dengan server — bisa saja selama disconnect ada perubahan signature,
+    // member, atau finalisasi yang event-nya tidak kita terima.
+    let wasConnected = socketService.isConnected();
+    const unsubConn = socketService.onConnectionChange((status) => {
+      setSocketStatus(status);
+      if (status.connected && !wasConnected) {
+        // Reconnect terdeteksi → reconcile state via silent refetch.
+        // onRefresh menerima param `silent` (true = tanpa loading spinner).
+        if (typeof onRefresh === 'function') onRefresh(true);
+        if (typeof onRefreshSigning === 'function') onRefreshSigning(true);
+      }
+      wasConnected = !!status.connected;
+    });
 
     // ── User online (document room) ───────────────────────────────────────
     const handleUserJoined = (data) => {

@@ -23,6 +23,7 @@ import SigningFooter from '../../signature/components/SigningFooter';
 import SigningSidebar from '../../signature/components/SigningSidebar';
 import SigningMobileBar from '../../signature/components/SigningMobileBar';
 import SigningModals from '../../signature/components/SigningModals';
+import SaveIndicator from '../../../components/UI/SaveIndicator';
 
 /**
  * @page GroupSigningPage
@@ -168,7 +169,10 @@ const GroupSigningPage = () => {
 
   return (
     <div className="fixed inset-0 z-[150] bg-zinc-100 dark:bg-[#0b141a] flex flex-col overflow-hidden">
-      
+
+      {/* Indikator status simpan otomatis (Canva-style) */}
+      <SaveIndicator />
+
       {/* 1. HEADER (Reuse + Status Koneksi) */}
       <SigningNavbar 
         title={documentTitle}
