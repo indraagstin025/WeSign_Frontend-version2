@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { socketService } from '../../../services/socketService';
+import { drainOutbox } from '../../../services/outboxDrain';
 
 /**
  * @hook useGroupSocket
@@ -70,6 +71,8 @@ export const useGroupSocket = ({
         // onRefresh menerima param `silent` (true = tanpa loading spinner).
         if (typeof onRefresh === 'function') onRefresh(true);
         if (typeof onRefreshSigning === 'function') onRefreshSigning(true);
+        // Tier 2: drain outbox (mutation HTTP yang gagal saat offline)
+        drainOutbox();
       }
       wasConnected = !!status.connected;
     });

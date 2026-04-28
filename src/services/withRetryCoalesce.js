@@ -21,6 +21,7 @@
  */
 
 import { saveStatus } from './saveStatus';
+import { outbox } from './outbox';
 
 const inflight = new Map();
 
@@ -39,6 +40,9 @@ export function withRetryCoalesce(key, fn, opts = {}) {
     baseDelay = 1000,
     maxDelay = 4000,
     trackSaveStatus = true,
+    // outbox: { type, signatureId, payload } — kalau di-set, enqueue ke outbox
+    // saat terminal failure (non-Abort, retry habis). Drain otomatis saat online.
+    outbox: outboxOpts = null,
   } = opts;
 
   // Coalesce: abort yang lama untuk key yang sama
@@ -82,13 +86,20 @@ export function withRetryCoalesce(key, fn, opts = {}) {
       if (trackSaveStatus) saveStatus.end(true);
     },
     (err) => {
-      if (!trackSaveStatus) return;
       if (err?.name === 'AbortError') {
         // Bukan failure — request dibatalkan karena ada yang lebih baru
-        saveStatus.end(true);
-      } else {
-        saveStatus.end(false, err?.message || 'Gagal menyimpan');
+        if (trackSaveStatus) saveStatus.end(true);
+        return;
       }
+      // Terminal failure: enqueue ke outbox kalau caller minta
+      if (outboxOpts?.type && outboxOpts?.signatureId) {
+        try {
+          outbox.enqueue(outboxOpts.type, outboxOpts.signatureId, outboxOpts.payload || {});
+        } catch (e) {
+          console.error('[withRetryCoalesce] outbox enqueue error:', e);
+        }
+      }
+      if (trackSaveStatus) saveStatus.end(false, err?.message || 'Gagal menyimpan');
     }
   );
 

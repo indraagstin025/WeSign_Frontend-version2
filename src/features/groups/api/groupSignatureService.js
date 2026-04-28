@@ -41,7 +41,12 @@ export const updateDraftPosition = (signatureId, payload) =>
         method: 'PATCH',
         body: payload,
         signal,
-      })
+      }),
+    {
+      // Tier 2: kalau retry habis (terminal failure), enqueue ke outbox
+      // localStorage. Drain otomatis saat user online kembali / reconnect.
+      outbox: { type: 'patch_position', signatureId, payload },
+    }
   );
 
 /**

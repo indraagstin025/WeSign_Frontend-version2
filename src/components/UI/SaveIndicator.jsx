@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { CloudUpload, Check, AlertTriangle } from 'lucide-react';
+import { CloudUpload, Check, AlertTriangle, CloudOff } from 'lucide-react';
 import { saveStatus } from '../../services/saveStatus';
+import { outbox } from '../../services/outbox';
 
 /**
  * @component SaveIndicator
@@ -15,10 +16,18 @@ import { saveStatus } from '../../services/saveStatus';
  */
 const SaveIndicator = () => {
   const [state, setState] = useState(saveStatus.get());
+  const [outboxSize, setOutboxSize] = useState(outbox.size());
 
   useEffect(() => saveStatus.subscribe(setState), []);
+  useEffect(() => outbox.subscribe((entries) => setOutboxSize(entries.length)), []);
 
-  if (state.status === 'idle') return null;
+  // Outbox queue mengalahkan state idle/saved (tampilkan walau saveStatus=idle).
+  // Tapi state error tetap diutamakan agar user tahu ada masalah.
+  if (state.status === 'idle' && outboxSize === 0) return null;
+
+  // Pilih state visual: error > saving > queued > saved
+  let resolvedState = state.status;
+  if (state.status === 'idle' && outboxSize > 0) resolvedState = 'queued';
 
   const config = {
     saving: {
@@ -33,6 +42,14 @@ const SaveIndicator = () => {
       icon: <Check size={16} />,
       label: 'Tersimpan',
     },
+    queued: {
+      bg: 'bg-amber-50 dark:bg-amber-950/60 border-amber-200 dark:border-amber-800',
+      text: 'text-amber-700 dark:text-amber-300',
+      icon: <CloudOff size={16} />,
+      label: outboxSize === 1
+        ? 'Antri offline (1 perubahan)'
+        : `Antri offline (${outboxSize} perubahan)`,
+    },
     error: {
       bg: 'bg-rose-50 dark:bg-rose-950/60 border-rose-200 dark:border-rose-800',
       text: 'text-rose-700 dark:text-rose-300',
@@ -41,7 +58,7 @@ const SaveIndicator = () => {
         ? `Gagal menyimpan: ${state.lastErrorMessage}`
         : 'Gagal menyimpan',
     },
-  }[state.status];
+  }[resolvedState];
 
   if (!config) return null;
 
