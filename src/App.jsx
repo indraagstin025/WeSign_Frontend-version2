@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import ProtectedRoute from './components/Auth/ProtectedRoute';
 import GuestRoute from './components/Auth/GuestRoute';
 import NetworkStatus from './components/UI/NetworkStatus';
+import ToastContainer from './components/UI/ToastContainer';
 import { useIdleTimeout } from './hooks/useIdleTimeout';
 import { UserProvider } from './context/UserContext';
 import './App.css'; 
@@ -40,6 +41,7 @@ function App() {
     <BrowserRouter>
       <UserProvider>
         <NetworkStatus />
+        <ToastContainer />
         <Suspense fallback={<PageLoader />}>
           <Routes>
             <Route path="/" element={

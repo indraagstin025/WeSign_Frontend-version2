@@ -8,6 +8,7 @@ import {
 } from '../api/groupSignatureService';
 import { finalizeGroupDocument } from '../api/groupService';
 import { socketService } from '../../../services/socketService';
+import { toast } from '../../../services/toast';
 
 /**
  * @hook useGroupSignatureActions
@@ -176,10 +177,8 @@ export const useGroupSignatureActions = ({
   // ── Simpan TTD Final (Per User) ───────────────────────────────────────────
   const handleSaveMySignature = useCallback(async () => {
     if (!mySignature) {
-      setStatusModal({
-        isOpen: true, type: 'error',
+      toast.warn('Silakan letakkan tanda tangan Anda di dokumen terlebih dahulu.', {
         title: 'Belum Ada Tanda Tangan',
-        message: 'Silakan letakkan tanda tangan Anda di dokumen terlebih dahulu.',
       });
       return;
     }
@@ -207,24 +206,20 @@ export const useGroupSignatureActions = ({
 
       socketService.emitSignatureSaved(documentId, groupId);
 
-      setStatusModal({
-        isOpen: true, type: 'success',
-        title: 'Tanda Tangan Tersimpan!',
-        message:
-          remainingSigners > 0
-            ? `Tanda tangan Anda berhasil disimpan. Menunggu ${remainingSigners} orang lagi.`
-            : 'Semua penandatangan sudah selesai. Admin dapat melakukan finalisasi.',
-      });
+      toast.success(
+        remainingSigners > 0
+          ? `Tanda tangan Anda berhasil disimpan. Menunggu ${remainingSigners} orang lagi.`
+          : 'Semua penandatangan sudah selesai. Admin dapat melakukan finalisasi.',
+        { title: 'Tanda Tangan Tersimpan' }
+      );
     } catch (err) {
-      setStatusModal({
-        isOpen: true, type: 'error',
+      toast.error(err.message || 'Terjadi kesalahan. Silakan coba lagi.', {
         title: 'Gagal Menyimpan',
-        message: err.message || 'Terjadi kesalahan. Silakan coba lagi.',
       });
     } finally {
       setIsSubmitting(false);
     }
-  }, [mySignature, documentId, groupId, setSignatures, setHasMyFinalSig, setReadyToFinalize, setIsSubmitting, setStatusModal]);
+  }, [mySignature, documentId, groupId, setSignatures, setHasMyFinalSig, setReadyToFinalize, setIsSubmitting]);
 
   // ── Finalisasi Dokumen (Admin Only) ───────────────────────────────────────
   const handleFinalizeDocument = useCallback(async () => {
@@ -238,24 +233,24 @@ export const useGroupSignatureActions = ({
       setDocumentStatus('COMPLETED');
       socketService.emitDocumentFinalized(groupId, documentId, documentTitle);
 
-      setStatusModal({
-        isOpen: true, type: 'success',
-        title: 'Dokumen Difinalisasi!',
+      const pdfUrl = finalDoc?.currentVersion?.url || finalDoc?.pdfUrl;
+      toast.show({
+        type: 'success',
+        title: 'Dokumen Difinalisasi',
         message: `PDF final berhasil dibuat. Access code: ${finalDoc?.accessCode || '-'}`,
-        onConfirm: () => {
-          window.open(finalDoc?.currentVersion?.url || finalDoc?.pdfUrl, '_blank');
-        },
+        duration: 8000,
+        action: pdfUrl
+          ? { label: 'Buka PDF', onClick: () => window.open(pdfUrl, '_blank') }
+          : null,
       });
     } catch (err) {
-      setStatusModal({
-        isOpen: true, type: 'error',
+      toast.error(err.message || 'Terjadi kesalahan saat finalisasi.', {
         title: 'Gagal Finalisasi',
-        message: err.message || 'Terjadi kesalahan saat finalisasi.',
       });
     } finally {
       setIsFinalizing(false);
     }
-  }, [isAdmin, readyToFinalize, groupId, documentId, documentTitle, setDocumentStatus, setIsFinalizing, setStatusModal]);
+  }, [isAdmin, readyToFinalize, groupId, documentId, documentTitle, setDocumentStatus, setIsFinalizing]);
 
   return {
     handleAddSignature,

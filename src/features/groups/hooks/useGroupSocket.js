@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { socketService } from '../../../services/socketService';
 import { drainOutbox } from '../../../services/outboxDrain';
+import { toast } from '../../../services/toast';
 
 /**
  * @hook useGroupSocket
@@ -140,11 +141,8 @@ export const useGroupSocket = ({
         );
       }
 
-      setStatusModal?.({
-        isOpen: true, type: 'info',
+      toast.info(`${data.userName || 'Seseorang'} telah menandatangani dokumen.`, {
         title: 'Tanda Tangan Masuk',
-        message: `${data.userName || 'Seseorang'} telah menandatangani dokumen.`,
-        onConfirm: null,
       });
     };
 
@@ -165,11 +163,8 @@ export const useGroupSocket = ({
         case 'finalized':
           setDocumentStatus?.('COMPLETED');
           setReadyToFinalize?.(false);
-          setStatusModal?.({
-            isOpen: true, type: 'success',
-            title: 'Dokumen Difinalisasi!',
-            message: 'Admin telah menyelesaikan dokumen. PDF final sudah tersedia.',
-            onConfirm: null,
+          toast.success('Admin telah menyelesaikan dokumen. PDF final sudah tersedia.', {
+            title: 'Dokumen Difinalisasi',
           });
           onRefreshSigning?.();
           onRefresh?.(true);
