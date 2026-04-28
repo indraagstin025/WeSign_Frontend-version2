@@ -10,7 +10,7 @@ import { useUser } from '../../../context/UserContext';
 import { getGroupDetail } from '../api/groupService';
 import { getDocumentFile } from '../../documents/api/docService';
 import { useGroupSocket } from '../hooks/useGroupSocket';
-import StatusModal from '../../../components/ui/StatusModal';
+import StatusModal from '../../../components/UI/StatusModal';
 
 const GroupDocumentPreviewPage = () => {
   const { groupId, documentId } = useParams();

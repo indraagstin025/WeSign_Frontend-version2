@@ -5,7 +5,7 @@ import { Menu, Sun, Moon, Bell, User as UserIcon, Settings, LogOut, ChevronDown,
 import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
 import { logoutUser } from '../../features/auth/api/authService';
-import ConfirmModal from '../ui/ConfirmModal';
+import ConfirmModal from '../UI/ConfirmModal';
 
 const DashboardLayout = () => {
   const navigate = useNavigate();

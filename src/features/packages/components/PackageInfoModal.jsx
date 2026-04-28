@@ -11,7 +11,7 @@ import {
   XOctagon,
   Eye
 } from 'lucide-react';
-import ConfirmModal from '../../../components/ui/ConfirmModal';
+import ConfirmModal from '../../../components/UI/ConfirmModal';
 import { usePackageInfo } from '../hooks/usePackageInfo';
 
 const PackageInfoModal = ({ isOpen, pkg, onClose, onRefresh, onDelete }) => {

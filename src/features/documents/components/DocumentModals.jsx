@@ -3,7 +3,7 @@ import UploadDocModal from './UploadDocModal';
 import DocumentInfoModal from './DocumentInfoModal';
 import EditDocModal from './EditDocModal';
 import VersionHistoryModal from './VersionHistoryModal';
-import ConfirmModal from '../../../components/ui/ConfirmModal';
+import ConfirmModal from '../../../components/UI/ConfirmModal';
 
 /**
  * @component DocumentModals

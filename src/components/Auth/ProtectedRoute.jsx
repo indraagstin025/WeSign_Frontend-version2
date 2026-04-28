@@ -4,7 +4,7 @@
  */
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
-import ConfirmModal from '../ui/ConfirmModal';
+import ConfirmModal from '../UI/ConfirmModal';
 import { ShieldCheck, Loader2, Clock } from 'lucide-react';
 import { useIdleTimeout } from '../../hooks/useIdleTimeout';
 import { useUser } from '../../context/UserContext';

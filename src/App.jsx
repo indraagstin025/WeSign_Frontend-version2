@@ -2,7 +2,7 @@ import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import ProtectedRoute from './components/Auth/ProtectedRoute';
 import GuestRoute from './components/Auth/GuestRoute';
-import NetworkStatus from './components/ui/NetworkStatus';
+import NetworkStatus from './components/UI/NetworkStatus';
 import { useIdleTimeout } from './hooks/useIdleTimeout';
 import { UserProvider } from './context/UserContext';
 import './App.css'; 

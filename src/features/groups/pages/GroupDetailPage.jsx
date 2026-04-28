@@ -18,8 +18,8 @@ import GroupDocumentCard from '../components/GroupDocumentCard';
 import GroupMemberList from '../components/GroupMemberList';
 import UploadGroupDocModal from '../components/UploadGroupDocModal';
 import ManageSignersModal from '../components/ManageSignersModal';
-import StatusModal from '../../../components/ui/StatusModal';
-import ConfirmModal from '../../../components/ui/ConfirmModal';
+import StatusModal from '../../../components/UI/StatusModal';
+import ConfirmModal from '../../../components/UI/ConfirmModal';
 import { useGroupSocket } from '../hooks/useGroupSocket';
 
 const GroupDetailPage = () => {

@@ -15,7 +15,7 @@ import {
   ShieldCheck,
   AlertCircle
 } from 'lucide-react';
-import StatusModal from '../ui/StatusModal';
+import StatusModal from '../UI/StatusModal';
 
 const Sidebar = ({ isOpen, setIsOpen }) => {
   const navigate = useNavigate();

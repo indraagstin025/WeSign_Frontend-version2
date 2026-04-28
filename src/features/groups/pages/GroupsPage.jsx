@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { useUser } from '../../../context/UserContext';
 import { getAllGroups, createGroup } from '../api/groupService';
-import StatusModal from '../../../components/ui/StatusModal';
+import StatusModal from '../../../components/UI/StatusModal';
 import { socketService } from '../../../services/socketService';
 
 const GroupsPage = () => {

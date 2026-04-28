@@ -19,7 +19,7 @@ import { useProfilePage } from '../hooks/useProfilePage';
 import ProfileBanner from '../components/ProfileBanner';
 import AvatarUploadModal from '../components/AvatarUploadModal';
 import UsageIndicator from '../components/UsageIndicator';
-import ConfirmModal from '../../../components/ui/ConfirmModal';
+import ConfirmModal from '../../../components/UI/ConfirmModal';
 
 const ProfilePage = () => {
     const {
