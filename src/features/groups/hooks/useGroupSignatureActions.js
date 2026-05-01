@@ -60,6 +60,12 @@ export const useGroupSignatureActions = ({
         width: dropData.width,
         height: dropData.height,
         method: 'canvas',
+        // [FIX] Flag optimistic — handleUpdateSize/Position akan skip PATCH
+        // selama flag ini true. Mencegah race condition dengan handleImageLoad
+        // yang fire INSTANT sebelum saveDraft response (yang bawa server-generated
+        // UUID) sampai. Tanpa ini, PATCH ke `tempId` akan 404 karena backend
+        // (post-FIX #11) tidak trust client id.
+        _pending: true,
       };
 
       // Optimistic update
@@ -67,6 +73,8 @@ export const useGroupSignatureActions = ({
 
       try {
         const res = await saveDraft(documentId, {
+          // Catatan: backend mengabaikan `id` dari client (FIX #11 service),
+          // tapi tetap dikirim untuk backward compat bila ada caller lama.
           id: tempId,
           signatureImageUrl: currentSignature,
           pageNumber: dropData.pageNumber,
@@ -89,12 +97,16 @@ export const useGroupSignatureActions = ({
           prev.map((s) => {
             if (s.id !== tempId) return s;
             localSnapshot = s;
+            // eslint-disable-next-line no-unused-vars
+            const { _pending, ...rest } = s;
             return {
-              ...newSig,
+              ...rest,
               ...serverSig,
               userId: currentUser.id,
               width: s.width,
               height: s.height,
+              // [FIX] Hapus flag — signature kini ter-persist, PATCH boleh.
+              _pending: false,
             };
           })
         );
@@ -103,7 +115,29 @@ export const useGroupSignatureActions = ({
           ...newSig,
           ...(localSnapshot ? { width: localSnapshot.width, height: localSnapshot.height } : {}),
           id: serverSig?.id || tempId,
+          _pending: false,
         });
+
+        // [FIX] Bila handleImageLoad sudah update width/height ke nilai
+        // AR-correct (state lokal berbeda dari payload yang dikirim ke saveDraft),
+        // sync ke backend dengan PATCH terpisah pakai server-generated ID.
+        // Tanpa ini, DB punya height placeholder (mis. 0.1) padahal frontend
+        // sudah render dengan height yang benar.
+        const persistedId = serverSig?.id;
+        const sizeChanged =
+          localSnapshot &&
+          persistedId &&
+          (localSnapshot.width !== dropData.width ||
+            localSnapshot.height !== dropData.height);
+        if (sizeChanged) {
+          updateDraftPosition(persistedId, {
+            width: localSnapshot.width,
+            height: localSnapshot.height,
+          }).catch((err) => {
+            if (err?.name === 'AbortError') return;
+            console.warn('[useGroupSignatureActions] post-save size sync error:', err.message);
+          });
+        }
       } catch (err) {
         setSignatures((prev) => prev.filter((s) => s.id !== tempId));
         console.error('[useGroupSignatureActions] saveDraft error:', err.message);
@@ -126,6 +160,13 @@ export const useGroupSignatureActions = ({
       setSignatures((prev) =>
         prev.map((s) => s.id === id ? { ...s, positionX: x, positionY: y } : s)
       );
+
+      // [FIX] Skip PATCH bila signature masih optimistic (`_pending`).
+      // Backend belum punya record dengan tempId → akan 404. Posisi akan
+      // di-persist via saveDraft response (yang sudah berisi posisi terbaru
+      // dari state lokal).
+      if (sig._pending) return;
+
       // 2. Persist ke backend di background (non-blocking, dengan retry+coalesce)
       updateDraftPosition(id, { positionX: x, positionY: y }).catch((err) => {
         if (err?.name === 'AbortError') return; // coalesced, ada PATCH yang lebih baru
@@ -136,7 +177,7 @@ export const useGroupSignatureActions = ({
   );
 
   // ── Update Ukuran TTD (Resize End) ───────────────────────────────
-  // Fire-and-forget: sama seperti updateSignature, dengan guard ownership.
+  // Fire-and-forget: sama seperti updateSignature, dengan guard ownership + pending.
   const handleUpdateSize = useCallback(
     (id, w, h) => {
       const sig = signatures.find((s) => s.id === id);
@@ -146,6 +187,10 @@ export const useGroupSignatureActions = ({
       setSignatures((prev) =>
         prev.map((s) => s.id === id ? { ...s, width: w, height: h } : s)
       );
+
+      // [FIX] Skip PATCH untuk optimistic signature (lihat handleUpdateSignature).
+      if (sig._pending) return;
+
       updateDraftPosition(id, { width: w, height: h }).catch((err) => {
         if (err?.name === 'AbortError') return; // coalesced, ada PATCH yang lebih baru
         console.error('[updateSize] background save error:', err.message);

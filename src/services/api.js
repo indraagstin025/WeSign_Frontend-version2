@@ -192,13 +192,19 @@ export async function apiFetch(endpoint, options = {}) {
     return data;
   } catch (err) {
     clearTimeout(timeoutId);
-    console.error("[apiFetch] Error caught:", {
-      errorName: err.name,
-      errorMessage: err.message,
-      endpoint,
-      method: options.method,
-      stack: err.stack,
-    });
+
+    // [FIX] AbortError dari coalesce/cancel adalah expected — tidak perlu log spam.
+    // Caller (mis. withRetryCoalesce / outboxDrain) sudah handle ini.
+    const isCallerAbort = err.name === "AbortError" && options.signal?.aborted;
+    if (!isCallerAbort) {
+      console.error("[apiFetch] Error caught:", {
+        errorName: err.name,
+        errorMessage: err.message,
+        endpoint,
+        method: options.method,
+        stack: err.stack,
+      });
+    }
 
     if (err.name === "AbortError") {
       // Bedakan: kalau caller intentionally cancel (external signal aborted),

@@ -1,97 +1,43 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React from 'react';
 import {
-  Users, Plus, Crown, Loader2, AlertCircle,
-  ChevronRight, FileText, RefreshCw, Layers
+  Users, Plus, Crown, Loader2,
+  ChevronRight, RefreshCw, Layers,
 } from 'lucide-react';
-import { useUser } from '../../../context/UserContext';
-import { getAllGroups, createGroup } from '../api/groupService';
 import StatusModal from '../../../components/UI/StatusModal';
-import { socketService } from '../../../services/socketService';
+import { useGroupsPage } from '../hooks/useGroupsPage';
 
+/**
+ * @page GroupsPage
+ * @description Pure presentation — semua logic di `useGroupsPage`.
+ */
 const GroupsPage = () => {
-  const navigate = useNavigate();
-  const { user: currentUser } = useUser();
+  const { state, actions } = useGroupsPage();
+  const {
+    groups,
+    loading,
+    isCreating,
+    newGroupName,
+    showCreateForm,
+    statusModal,
+    nameMaxLength,
+  } = state;
 
-  const [groups, setGroups] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [isCreating, setIsCreating] = useState(false);
-  const [newGroupName, setNewGroupName] = useState('');
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [statusModal, setStatusModal] = useState({ isOpen: false, type: 'success', title: '', message: '' });
-
-  const fetchGroups = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true);
-    setError(null);
-    try {
-      const res = await getAllGroups();
-      if (res.status === 'success') {
-        setGroups(Array.isArray(res.data) ? res.data : []);
-      }
-    } catch (err) {
-      setError(err.message || 'Gagal memuat daftar grup.');
-    } finally {
-      if (!silent) setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { fetchGroups(); }, [fetchGroups]);
-
-  useEffect(() => {
-    if (!currentUser || groups.length === 0) return;
-    socketService.connect();
-    const joinedGroupIds = groups.map((g) => g.id);
-    joinedGroupIds.forEach((gId) => socketService.joinGroupRoom(gId));
-    const silentRefresh = () => fetchGroups(true);
-    socketService.on('group_member_update', silentRefresh);
-    socketService.on('group_document_update', silentRefresh);
-    socketService.on('group_info_update', silentRefresh);
-    return () => {
-      joinedGroupIds.forEach((gId) => socketService.leaveGroupRoom(gId));
-      socketService.off('group_member_update', silentRefresh);
-      socketService.off('group_document_update', silentRefresh);
-      socketService.off('group_info_update', silentRefresh);
-    };
-  }, [currentUser, groups.length, fetchGroups]);
-
-  const handleCreateGroup = async (e) => {
-    e.preventDefault();
-    if (!newGroupName.trim()) return;
-    setIsCreating(true);
-    try {
-      const res = await createGroup(newGroupName.trim());
-      if (res.status === 'success') {
-        setNewGroupName('');
-        setShowCreateForm(false);
-        fetchGroups();
-        setStatusModal({
-          isOpen: true, type: 'success',
-          title: 'Grup Berhasil Dibuat',
-          message: `Grup "${newGroupName.trim()}" siap digunakan.`
-        });
-      }
-    } catch (err) {
-      setStatusModal({ isOpen: true, type: 'error', title: 'Gagal', message: err.message });
-    } finally {
-      setIsCreating(false);
-    }
-  };
-
-  if (loading) return (
-    <div className="flex-1 flex items-center justify-center min-h-[60vh]">
-      <div className="flex flex-col items-center gap-3">
-        <Loader2 size={32} className="animate-spin text-emerald-500/50" />
-        <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">Memuat Koleksi</p>
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center min-h-[60vh]">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 size={32} className="animate-spin text-emerald-500/50" />
+          <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">Memuat Koleksi</p>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
 
   return (
     <div className="flex-1 overflow-y-auto bg-zinc-50/50 dark:bg-transparent no-scrollbar">
       <div className="max-w-7xl mx-auto p-6 sm:p-10 space-y-12">
-        
-        {/* HEADER - DISCORD STYLE */}
+
+        {/* HEADER */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-emerald-500 font-black text-[10px] uppercase tracking-[0.3em]">
@@ -105,16 +51,16 @@ const GroupsPage = () => {
               Collaborate, sign, and manage documents with your specialized teams.
             </p>
           </div>
-          
+
           <div className="flex items-center gap-4">
             <button
-              onClick={() => fetchGroups()}
+              onClick={() => actions.fetchGroups()}
               className="p-4 rounded-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-white/5 text-zinc-400 hover:text-emerald-500 transition-all cursor-pointer shadow-xl"
             >
               <RefreshCw size={20} />
             </button>
             <button
-              onClick={() => setShowCreateForm(true)}
+              onClick={actions.openCreateForm}
               className="flex items-center gap-2 px-8 py-4 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black uppercase tracking-widest border-none cursor-pointer shadow-xl shadow-emerald-500/20 transition-all active:scale-95"
             >
               <Plus size={18} /> Create Community
@@ -122,7 +68,7 @@ const GroupsPage = () => {
           </div>
         </div>
 
-        {/* CREATE FORM (COMMUNITY STYLE) */}
+        {/* CREATE FORM */}
         {showCreateForm && (
           <div className="bg-white dark:bg-zinc-900 border border-emerald-500/20 rounded-[2.5rem] p-8 shadow-2xl animate-in slide-in-from-top-4">
             <div className="flex items-center gap-4 mb-8">
@@ -134,14 +80,20 @@ const GroupsPage = () => {
                 <p className="text-xs text-zinc-500 dark:text-zinc-100 font-bold opacity-70">Create a space for your team to share and sign documents.</p>
               </div>
             </div>
-            <form onSubmit={handleCreateGroup} className="flex flex-col sm:flex-row gap-4">
-              <input
-                type="text"
-                value={newGroupName}
-                onChange={(e) => setNewGroupName(e.target.value)}
-                placeholder="Enter community name..."
-                className="flex-1 px-6 py-4 rounded-full border border-zinc-200 dark:border-white/5 bg-zinc-50 dark:bg-zinc-800/50 text-sm text-zinc-900 dark:text-white font-bold outline-none focus:ring-2 focus:ring-emerald-500/20"
-              />
+            <form onSubmit={actions.handleCreateGroup} className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1 relative">
+                <input
+                  type="text"
+                  value={newGroupName}
+                  onChange={(e) => actions.setNewGroupName(e.target.value)}
+                  maxLength={nameMaxLength}
+                  placeholder="Enter community name..."
+                  className="w-full px-6 py-4 rounded-full border border-zinc-200 dark:border-white/5 bg-zinc-50 dark:bg-zinc-800/50 text-sm text-zinc-900 dark:text-white font-bold outline-none focus:ring-2 focus:ring-emerald-500/20"
+                />
+                <span className="absolute right-5 top-1/2 -translate-y-1/2 text-[9px] font-black text-zinc-400 uppercase tracking-widest">
+                  {newGroupName.length}/{nameMaxLength}
+                </span>
+              </div>
               <div className="flex gap-3">
                 <button
                   type="submit"
@@ -152,7 +104,7 @@ const GroupsPage = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setShowCreateForm(false); setNewGroupName(''); }}
+                  onClick={actions.cancelCreateForm}
                   className="px-8 py-4 rounded-full text-xs font-black uppercase text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-all bg-transparent border-none cursor-pointer"
                 >
                   Cancel
@@ -162,31 +114,22 @@ const GroupsPage = () => {
           </div>
         )}
 
-        {/* COMMUNITIES GRID (DISCORD CARDS) */}
+        {/* COMMUNITIES GRID */}
         {!loading && groups.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {groups.map((group, idx) => {
-              const isAdmin = String(group.adminId) === String(currentUser?.id);
+              const isAdmin = actions.isAdminOf(group);
               const memberCount = group.members?.length || 0;
               const docCount = group.documents?.length || 0;
-              
-              // Thick, intense themes for both Light and Dark mode
-              const themes = [
-                { banner: 'from-indigo-600 via-indigo-500 to-blue-600', tint: 'from-indigo-100 dark:from-indigo-600/40' },
-                { banner: 'from-emerald-600 via-emerald-500 to-teal-600', tint: 'from-emerald-100 dark:from-emerald-600/40' },
-                { banner: 'from-fuchsia-600 via-fuchsia-500 to-purple-600', tint: 'from-fuchsia-100 dark:from-fuchsia-600/40' },
-                { banner: 'from-amber-600 via-amber-500 to-orange-600', tint: 'from-amber-100 dark:from-amber-600/40' },
-                { banner: 'from-rose-600 via-rose-500 to-pink-600', tint: 'from-rose-100 dark:from-rose-600/40' }
-              ];
-              const theme = themes[idx % themes.length];
+              const theme = actions.getCardTheme(idx);
 
               return (
                 <div
                   key={group.id}
-                  onClick={() => navigate(`/dashboard/groups/${group.id}`)}
+                  onClick={() => actions.goToGroup(group.id)}
                   className={`group bg-gradient-to-br ${theme.tint} to-white dark:via-zinc-900/95 dark:to-zinc-950 rounded-[2.5rem] border border-zinc-100 dark:border-white/10 overflow-hidden shadow-2xl transition-all duration-500 cursor-pointer flex flex-col relative`}
                 >
-                  {/* Banner - More Compact */}
+                  {/* Banner */}
                   <div className={`h-28 bg-gradient-to-r ${theme.banner} relative`}>
                     <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors duration-500" />
                     <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10" />
@@ -198,7 +141,7 @@ const GroupsPage = () => {
                     )}
                   </div>
 
-                  {/* Community Icon - Perfectly Circular & Non-stretching */}
+                  {/* Community Icon */}
                   <div className="px-6 -mt-9 relative z-10 flex items-end justify-between">
                     <div className="w-18 h-18 shrink-0 aspect-square rounded-full bg-white dark:bg-zinc-900 p-1.5 shadow-2xl transition-all group-hover:scale-110 duration-500">
                       <div className={`w-full h-full rounded-full bg-gradient-to-br ${theme.banner} flex items-center justify-center text-white text-2xl font-black shadow-inner`}>
@@ -216,7 +159,7 @@ const GroupsPage = () => {
                     </div>
                   </div>
 
-                  {/* Content - More Compact */}
+                  {/* Content */}
                   <div className="p-8 pt-4 flex-1 flex flex-col">
                     <div className="mb-4">
                       <h3 className="text-xl font-black text-zinc-900 dark:text-white tracking-tight mb-1 group-hover:text-emerald-500 transition-all duration-300">
@@ -247,30 +190,28 @@ const GroupsPage = () => {
               );
             })}
           </div>
-
-
         ) : !loading && (
           <div className="py-24 text-center">
-             <div className="w-24 h-24 rounded-[2.5rem] bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-white/5 flex items-center justify-center mx-auto mb-8 text-zinc-300">
-                <Users size={40} />
-             </div>
-             <h3 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight mb-3">No Communities Found</h3>
-             <p className="text-sm text-zinc-500 dark:text-zinc-100 max-w-sm mx-auto font-bold opacity-70 leading-relaxed mb-10">
-               You haven't joined any workspace yet. Create your first community or ask for an invitation.
-             </p>
-             <button
-               onClick={() => setShowCreateForm(true)}
-               className="px-10 py-4 rounded-full bg-emerald-600 text-white text-xs font-black uppercase tracking-widest shadow-xl shadow-emerald-500/20 border-none cursor-pointer"
-             >
-               Start Your First Community
-             </button>
+            <div className="w-24 h-24 rounded-[2.5rem] bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-white/5 flex items-center justify-center mx-auto mb-8 text-zinc-300">
+              <Users size={40} />
+            </div>
+            <h3 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight mb-3">No Communities Found</h3>
+            <p className="text-sm text-zinc-500 dark:text-zinc-100 max-w-sm mx-auto font-bold opacity-70 leading-relaxed mb-10">
+              You haven't joined any workspace yet. Create your first community or ask for an invitation.
+            </p>
+            <button
+              onClick={actions.openCreateForm}
+              className="px-10 py-4 rounded-full bg-emerald-600 text-white text-xs font-black uppercase tracking-widest shadow-xl shadow-emerald-500/20 border-none cursor-pointer"
+            >
+              Start Your First Community
+            </button>
           </div>
         )}
       </div>
 
       <StatusModal
         {...statusModal}
-        onClose={() => setStatusModal(prev => ({ ...prev, isOpen: false }))}
+        onClose={actions.closeStatusModal}
       />
     </div>
   );

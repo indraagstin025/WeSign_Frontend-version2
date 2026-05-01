@@ -81,31 +81,35 @@ export function withRetryCoalesce(key, fn, opts = {}) {
 
   const promise = run();
 
-  promise.then(
-    () => {
-      if (trackSaveStatus) saveStatus.end(true);
-    },
-    (err) => {
-      if (err?.name === 'AbortError') {
-        // Bukan failure — request dibatalkan karena ada yang lebih baru
+  // [FIX] Chain side-effect (saveStatus + outbox enqueue + inflight cleanup)
+  // dalam SATU chain yang sudah swallow rejection. Sebelumnya `promise.finally(...)`
+  // sebagai chain terpisah tanpa `.catch` menyebabkan "Uncaught (in promise)" di
+  // console saat caller mengawait `promise` original — meski caller sudah catch.
+  promise
+    .then(
+      () => {
         if (trackSaveStatus) saveStatus.end(true);
-        return;
-      }
-      // Terminal failure: enqueue ke outbox kalau caller minta
-      if (outboxOpts?.type && outboxOpts?.signatureId) {
-        try {
-          outbox.enqueue(outboxOpts.type, outboxOpts.signatureId, outboxOpts.payload || {});
-        } catch (e) {
-          console.error('[withRetryCoalesce] outbox enqueue error:', e);
+      },
+      (err) => {
+        if (err?.name === 'AbortError') {
+          // Bukan failure — request dibatalkan karena ada yang lebih baru
+          if (trackSaveStatus) saveStatus.end(true);
+          return;
         }
+        // Terminal failure: enqueue ke outbox kalau caller minta
+        if (outboxOpts?.type && outboxOpts?.signatureId) {
+          try {
+            outbox.enqueue(outboxOpts.type, outboxOpts.signatureId, outboxOpts.payload || {});
+          } catch (e) {
+            console.error('[withRetryCoalesce] outbox enqueue error:', e);
+          }
+        }
+        if (trackSaveStatus) saveStatus.end(false, err?.message || 'Gagal menyimpan');
       }
-      if (trackSaveStatus) saveStatus.end(false, err?.message || 'Gagal menyimpan');
-    }
-  );
-
-  promise.finally(() => {
-    if (inflight.get(key) === controller) inflight.delete(key);
-  });
+    )
+    .finally(() => {
+      if (inflight.get(key) === controller) inflight.delete(key);
+    });
 
   return promise;
 }

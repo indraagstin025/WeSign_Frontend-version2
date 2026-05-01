@@ -31,6 +31,15 @@ export function onOutboxDropped(cb) {
   return () => droppedSubscribers.delete(cb);
 }
 
+// [FIX] Status code yang menandakan permanent failure — retry sia-sia.
+// 408 (timeout) & 429 (rate limit) DI-RETRY karena bersifat transient dari sisi
+// server. Selain itu, semua 4xx adalah hasil validasi/forbidden permanent.
+const PERMANENT_STATUSES = new Set([400, 401, 403, 404, 409, 410, 422]);
+
+function isPermanentFailure(err) {
+  return typeof err?.status === 'number' && PERMANENT_STATUSES.has(err.status);
+}
+
 async function drainEntry(entry) {
   if (entry.type !== 'patch_position') {
     console.warn('[outboxDrain] unknown type, dropping:', entry.type);
@@ -43,6 +52,18 @@ async function drainEntry(entry) {
   } catch (err) {
     if (err?.name === 'AbortError') {
       // Coalesced — entry tetap ada untuk dicoba lagi nanti
+      return;
+    }
+    // [FIX] Permanent failure (4xx kecuali 408/429) → drop SEKALI tanpa retry.
+    // Sebelumnya entry retry 5x sia-sia (mis. signature `final` yang ditolak
+    // backend) → user lihat "Antri offline" stuck puluhan detik.
+    if (isPermanentFailure(err)) {
+      console.warn(
+        '[outboxDrain] permanent failure, dropping:', entry.id, entry.signatureId,
+        'status=' + err.status, err?.message
+      );
+      outbox.remove(entry.id);
+      emitDropped(entry);
       return;
     }
     const updated = outbox.bumpAttempt(entry.id);

@@ -24,7 +24,9 @@ export const deleteGroup = (groupId) =>
 
 // ── Invitasi ─────────────────────────────────────────────────────────────────
 
-export const createInvitation = (groupId, role = 'signer') =>
+// Default role: 'member' agar match dengan whitelist backend
+// (`["member", "admin_group", "viewer"]`). Sebelumnya 'signer' → selalu 400.
+export const createInvitation = (groupId, role = 'member') =>
   apiFetch(`/groups/${groupId}/invitations`, { method: 'POST', body: { role } });
 
 export const acceptInvitation = (token) =>

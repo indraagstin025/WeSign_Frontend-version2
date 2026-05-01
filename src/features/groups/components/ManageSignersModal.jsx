@@ -1,58 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { X, Users, CheckSquare, Square, Loader2, Save } from 'lucide-react';
-import { updateDocumentSigners } from '../api/groupService';
+import { useManageSigners } from '../hooks/useManageSigners';
 
 /**
  * @component ManageSignersModal
- * @description Modal untuk menambah/mengubah daftar penandatangan dokumen.
- * Hanya admin yang dapat membuka modal ini.
- * Saat submit:
- *   - Jika ada signer dipilih  → status dokumen = PENDING
- *   - Jika semua dikosongkan   → status dokumen = DRAFT
+ * @description Modal kelola penandatangan dokumen. Pure presentation — logic di `useManageSigners`.
  */
 const ManageSignersModal = ({ isOpen, onClose, groupId, doc, members = [], onSuccess }) => {
-  const [selectedSigners, setSelectedSigners] = useState([]);
-  const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState(null);
-
-  // Pre-fill signer yang sudah dipilih sebelumnya
-  useEffect(() => {
-    if (!isOpen || !doc) return;
-    const existing = doc.signerRequests?.map((sr) => sr.userId) || [];
-    setSelectedSigners(existing);
-    setError(null);
-  }, [isOpen, doc]);
+  const { state, actions } = useManageSigners({ isOpen, doc, groupId, members, onSuccess, onClose });
+  const { selectedSigners, isSaving, error, willBeDraft, allSelected } = state;
 
   if (!isOpen || !doc) return null;
-
-  const toggleSigner = (userId) => {
-    setSelectedSigners((prev) =>
-      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
-    );
-  };
-
-  const toggleAll = () => {
-    const allIds = members.map((m) => m.userId || m.id);
-    setSelectedSigners((prev) => prev.length === allIds.length ? [] : allIds);
-  };
-
-  const handleSave = async () => {
-    setIsSaving(true);
-    setError(null);
-    try {
-      const res = await updateDocumentSigners(groupId, doc.id, selectedSigners);
-      if (res.status === 'success') {
-        onSuccess?.();
-        onClose();
-      }
-    } catch (err) {
-      setError(err.message || 'Gagal mengubah penandatangan.');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const willBeDraft = selectedSigners.length === 0;
 
   return (
     <div className="fixed inset-0 z-[200] bg-zinc-900/60 backdrop-blur-sm flex items-center justify-center p-4">
@@ -93,8 +51,8 @@ const ManageSignersModal = ({ isOpen, onClose, groupId, doc, members = [], onSuc
                 <Users size={11} /> Pilih Penandatangan
               </label>
               {members.length > 0 && (
-                <button onClick={toggleAll} className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-transparent border-none cursor-pointer hover:underline">
-                  {selectedSigners.length === members.length ? 'Batalkan Semua' : 'Pilih Semua'}
+                <button onClick={actions.toggleAll} className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-transparent border-none cursor-pointer hover:underline">
+                  {allSelected ? 'Batalkan Semua' : 'Pilih Semua'}
                 </button>
               )}
             </div>
@@ -110,14 +68,12 @@ const ManageSignersModal = ({ isOpen, onClose, groupId, doc, members = [], onSuc
                   const avatarUrl = member.user?.profilePictureUrl;
                   const initials = name.trim().split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase();
                   const isSelected = selectedSigners.includes(userId);
-                  // Cek apakah signer ini sudah SIGNED (tidak bisa diubah)
-                  const signerRecord = doc.signerRequests?.find((sr) => sr.userId === userId);
-                  const isSigned = signerRecord?.status === 'SIGNED';
+                  const isSigned = actions.isUserSigned(userId);
 
                   return (
                     <div
                       key={userId}
-                      onClick={() => !isSigned && toggleSigner(userId)}
+                      onClick={() => !isSigned && actions.toggleSigner(userId)}
                       className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all
                         ${isSigned ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}
                         ${isSelected
@@ -164,7 +120,7 @@ const ManageSignersModal = ({ isOpen, onClose, groupId, doc, members = [], onSuc
             Batal
           </button>
           <button
-            onClick={handleSave}
+            onClick={actions.handleSave}
             disabled={isSaving}
             className={`px-6 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 border-none transition-all
               ${isSaving ? 'bg-zinc-200 dark:bg-zinc-700 text-zinc-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer active:scale-95 shadow-md shadow-emerald-500/20'}`}

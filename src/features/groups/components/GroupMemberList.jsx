@@ -1,12 +1,14 @@
 import React from 'react';
-import { Crown, UserMinus, Loader2, Shield } from 'lucide-react';
+import { Crown, UserMinus, Loader2 } from 'lucide-react';
+import { useGroupMemberListView } from '../hooks/useGroupMemberListView';
 
 /**
  * @component GroupMemberList
- * @description List anggota grup dengan indikator admin.
+ * @description List anggota grup. Pure presentation — logic expand di `useGroupMemberListView`.
  */
 const GroupMemberList = ({ members, adminId, currentUserId, onKick, kickingId }) => {
-  const [isExpanded, setIsExpanded] = React.useState(false);
+  const { state, actions } = useGroupMemberListView({ members });
+  const { isExpanded, displayMembers, hasMore } = state;
 
   if (!members || members.length === 0) {
     return (
@@ -16,9 +18,6 @@ const GroupMemberList = ({ members, adminId, currentUserId, onKick, kickingId })
     );
   }
 
-  const displayMembers = isExpanded ? members : members.slice(0, 6);
-  const hasMore = members.length > 6;
-
   return (
     <div className="flex flex-col gap-1">
       <div className="space-y-1">
@@ -27,7 +26,7 @@ const GroupMemberList = ({ members, adminId, currentUserId, onKick, kickingId })
           const isMe = String(member.userId) === String(currentUserId);
           const name = member.user?.name || member.name || 'User';
           const email = member.user?.email || member.email || '';
-          
+
           const initials = name
             .split(' ')
             .map((n) => n[0])
@@ -43,10 +42,10 @@ const GroupMemberList = ({ members, adminId, currentUserId, onKick, kickingId })
               <div className="flex items-center gap-3 min-w-0">
                 {/* Avatar */}
                 <div className={`w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 border-2 relative
-                  ${isAdmin 
-                    ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' 
-                    : isMe 
-                      ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' 
+                  ${isAdmin
+                    ? 'bg-amber-500/10 text-amber-600 border-amber-500/20'
+                    : isMe
+                      ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
                       : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-100 border-zinc-100 dark:border-white/5'
                   }
                 `}>
@@ -93,7 +92,7 @@ const GroupMemberList = ({ members, adminId, currentUserId, onKick, kickingId })
 
       {hasMore && (
         <button
-          onClick={() => setIsExpanded(!isExpanded)}
+          onClick={actions.toggleExpand}
           className="mt-2 w-full py-3 rounded-xl border border-dashed border-zinc-200 dark:border-white/10 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 hover:text-emerald-500 hover:border-emerald-500/30 transition-all cursor-pointer bg-transparent"
         >
           {isExpanded ? 'Show Less' : `See All Members (${members.length})`}

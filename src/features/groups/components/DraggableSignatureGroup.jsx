@@ -1,37 +1,14 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import React from 'react';
 import Draggable from 'react-draggable';
 import { X, Lock } from 'lucide-react';
-import { useDraggableSignature } from '../../signature/hooks/useDraggableSignature';
-import { socketService } from '../../../services/socketService';
+import { useDraggableSignatureGroup } from '../hooks/useDraggableSignatureGroup';
 
 /**
  * @component DraggableSignatureGroup
  * @description Versi Group dari DraggableSignature.
- *
- * PENTING: Gunakan state.nodeRef dari useDraggableSignature untuk SEMUA referensi DOM.
- * Jangan buat nodeRef lokal terpisah — hook resize internal bergantung pada nodeRef yang sama.
- *
- * Perbedaan dari versi personal:
- * 1. Ownership check — hanya owner yang bisa drag/resize
- * 2. Status lock — jika status='final', tidak bisa digeser
- * 3. Remote sync — mendengarkan socket 'update_signature_position' dan update DOM langsung
- * 4. Visual badge — tampil nama pemilik TTD
- * 5. Remote active indicator — ring hijau saat user lain sedang drag
+ * Pure presentation — semua logic (ownership, throttle, socket sync, refs)
+ * berada di hook `useDraggableSignatureGroup`.
  */
-const VISUAL_PADDING = 18;
-const TOTAL_PADDING = VISUAL_PADDING * 2;
-
-function throttle(func, limit) {
-  let inThrottle;
-  return function (...args) {
-    if (!inThrottle) {
-      func.apply(this, args);
-      inThrottle = true;
-      setTimeout(() => (inThrottle = false), limit);
-    }
-  };
-}
-
 const DraggableSignatureGroup = ({
   sig,
   onRemove,
@@ -43,216 +20,58 @@ const DraggableSignatureGroup = ({
   documentId,
   readOnly = false,
 }) => {
-  // ── Kepemilikan & Interaktivitas ─────────────────────────────────────────
-  const isOwner = useMemo(() => {
-    if (!currentUser) return false;
-    const ownerId = sig.userId || sig.signerId;
-    return String(ownerId) === String(currentUser.id);
-  }, [currentUser, sig]);
-
-  const isFinal = sig.status === 'final';
-  const canInteract = isOwner && !isFinal && !readOnly;
-
-  // ── Remote Sync State ────────────────────────────────────────────────────
-  const [isRemoteActive, setIsRemoteActive] = useState(false);
-  const [isLockedByRemote, setIsLockedByRemote] = useState(false);
-  const remoteTimerRef = useRef(null);
-
-  // ── Throttled Socket Drag Emit ───────────────────────────────────────────
-  const emitDragThrottled = useMemo(
-    () =>
-      throttle((posData) => {
-        if (documentId) socketService.emitDrag({ documentId, signatureId: sig.id, ...posData });
-      }, 30),
-    [documentId, sig.id]
-  );
-
-  // ── Throttled Socket Resize Emit ──────────────────────────────────────
-  const emitResizeThrottled = useMemo(
-    () =>
-      throttle((w, h) => {
-        if (documentId) {
-          socketService.emitDrag({
-            documentId,
-            signatureId: sig.id,
-            positionX: sig.positionX,
-            positionY: sig.positionY,
-            width: w,
-            height: h,
-            pageNumber: sig.pageNumber,
-          });
-        }
-      }, 30),
-    [documentId, sig.id, sig.positionX, sig.positionY, sig.pageNumber]
-  );
-
-  // ── Wrap onUpdatePosition untuk emit socket setelah drag stop ────────────
-  // Guard: hanya owner yang boleh persist ke backend (HTTP PATCH).
-  // Tanpa guard ini, mount/load signature milik user lain bisa men-trigger PATCH
-  // yang akan ditolak backend dengan 403.
-  const wrappedOnUpdatePosition = useMemo(
-    () => (id, x, y) => {
-      if (!isOwner) return;
-      onUpdatePosition(id, x, y);
-      if (documentId) {
-        socketService.emitDrag({
-          documentId,
-          signatureId: id,
-          positionX: x,
-          positionY: y,
-          width: sig.width,
-          height: sig.height,
-          pageNumber: sig.pageNumber,
-        });
-      }
-    },
-    [onUpdatePosition, documentId, sig.width, sig.height, sig.pageNumber, isOwner]
-  );
-
-  // ── Wrap onUpdateSize untuk emit socket saat resize ────────────────────
-  // Guard ownership sama seperti wrappedOnUpdatePosition.
-  const wrappedOnUpdateSize = useMemo(
-    () => (id, w, h) => {
-      if (!isOwner) return;
-      onUpdateSize(id, w, h);
-      emitResizeThrottled(w, h);
-    },
-    [onUpdateSize, emitResizeThrottled, isOwner]
-  );
-
-  // ── Callback realtime resize → emit socket setiap onMove ─────────────────
-  const onResizeMove = useMemo(
-    () =>
-      throttle((w, h, x, y) => {
-        if (!documentId || !isOwner) return;
-        socketService.emitDrag({
-          documentId,
-          signatureId: sig.id,
-          positionX: x,
-          positionY: y,
-          width: w,
-          height: h,
-          pageNumber: sig.pageNumber,
-        });
-      }, 30),
-    [documentId, sig.id, sig.pageNumber, isOwner]
-  );
-
-  // ── useDraggableSignature ──────────────────────────────────────────────────
-  const { state, actions } = useDraggableSignature(
+  const { state, actions } = useDraggableSignatureGroup({
     sig,
     containerWidth,
     containerHeight,
-    wrappedOnUpdatePosition,
-    wrappedOnUpdateSize,
-    onResizeMove   // ← callback realtime resize
-  );
-
-  // Capture remote setters via ref supaya useEffect socket di bawah tidak
-  // re-subscribe setiap render (object `actions` baru di setiap render).
-  const setControlledPositionRef = useRef(actions.setControlledPosition);
-  const setControlledSizeRef = useRef(actions.setControlledSize);
-  useEffect(() => {
-    setControlledPositionRef.current = actions.setControlledPosition;
-    setControlledSizeRef.current = actions.setControlledSize;
+    currentUser,
+    documentId,
+    onUpdatePosition,
+    onUpdateSize,
+    readOnly,
   });
 
-  // ── Socket: Realtime drag dari user lain ──────────────────────────────
-  // PENTING: pakai React state setter, BUKAN DOM manipulation langsung.
-  // Sebelumnya kami men-set element.style.transform/width/height secara manual,
-  // tapi setIsRemoteActive(true) di handler yang sama memicu re-render yang
-  // langsung MENIMPA style itu kembali ke nilai dari React state (controlledPosition
-  // & localSize) — yang stale di sisi receiver karena tidak pernah di-update oleh
-  // event lokal. Akibatnya signature flicker antara posisi/ukuran sender dan
-  // posisi/ukuran drop awal, dan terlihat seperti "berubah bentuk" saat di-drag.
-  useEffect(() => {
-    const handleRemoteMove = (data) => {
-      if (data.signatureId !== sig.id) return;
-      if (isOwner) return; // Jangan override posisi milik sendiri
+  const {
+    isOwner,
+    isFinal,
+    canInteract,
+    isRemoteActive,
+    isLockedByRemote,
+    isVisible,
+    isReady,
+    isActive,
+    nodeRef,
+    handleNWRef,
+    handleNERef,
+    handleSWRef,
+    handleSERef,
+    controlledPosition,
+    localSize,
+    ringClass,
+    outerBorderClass,
+    transitionStyle,
+    displayName,
+  } = state;
 
-      // Konversi koordinat fraksi → pixel outer (dengan VISUAL_PADDING)
-      const outerX = data.positionX * containerWidth - VISUAL_PADDING;
-      const outerY = data.positionY * containerHeight - VISUAL_PADDING;
-
-      // Update React state — sumber kebenaran tunggal untuk render
-      setControlledPositionRef.current({
-        x: Math.round(outerX),
-        y: Math.round(outerY),
-      });
-
-      if (data.width !== undefined && data.height !== undefined) {
-        const outerW = data.width * containerWidth + TOTAL_PADDING;
-        const outerH = data.height * containerHeight + TOTAL_PADDING;
-        setControlledSizeRef.current({
-          width: Math.round(outerW),
-          height: Math.round(outerH),
-        });
-      }
-
-      // Visual indicator: ring hijau + lock sementara
-      setIsRemoteActive(true);
-      setIsLockedByRemote(true);
-      if (remoteTimerRef.current) clearTimeout(remoteTimerRef.current);
-      remoteTimerRef.current = setTimeout(() => {
-        setIsRemoteActive(false);
-        setIsLockedByRemote(false);
-      }, 800);
-    };
-
-    socketService.on('update_signature_position', handleRemoteMove);
-    return () => {
-      socketService.off('update_signature_position', handleRemoteMove);
-      if (remoteTimerRef.current) clearTimeout(remoteTimerRef.current);
-    };
-  }, [sig.id, isOwner, containerWidth, containerHeight]);
-
-  // ── Emit socket saat drag move ───────────────────────────────────────────
-  const handleDrag = (e, data) => {
-    actions.onDrag(e, data);
-    const innerX = (data.x + VISUAL_PADDING) / containerWidth;
-    const innerY = (data.y + VISUAL_PADDING) / containerHeight;
-    emitDragThrottled({
-      positionX: innerX,
-      positionY: innerY,
-      width: sig.width,
-      height: sig.height,
-      pageNumber: sig.pageNumber,
-    });
-  };
-
-  // ── Visual Styles ────────────────────────────────────────────────────────
-  const isVisible = state.isActive || state.isDragging;
   const handleBase =
     'absolute w-3 h-3 bg-blue-500 border-2 border-white rounded-full z-[60] pointer-events-auto shadow-sm active:scale-125 transition-all';
 
-  let ringClass = '';
-  if (isFinal && isOwner) ringClass = 'ring-2 ring-emerald-400';
-  else if (isRemoteActive) ringClass = 'ring-2 ring-emerald-400 ring-offset-1';
-  else if (state.isActive && canInteract) ringClass = 'ring-2 ring-blue-500';
-  else if (!isOwner) ringClass = 'ring-1 ring-zinc-300/50';
-
-  let outerBorderClass = '';
-  if (state.isActive && canInteract) outerBorderClass = 'border border-blue-500 bg-white/40 shadow-sm';
-  else outerBorderClass = 'border border-transparent';
-
-  const displayName = sig.signerName || 'User';
-
   return (
     <Draggable
-      nodeRef={state.nodeRef}  /* ← pakai state.nodeRef, bukan local ref */
+      nodeRef={nodeRef}
       bounds="parent"
       disabled={!canInteract || isLockedByRemote}
       position={{
-        x: Math.round(state.controlledPosition.x),
-        y: Math.round(state.controlledPosition.y),
+        x: Math.round(controlledPosition.x),
+        y: Math.round(controlledPosition.y),
       }}
       cancel=".resize-handle, .delete-btn"
       onStart={actions.onDragStart}
-      onDrag={handleDrag}
+      onDrag={actions.handleDrag}
       onStop={actions.onDragStop}
     >
       <div
-        ref={state.nodeRef}  /* ← pakai state.nodeRef, bukan local ref */
+        ref={nodeRef}
         onMouseDown={(e) => {
           if (!canInteract || isLockedByRemote) return;
           e.stopPropagation();
@@ -265,23 +84,19 @@ const DraggableSignatureGroup = ({
         }}
         onClick={(e) => e.stopPropagation()}
         className={`absolute group flex flex-col items-center justify-center box-border p-4 transition-opacity duration-300
-          ${state.isReady ? 'opacity-100' : 'opacity-0'}
+          ${isReady ? 'opacity-100' : 'opacity-0'}
           ${outerBorderClass}
           ${ringClass}
           ${canInteract && !isLockedByRemote ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'}
         `}
         style={{
-          width: state.localSize.width,
-          height: state.localSize.height,
+          width: localSize.width,
+          height: localSize.height,
           left: 0,
           top: 0,
           touchAction: 'none',
           pointerEvents: (isFinal || isLockedByRemote) ? 'none' : 'auto',
-          // Smooth transition untuk pergerakan realtime dari user lain
-          // Disabled saat user sendiri drag (isDragging) agar tidak ada lag
-          transition: (!isOwner && isRemoteActive)
-            ? 'transform 80ms linear, width 80ms linear, height 80ms linear'
-            : 'none',
+          transition: transitionStyle,
         }}
       >
         {/* ── Nama pemilik TTD ── */}
@@ -321,10 +136,10 @@ const DraggableSignatureGroup = ({
         {/* ── Resize handles (hanya owner draft) ── */}
         {canInteract && (
           <>
-            <div ref={state.handleNWRef} className={`resize-handle ${handleBase} ${isVisible ? 'opacity-100' : 'opacity-0'} -top-1.5 -left-1.5 cursor-nwse-resize`} style={{ touchAction: 'none' }} />
-            <div ref={state.handleNERef} className={`resize-handle ${handleBase} ${isVisible ? 'opacity-100' : 'opacity-0'} -top-1.5 -right-1.5 cursor-nesw-resize`} style={{ touchAction: 'none' }} />
-            <div ref={state.handleSWRef} className={`resize-handle ${handleBase} ${isVisible ? 'opacity-100' : 'opacity-0'} -bottom-1.5 -left-1.5 cursor-nesw-resize`} style={{ touchAction: 'none' }} />
-            <div ref={state.handleSERef} className={`resize-handle ${handleBase} ${isVisible ? 'opacity-100' : 'opacity-0'} -bottom-1.5 -right-1.5 cursor-nwse-resize`} style={{ touchAction: 'none' }} />
+            <div ref={handleNWRef} className={`resize-handle ${handleBase} ${isVisible ? 'opacity-100' : 'opacity-0'} -top-1.5 -left-1.5 cursor-nwse-resize`} style={{ touchAction: 'none' }} />
+            <div ref={handleNERef} className={`resize-handle ${handleBase} ${isVisible ? 'opacity-100' : 'opacity-0'} -top-1.5 -right-1.5 cursor-nesw-resize`} style={{ touchAction: 'none' }} />
+            <div ref={handleSWRef} className={`resize-handle ${handleBase} ${isVisible ? 'opacity-100' : 'opacity-0'} -bottom-1.5 -left-1.5 cursor-nesw-resize`} style={{ touchAction: 'none' }} />
+            <div ref={handleSERef} className={`resize-handle ${handleBase} ${isVisible ? 'opacity-100' : 'opacity-0'} -bottom-1.5 -right-1.5 cursor-nwse-resize`} style={{ touchAction: 'none' }} />
           </>
         )}
 
@@ -338,7 +153,7 @@ const DraggableSignatureGroup = ({
         {/* ── Gambar tanda tangan ── */}
         <div
           className={`w-full h-full flex items-center justify-center box-border rounded-none
-            ${state.isActive && canInteract ? 'border border-rose-400/50 bg-white/50' : 'border border-rose-400/20'}
+            ${isActive && canInteract ? 'border border-rose-400/50 bg-white/50' : 'border border-rose-400/20'}
             ${isFinal ? 'border-emerald-300/30' : ''}
           `}
         >
