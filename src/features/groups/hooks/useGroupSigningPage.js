@@ -33,6 +33,7 @@ export function useGroupSigningPage() {
     currentSignature,
     isSubmitting,
     isFinalizing,
+    iFinalized,
     pageNumber,
     pdfUrl,
     setIsCanvasOpen,
@@ -62,7 +63,10 @@ export function useGroupSigningPage() {
     [signatures, currentUser?.id]
   );
 
-  const isCompleted = documentStatus?.toUpperCase() === 'COMPLETED';
+  // Gating redirect "Dokumen Telah Difinalisasi": hanya user yang menekan
+  // tombol finalisasi pada session ini (`iFinalized === true`) yang diarahkan
+  // ke layar selesai. User lain tetap di halaman signing dengan notifikasi.
+  const isCompleted = iFinalized && documentStatus?.toUpperCase() === 'COMPLETED';
   const isFinalizeMode = isAdmin && readyToFinalize;
   const finalizeAction = isFinalizeMode ? handleFinalizeDocument : handleSaveMySignature;
   const finalizeText = isFinalizeMode ? 'Finalisasi Dokumen' : 'Simpan Tanda Tangan';

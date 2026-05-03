@@ -103,6 +103,10 @@ const GroupSigningPage = () => {
   }
 
   // ── Completed ─────────────────────────────────────────────────────────────
+  // Layar "Dokumen Telah Difinalisasi" hanya ditampilkan untuk user yang
+  // benar-benar menekan tombol finalisasi pada session ini (lihat gating
+  // `iFinalized` pada `useGroupSigningPage`). User lain tetap berada di
+  // halaman signing dan hanya menerima notifikasi via modal/socket.
   if (isCompleted) {
     return (
       <div className="fixed inset-0 bg-zinc-50 dark:bg-zinc-950 flex flex-col items-center justify-center p-6 text-center">
