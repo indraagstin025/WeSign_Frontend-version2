@@ -35,12 +35,9 @@ export const useGroupSocket = ({
   setSignatures,
   setPendingSigners,
   setReadyToFinalize,
-  setDocumentStatus,
   setStatusModal,
   // Callback refresh data grup (untuk upload/delete/signer/member changes)
   onRefresh,
-  // Signing-only refresh (hanya saat finalized — butuh URL PDF baru)
-  onRefreshSigning,
   // Callback khusus jika user ini dikick
   onKicked,
 }) => {
@@ -148,7 +145,12 @@ export const useGroupSocket = ({
           break;
 
         case 'finalized':
-          setDocumentStatus?.('COMPLETED');
+          // Catatan: SENGAJA tidak set documentStatus='COMPLETED' di sini.
+          // Hanya admin yang menekan tombol "Finalisasi Dokumen" yang
+          // di-redirect ke halaman "Dokumen Telah Difinalisasi" (via
+          // setDocumentStatus di handleFinalizeDocument). User lain cukup
+          // menerima notifikasi dan tetap di halaman signing — refresh data
+          // grup dilakukan agar list dokumen ikut ter-update.
           setReadyToFinalize?.(false);
           setStatusModal?.({
             isOpen: true, type: 'success',
@@ -156,7 +158,6 @@ export const useGroupSocket = ({
             message: 'Admin telah menyelesaikan dokumen. PDF final sudah tersedia.',
             onConfirm: null,
           });
-          onRefreshSigning?.();
           onRefresh?.(true);
           break;
 

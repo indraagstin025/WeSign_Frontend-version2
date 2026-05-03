@@ -146,13 +146,11 @@ export const useGroupSignatureActions = ({
   );
 
   // ── Simpan TTD Final (Per User) ───────────────────────────────────────────
+  // Feedback ke user pakai window.alert() sederhana — tanpa modal — sesuai
+  // kebutuhan UX di GroupSigningPage agar tidak menutup tampilan dokumen.
   const handleSaveMySignature = useCallback(async () => {
     if (!mySignature) {
-      setStatusModal({
-        isOpen: true, type: 'error',
-        title: 'Belum Ada Tanda Tangan',
-        message: 'Silakan letakkan tanda tangan Anda di dokumen terlebih dahulu.',
-      });
+      window.alert('Belum ada tanda tangan.\n\nSilakan letakkan tanda tangan Anda di dokumen terlebih dahulu.');
       return;
     }
 
@@ -179,24 +177,17 @@ export const useGroupSignatureActions = ({
 
       socketService.emitSignatureSaved(documentId, groupId);
 
-      setStatusModal({
-        isOpen: true, type: 'success',
-        title: 'Tanda Tangan Tersimpan!',
-        message:
-          remainingSigners > 0
-            ? `Tanda tangan Anda berhasil disimpan. Menunggu ${remainingSigners} orang lagi.`
-            : 'Semua penandatangan sudah selesai. Admin dapat melakukan finalisasi.',
-      });
+      const followUp =
+        remainingSigners > 0
+          ? `Menunggu ${remainingSigners} orang lagi.`
+          : 'Semua penandatangan sudah selesai. Admin dapat melakukan finalisasi.';
+      window.alert(`Tanda tangan tersimpan!\n\n${followUp}`);
     } catch (err) {
-      setStatusModal({
-        isOpen: true, type: 'error',
-        title: 'Gagal Menyimpan',
-        message: err.message || 'Terjadi kesalahan. Silakan coba lagi.',
-      });
+      window.alert(`Gagal menyimpan tanda tangan.\n\n${err.message || 'Terjadi kesalahan. Silakan coba lagi.'}`);
     } finally {
       setIsSubmitting(false);
     }
-  }, [mySignature, documentId, groupId, setSignatures, setHasMyFinalSig, setReadyToFinalize, setIsSubmitting, setStatusModal]);
+  }, [mySignature, documentId, groupId, setSignatures, setHasMyFinalSig, setReadyToFinalize, setIsSubmitting]);
 
   // ── Finalisasi Dokumen (Admin Only) ───────────────────────────────────────
   const handleFinalizeDocument = useCallback(async () => {
