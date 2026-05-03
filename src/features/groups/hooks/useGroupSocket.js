@@ -140,12 +140,9 @@ export const useGroupSocket = ({
         );
       }
 
-      setStatusModal?.({
-        isOpen: true, type: 'info',
-        title: 'Tanda Tangan Masuk',
-        message: `${data.userName || 'Seseorang'} telah menandatangani dokumen.`,
-        onConfirm: null,
-      });
+      // Tampilkan notifikasi TTD masuk via window.alert (bukan modal)
+      // sesuai request: flow simpan TTD seharusnya cukup pakai alert.
+      window.alert(`${data.userName || 'Seseorang'} telah menandatangani dokumen.`);
     };
 
     socketService.on('signature_saved', handleSigSaved);
