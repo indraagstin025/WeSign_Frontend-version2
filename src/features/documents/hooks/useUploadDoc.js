@@ -9,6 +9,15 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 ).toString();
 
 /**
+ * Batas ukuran upload sisi klien (defensive UX cap).
+ * Backend punya `MAX_FILE_SIZE` 1 GB, tapi frontend sengaja menahan di 10 MB
+ * untuk menghemat bandwidth pemakai & menolak file besar lebih cepat.
+ * Ubah dua konstanta ini bersamaan agar pesan error tetap konsisten.
+ */
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+const MAX_UPLOAD_LABEL = '10 MB';
+
+/**
  * Hook for managing the logic of Document Uploading.
  * Centralizes PDF validation, progress tracking, and API integration.
  */
@@ -78,8 +87,8 @@ export const useUploadDoc = (onSuccess, onClose) => {
       setError('Hanya diperbolehkan dokumen PDF.');
       return;
     }
-    if (selectedFile.size > 10 * 1024 * 1024) {
-      setError('Ukuran file melebihi batas maksimal 10MB.');
+    if (selectedFile.size > MAX_UPLOAD_BYTES) {
+      setError(`Ukuran file melebihi batas maksimal ${MAX_UPLOAD_LABEL}.`);
       return;
     }
     if (selectedFile.size === 0) {

@@ -106,13 +106,23 @@ export async function restoreVersion(id, versionId) {
 }
 
 /**
- * Mendapatkan URL untuk mengunduh versi spesifik.
+ * Mendapatkan URL signed untuk akses file pada versi spesifik.
+ *
+ * Backend (FIX #59) sekarang membedakan dua mode akses lewat query
+ * `?purpose=view|download`:
+ *   - `view`     → signed URL bertanda Content-Disposition `inline` (buka di tab).
+ *   - `download` → signed URL bertanda `attachment` (memicu download di browser).
+ *
+ * Default `'view'` agar sinkron dengan {@link getDocumentFile} dan agar pemanggil
+ * yang ingin tampilkan preview tidak perlu pass argumen tambahan.
+ *
  * @param {string} id - Document ID
  * @param {string} versionId - Version ID (V1 atau V2)
- * @returns {Promise<object>} URL download file PDF versi tersebut
+ * @param {'view'|'download'} [purpose='view'] - Intent akses file
+ * @returns {Promise<object>} Signed URL & metadata (mode, expiresIn, dst.)
  */
-export async function getVersionFile(id, versionId) {
-  return apiFetch(`/documents/${id}/versions/${versionId}/file`, {
+export async function getVersionFile(id, versionId, purpose = 'view') {
+  return apiFetch(`/documents/${id}/versions/${versionId}/file?purpose=${purpose}`, {
     method: 'GET',
   });
 }
