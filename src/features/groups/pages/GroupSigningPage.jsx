@@ -2,8 +2,11 @@ import React from 'react';
 import { AlertCircle, CheckCircle } from 'lucide-react';
 import { pdfjs, Document, Page } from 'react-pdf';
 
-// Konfigurasi Worker PDF.js
-pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+// Konfigurasi Worker PDF.js — bundle lokal via Vite (lepas dependency unpkg CDN)
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.mjs',
+  import.meta.url,
+).toString();
 
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
@@ -238,6 +241,10 @@ const GroupSigningPage = () => {
           onFinalize={actions.finalizeAction}
           signatureCount={mySignatureCount}
           isSubmitting={submittingAny}
+          // Hint "Ketuk PDF" muncul saat user sudah punya signature draft tapi
+          // belum drop ke PDF (mySignatureCount === 0). Ekuivalen dengan hint
+          // di SigningFooter yang `hidden md:block`.
+          showPlacementHint={canSign && !!currentSignature && mySignatureCount === 0}
         />
       )}
 

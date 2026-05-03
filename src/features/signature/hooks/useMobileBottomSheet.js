@@ -25,7 +25,6 @@ export const useMobileBottomSheet = (isOpen, onClose) => {
   // --- TOUCH GESTURES (MOBILE) ---
   const handleTouchStart = useCallback((e) => {
     const touch = e.touches[0];
-    dragRef.current.startY = touch.clientX; // Logic note: original code used clientY
     dragRef.current.startY = touch.clientY;
     dragRef.current.currentTranslate = translateY;
     dragRef.current.isDragging = true;

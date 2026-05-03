@@ -12,7 +12,10 @@ const SigningNavbar = ({
   onBack 
 }) => {
   return (
-    <header className="h-20 bg-white dark:bg-[#202c33] border-b border-zinc-200 dark:border-white/5 flex items-center justify-between px-4 sm:px-8 shadow-sm shrink-0 z-20">
+    <header
+      className="bg-white dark:bg-[#202c33] border-b border-zinc-200 dark:border-white/5 flex items-center justify-between px-4 sm:px-8 shadow-sm shrink-0 z-20 h-20"
+      style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+    >
       <div className="flex items-center gap-2 min-w-0">
         {onBack && (
           <button 

@@ -37,7 +37,10 @@ const MobileBottomSheet = ({
         ref={sheetRef}
         className="sm:hidden fixed bottom-0 left-0 right-0 z-[101] flex flex-col"
         style={{
-          maxHeight: '85vh',
+          // dvh = dynamic viewport height (iOS Safari address bar safe).
+          // Fallback ke 85vh untuk browser yang tidak dukung dvh.
+          maxHeight: 'min(85vh, 85dvh)',
+          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
           ...state.sheetStyle
         }}
       >
@@ -67,7 +70,10 @@ const MobileBottomSheet = ({
           </div>
 
           {/* Scrollable Content */}
-          <div className="flex-1 overflow-y-auto px-5 pb-4 space-y-4" style={{ maxHeight: 'calc(85vh - 180px)' }}>
+          <div
+            className="flex-1 overflow-y-auto px-5 pb-4 space-y-4"
+            style={{ maxHeight: 'min(calc(85vh - 180px), calc(85dvh - 180px))' }}
+          >
             
             {/* Tombol Tambah Tanda Tangan */}
             <button 

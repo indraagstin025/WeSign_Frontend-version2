@@ -13,7 +13,10 @@ const SigningFooter = ({
   rightContent = null
 }) => {
   return (
-    <footer className="flex h-16 bg-white/80 dark:bg-black/80 backdrop-blur-md border-t border-zinc-200 dark:border-emerald-500/10 items-center justify-between px-6 shrink-0 z-[120] relative">
+    <footer
+      className="flex h-16 bg-white/80 dark:bg-black/80 backdrop-blur-md border-t border-zinc-200 dark:border-emerald-500/10 items-center justify-between px-6 shrink-0 z-[120] relative"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+    >
       {/* Spacer for left symmetry if needed */}
       <div className="hidden sm:block w-32" />
 
