@@ -87,11 +87,12 @@ export const useGroupSigning = ({ groupId, documentId, currentUser }) => {
     setSignatures,
     setPendingSigners,
     setReadyToFinalize,
-    setDocumentStatus,
     setStatusModal,
-    // onRefreshSigning: dipakai hanya saat finalized (butuh URL PDF baru)
-    onRefreshSigning: fetchGroupData,
-    // onRefresh: untuk group-level changes (tidak diperlukan di signing page)
+    // onRefresh: untuk group-level changes (tidak diperlukan di signing page).
+    // setDocumentStatus sengaja tidak diteruskan — finalisasi jarak jauh
+    // tidak boleh memaksa redirect user lain ke halaman "Dokumen Telah
+    // Difinalisasi". Hanya admin yang menekan tombol Finalisasi yang
+    // mengubah documentStatus lewat handleFinalizeDocument.
     onRefresh: null,
   });
 
