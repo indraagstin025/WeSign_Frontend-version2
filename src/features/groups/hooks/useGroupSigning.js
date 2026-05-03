@@ -18,6 +18,10 @@ export const useGroupSigning = ({ groupId, documentId, currentUser }) => {
   const [isCanvasOpen, setIsCanvasOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFinalizing, setIsFinalizing] = useState(false);
+  // Penanda bahwa user pada session ini yang menekan tombol finalisasi.
+  // Hanya user dengan flag ini bernilai true yang akan diarahkan ke layar
+  // "Dokumen Telah Difinalisasi". User lain cukup menerima notifikasi.
+  const [iFinalized, setIFinalized] = useState(false);
   const [statusModal, setStatusModal] = useState({
     isOpen: false, type: 'success', title: '', message: '', onConfirm: null,
   });
@@ -122,6 +126,7 @@ export const useGroupSigning = ({ groupId, documentId, currentUser }) => {
     setIsSubmitting,
     setIsFinalizing,
     setStatusModal,
+    setIFinalized,
     fetchGroupData,
   });
 
@@ -176,6 +181,7 @@ export const useGroupSigning = ({ groupId, documentId, currentUser }) => {
     loading, error,
     isCanvasOpen, setIsCanvasOpen,
     isSubmitting, isFinalizing,
+    iFinalized,
     statusModal, setStatusModal,
 
     // Handlers

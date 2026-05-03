@@ -72,6 +72,7 @@ const GroupSigningPage = () => {
     setIsCanvasOpen,
     isSubmitting,
     isFinalizing,
+    iFinalized,
     statusModal,
     setStatusModal,
     socketStatus,
@@ -151,8 +152,10 @@ const GroupSigningPage = () => {
     );
   }
 
-  // Cek apakah dokumen sudah final (normalisasi lowercase dari backend)
-  if (documentStatus?.toUpperCase() === 'COMPLETED') {
+  // Layar "Dokumen Telah Difinalisasi" hanya ditampilkan untuk user yang
+  // benar-benar menekan tombol finalisasi pada session ini. User lain tetap
+  // berada di halaman signing dan hanya menerima notifikasi via modal/socket.
+  if (iFinalized && documentStatus?.toUpperCase() === 'COMPLETED') {
     return (
       <div className="fixed inset-0 bg-zinc-50 dark:bg-zinc-950 flex flex-col items-center justify-center p-6 text-center">
         <CheckCircle size={48} className="text-emerald-500 mb-4" />
