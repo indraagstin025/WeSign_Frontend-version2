@@ -33,7 +33,7 @@ const UploadDocModal = ({ isOpen, onClose, onSuccess }) => {
             </div>
             <div>
               <h3 className="text-lg font-bold text-zinc-900 dark:text-white font-heading tracking-tight text-left">Unggah Dokumen</h3>
-              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 text-left">PDF Digital • Maks 10MB • Aman & Terenkripsi</p>
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 text-left">PDF Digital • Maks 10 MB • Aman & Terenkripsi</p>
             </div>
           </div>
           <button 

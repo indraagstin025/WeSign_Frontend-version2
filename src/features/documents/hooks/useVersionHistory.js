@@ -45,10 +45,14 @@ export const useVersionHistory = (isOpen, document, onRollbackSuccess, onClose) 
 
   /**
    * Handle specific version download
+   *
+   * Pass `'download'` agar backend mengembalikan signed URL ber-Content-Disposition
+   * `attachment` (memicu download). Tanpa ini, URL default `'view'` hanya membuka
+   * file inline di tab baru — bug setelah backend FIX #59.
    */
   const handleDownload = async (versionId) => {
     try {
-      const resp = await getVersionFile(document.id, versionId);
+      const resp = await getVersionFile(document.id, versionId, 'download');
       if (resp?.status === 'success' && resp.data?.url) {
         window.location.assign(resp.data.url);
       }
