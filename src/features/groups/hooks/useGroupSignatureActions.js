@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import {
   saveDraft,
@@ -41,6 +41,14 @@ export const useGroupSignatureActions = ({
   setIFinalized,
   fetchGroupData,
 }) => {
+  // Defense-in-depth untuk klik ganda. UI sudah meng-disable tombol via
+  // `disableFinalizeAction` di useGroupSigningPage, tapi state setter React
+  // bersifat async — di perangkat lambat klik 2x sangat cepat masih bisa
+  // melewati gating UI. Ref ini di-set sinkron sebelum await pertama supaya
+  // pemanggilan kedua langsung early-return tanpa menunggu re-render.
+  const submitInFlightRef = useRef(false);
+  const finalizeInFlightRef = useRef(false);
+
   // ── Tambah TTD (Drop/Klik di PDF) ─────────────────────────────────────────
   const handleAddSignature = useCallback(
     async (dropData) => {
@@ -231,7 +239,9 @@ export const useGroupSignatureActions = ({
     // bila ada race (klik cepat sebelum disabled propagate, atau invocation
     // dari path lain).
     if (mySignature.status === 'final') return;
+    if (submitInFlightRef.current) return;
 
+    submitInFlightRef.current = true;
     setIsSubmitting(true);
     try {
       const res = await signDocument(documentId, {
@@ -273,6 +283,7 @@ export const useGroupSignatureActions = ({
     } catch (err) {
       window.alert(`Gagal menyimpan tanda tangan: ${err.message || 'Terjadi kesalahan. Silakan coba lagi.'}`);
     } finally {
+      submitInFlightRef.current = false;
       setIsSubmitting(false);
     }
   }, [mySignature, documentId, groupId, currentUser?.id, setSignatures, setHasMyFinalSig, setReadyToFinalize, setPendingSigners, setIsSubmitting]);
@@ -280,7 +291,9 @@ export const useGroupSignatureActions = ({
   // ── Finalisasi Dokumen (Admin Only) ───────────────────────────────────────
   const handleFinalizeDocument = useCallback(async () => {
     if (!isAdmin || !readyToFinalize) return;
+    if (finalizeInFlightRef.current) return;
 
+    finalizeInFlightRef.current = true;
     setIsFinalizing(true);
     try {
       const res = await finalizeGroupDocument(groupId, documentId);
@@ -307,6 +320,7 @@ export const useGroupSignatureActions = ({
         message: err.message || 'Terjadi kesalahan saat finalisasi.',
       });
     } finally {
+      finalizeInFlightRef.current = false;
       setIsFinalizing(false);
     }
   }, [isAdmin, readyToFinalize, groupId, documentId, documentTitle, setDocumentStatus, setIFinalized, setIsFinalizing, setStatusModal]);

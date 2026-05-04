@@ -36,6 +36,8 @@ export const useSignPackage = (packageId) => {
   const [isCanvasOpen, setIsCanvasOpen] = useState(false);
   const [currentSignature, setCurrentSignature] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Guard sinkron untuk klik ganda — lihat catatan di useGroupSignatureActions.
+  const submitInFlightRef = useRef(false);
 
   // --- STATE: UI (Page Level) ---
   const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -205,6 +207,7 @@ export const useSignPackage = (packageId) => {
     // --- Submission ---
 
     const handleSubmit = async () => {
+    if (submitInFlightRef.current) return;
     const allDocIds = Object.keys(signaturesMap);
     if (allDocIds.length === 0) {
       setStatusModal({
@@ -216,6 +219,7 @@ export const useSignPackage = (packageId) => {
       return;
     }
 
+    submitInFlightRef.current = true;
     setIsSubmitting(true);
     try {
       const signaturesPayload = [];
@@ -256,6 +260,7 @@ export const useSignPackage = (packageId) => {
         message: err.message || 'Terjadi kesalahan saat memproses tanda tangan.'
       });
     } finally {
+      submitInFlightRef.current = false;
       setIsSubmitting(false);
     }
   };

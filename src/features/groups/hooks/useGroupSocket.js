@@ -143,9 +143,18 @@ export const useGroupSocket = ({
         );
       }
       if (setPendingSigners) {
-        setPendingSigners((prev) =>
-          prev.filter((s) => String(s.userId) !== String(data.userId))
-        );
+        setPendingSigners((prev) => {
+          const next = prev.filter((s) => String(s.userId) !== String(data.userId));
+          // Sinkronkan readyToFinalize secara realtime: kalau ini signer
+          // terakhir (next.length === 0), admin harus bisa langsung
+          // melihat tombol "Finalisasi Dokumen" tanpa refresh halaman.
+          // Tanpa ini, admin yang tidak ikut menandatangani akan terjebak
+          // di mode 'sign' sampai dia refresh manual.
+          if (next.length === 0 && setReadyToFinalize) {
+            setReadyToFinalize(true);
+          }
+          return next;
+        });
       }
 
       // Tampilkan notifikasi TTD masuk via window.alert (bukan modal)
