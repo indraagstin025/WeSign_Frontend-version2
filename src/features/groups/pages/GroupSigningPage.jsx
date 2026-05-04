@@ -208,6 +208,9 @@ const GroupSigningPage = () => {
           onFinalize={isAdmin && readyToFinalize ? handleFinalizeDocument : handleSaveMySignature}
           isSubmitting={isSubmitting || isFinalizing}
           finalizeText={isAdmin && readyToFinalize ? "Finalisasi Dokumen" : "Simpan Tanda Tangan"}
+          // Admin yang siap memfinalisasi tetap bisa menekan tombol meski tidak
+          // memiliki tanda tangan sendiri di dokumen.
+          canFinalizeOverride={isAdmin && readyToFinalize ? true : null}
         />
 
         {/* MAIN PDF AREA */}
@@ -282,6 +285,7 @@ const GroupSigningPage = () => {
           onFinalize={isAdmin && readyToFinalize ? handleFinalizeDocument : handleSaveMySignature}
           signatureCount={signatures.filter(s => String(s.userId || s.signerId) === String(currentUser?.id)).length}
           isSubmitting={isSubmitting || isFinalizing}
+          mode={isAdmin && readyToFinalize ? 'finalize' : 'sign'}
         />
       )}
 
@@ -299,6 +303,8 @@ const GroupSigningPage = () => {
         isSubmitting={isSubmitting || isFinalizing}
         statusModal={statusModal}
         setStatusModal={setStatusModal}
+        finalizeText={isAdmin && readyToFinalize ? 'Finalisasi Dokumen' : 'Simpan Tanda Tangan'}
+        canFinalizeOverride={isAdmin && readyToFinalize ? true : null}
       />
     </div>
   );

@@ -12,9 +12,12 @@ const SigningSidebar = ({
   onRemoveSignature,
   onFinalize,
   isSubmitting,
-  finalizeText = "Selesaikan Dokumen"
+  finalizeText = "Selesaikan Dokumen",
+  // Override eksternal: admin yang siap memfinalisasi dokumen tanpa harus
+  // memiliki tanda tangan sendiri di dokumen.
+  canFinalizeOverride = null,
 }) => {
-  const canFinalize = signatures.length > 0;
+  const canFinalize = canFinalizeOverride !== null ? canFinalizeOverride : signatures.length > 0;
 
   return (
     <aside className="hidden sm:flex w-72 bg-white dark:bg-[#111b21] border-r border-zinc-200 dark:border-white/5 flex-col shrink-0 z-10 overflow-hidden relative">

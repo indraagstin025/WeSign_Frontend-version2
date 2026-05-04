@@ -16,11 +16,15 @@ const MobileBottomSheet = ({
   signatures, 
   onRemoveSignature,
   onFinalize,
-  isSubmitting
+  isSubmitting,
+  finalizeText = 'Selesaikan Dokumen',
+  // Override eksternal: dipakai admin yang siap finalisasi tanpa harus
+  // memiliki tanda tangan sendiri di dokumen.
+  canFinalizeOverride = null,
 }) => {
   const sheetRef = useRef(null);
   const { state, actions } = useMobileBottomSheet(isOpen, onClose);
-  const canFinalize = signatures.length > 0;
+  const canFinalize = canFinalizeOverride !== null ? canFinalizeOverride : signatures.length > 0;
 
   if (!isOpen) return null;
 
@@ -151,7 +155,7 @@ const MobileBottomSheet = ({
               ) : (
                 <>
                   <Check size={18} />
-                  <span>Selesaikan Dokumen</span>
+                  <span>{finalizeText}</span>
                 </>
               )}
             </button>
