@@ -20,7 +20,9 @@ const SigningModals = ({
   handleFinalSign,
   isSubmitting,
   statusModal,
-  setStatusModal
+  setStatusModal,
+  finalizeText,
+  canFinalizeOverride = null,
 }) => {
   return (
     <>
@@ -41,6 +43,8 @@ const SigningModals = ({
         onRemoveSignature={removeSignature}
         onFinalize={handleFinalSign}
         isSubmitting={isSubmitting}
+        finalizeText={finalizeText}
+        canFinalizeOverride={canFinalizeOverride}
       />
 
       {/* 3. Global Feedback Status Modal */}

@@ -9,6 +9,8 @@ import { addPersonalSignature } from '../api/signatureService';
 export const useDocumentSigner = (documentId) => {
   const navigate = useNavigate();
   const containerRef = useRef(null);
+  // Guard sinkron untuk mencegah klik ganda saat finalisasi
+  const submitInFlightRef = useRef(false);
 
   const [document, setDocument] = useState(null);
   const [pdfUrl, setPdfUrl] = useState('');
@@ -111,11 +113,13 @@ export const useDocumentSigner = (documentId) => {
   // Tidak perlu lagi mengurangi padding — koordinat sudah bersih.
 
   const handleFinalSign = async () => {
+    if (submitInFlightRef.current) return;
     if (signatures.length === 0) {
       setStatusModal({ isOpen: true, type: 'error', title: 'Belum Ada Tanda Tangan', message: 'Silakan tempatkan tanda tangan Anda.' });
       return;
     }
 
+    submitInFlightRef.current = true;
     setIsSubmitting(true);
     try {
       const signaturesToSubmit = signatures.map(sig => ({
@@ -141,6 +145,7 @@ export const useDocumentSigner = (documentId) => {
     } catch (err) {
       setStatusModal({ isOpen: true, type: 'error', title: 'Gagal', message: err.message });
     } finally {
+      submitInFlightRef.current = false;
       setIsSubmitting(false);
     }
   };
