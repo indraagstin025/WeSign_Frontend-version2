@@ -12,9 +12,15 @@ const SigningSidebar = ({
   onRemoveSignature,
   onFinalize,
   isSubmitting,
-  finalizeText = "Selesaikan Dokumen"
+  finalizeText = "Selesaikan Dokumen",
+  // Optional: jika diberikan (boolean), prop ini menggantikan logic disable
+  // internal. Berguna saat parent perlu kontrol penuh (mis. cegah double
+  // submit setelah TTD final tersimpan, atau force-enable di mode finalisasi
+  // admin tanpa signature).
+  disabled = null,
 }) => {
   const canFinalize = signatures.length > 0;
+  const isDisabled = disabled !== null ? disabled : (!canFinalize || isSubmitting);
 
   return (
     <aside className="hidden sm:flex w-72 bg-white dark:bg-[#111b21] border-r border-zinc-200 dark:border-white/5 flex-col shrink-0 z-10 overflow-hidden relative">
@@ -94,9 +100,9 @@ const SigningSidebar = ({
       <div className="p-5 bg-zinc-50 dark:bg-[#202c33] border-t border-zinc-200 dark:border-white/5">
         <button 
           onClick={onFinalize}
-          disabled={!canFinalize || isSubmitting}
+          disabled={isDisabled}
           className={`w-full h-11 flex items-center justify-center gap-2 rounded-xl text-sm font-bold transition-all cursor-pointer shadow-lg
-            ${!canFinalize || isSubmitting
+            ${isDisabled
               ? 'bg-zinc-200 dark:bg-[#111b21] text-zinc-400 dark:text-zinc-600 cursor-not-allowed shadow-none' 
               : 'bg-emerald-600 text-white hover:bg-emerald-700 active:scale-95'
             }

@@ -38,8 +38,10 @@ const GroupSigningPage = () => {
     mySignatures,
     mySignatureCount,
     isCompleted,
+    isFinalizeMode,
     finalizeText,
     submittingAny,
+    disableFinalizeAction,
 
     // Data
     groupData,
@@ -167,6 +169,7 @@ const GroupSigningPage = () => {
           onFinalize={actions.finalizeAction}
           isSubmitting={submittingAny}
           finalizeText={finalizeText}
+          disabled={disableFinalizeAction}
         />
 
         {/* MAIN PDF AREA */}
@@ -245,6 +248,13 @@ const GroupSigningPage = () => {
           // belum drop ke PDF (mySignatureCount === 0). Ekuivalen dengan hint
           // di SigningFooter yang `hidden md:block`.
           showPlacementHint={canSign && !!currentSignature && mySignatureCount === 0}
+          // Mode finalisasi (admin + readyToFinalize) → tombol kanan tampil
+          // sebagai "Finalisasi Dokumen" berlabel & flex-1 di mobile bar.
+          isFinalizeMode={isFinalizeMode}
+          finalizeText={finalizeText}
+          // Cegah double submit setelah klik pertama (lihat `disableFinalizeAction`
+          // pada `useGroupSigningPage`).
+          disabled={disableFinalizeAction}
         />
       )}
 
@@ -262,6 +272,8 @@ const GroupSigningPage = () => {
         isSubmitting={submittingAny}
         statusModal={statusModal}
         setStatusModal={setStatusModal}
+        finalizeText={finalizeText}
+        disableFinalize={disableFinalizeAction}
       />
     </div>
   );

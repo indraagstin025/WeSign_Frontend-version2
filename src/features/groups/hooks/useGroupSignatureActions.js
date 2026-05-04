@@ -226,6 +226,11 @@ export const useGroupSignatureActions = ({
       window.alert('Silakan letakkan tanda tangan Anda di dokumen terlebih dahulu.');
       return;
     }
+    // Guard double-submit: tombol di UI sudah di-disable lewat
+    // `disableFinalizeAction`, tapi tetap blokir di handler agar tetap aman
+    // bila ada race (klik cepat sebelum disabled propagate, atau invocation
+    // dari path lain).
+    if (mySignature.status === 'final') return;
 
     setIsSubmitting(true);
     try {

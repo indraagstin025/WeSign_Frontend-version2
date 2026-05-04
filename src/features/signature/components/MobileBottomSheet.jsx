@@ -16,11 +16,19 @@ const MobileBottomSheet = ({
   signatures, 
   onRemoveSignature,
   onFinalize,
-  isSubmitting
+  isSubmitting,
+  // Optional: label tombol aksi utama (default: "Selesaikan Dokumen").
+  finalizeText = 'Selesaikan Dokumen',
+  // Optional: jika diberikan (boolean), menggantikan logic disable internal.
+  // Berguna untuk parent yang ingin kontrol penuh (mis. cegah double submit
+  // setelah TTD final tersimpan, atau force-enable mode finalisasi admin
+  // tanpa signature).
+  disabled = null,
 }) => {
   const sheetRef = useRef(null);
   const { state, actions } = useMobileBottomSheet(isOpen, onClose);
   const canFinalize = signatures.length > 0;
+  const isDisabled = disabled !== null ? disabled : (!canFinalize || isSubmitting);
 
   if (!isOpen) return null;
 
@@ -144,9 +152,9 @@ const MobileBottomSheet = ({
                 onFinalize();
                 onClose();
               }}
-              disabled={!canFinalize || isSubmitting}
+              disabled={isDisabled}
               className={`w-full h-12 flex items-center justify-center gap-2 rounded-xl text-sm font-bold transition-all border-none cursor-pointer shadow-lg
-                ${!canFinalize || isSubmitting
+                ${isDisabled
                   ? 'bg-zinc-200 dark:bg-[#111b21] text-zinc-400 dark:text-zinc-600 cursor-not-allowed shadow-none' 
                   : 'bg-emerald-600 text-white hover:bg-emerald-700 active:scale-95 shadow-emerald-600/20'
                 }
@@ -157,7 +165,7 @@ const MobileBottomSheet = ({
               ) : (
                 <>
                   <Check size={18} />
-                  <span>Selesaikan Dokumen</span>
+                  <span>{finalizeText}</span>
                 </>
               )}
             </button>
