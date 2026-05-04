@@ -33,6 +33,8 @@ export function useGroupSigningPage() {
     currentSignature,
     isSubmitting,
     isFinalizing,
+    iFinalized,
+    hasMyFinalSig,
     pageNumber,
     pdfUrl,
     setIsCanvasOpen,
@@ -62,11 +64,26 @@ export function useGroupSigningPage() {
     [signatures, currentUser?.id]
   );
 
-  const isCompleted = documentStatus?.toUpperCase() === 'COMPLETED';
+  // Gating redirect "Dokumen Telah Difinalisasi": hanya user yang menekan
+  // tombol finalisasi pada session ini (`iFinalized === true`) yang diarahkan
+  // ke layar selesai. User lain tetap di halaman signing dengan notifikasi.
+  const isCompleted = iFinalized && documentStatus?.toUpperCase() === 'COMPLETED';
   const isFinalizeMode = isAdmin && readyToFinalize;
   const finalizeAction = isFinalizeMode ? handleFinalizeDocument : handleSaveMySignature;
   const finalizeText = isFinalizeMode ? 'Finalisasi Dokumen' : 'Simpan Tanda Tangan';
   const submittingAny = isSubmitting || isFinalizing;
+
+  // Gating tombol aksi (Simpan / Finalisasi):
+  // - Mode finalisasi (admin + readyToFinalize): cukup blokir saat sedang
+  //   finalisasi atau sudah selesai difinalisasi pada session ini. Tidak
+  //   perlu mensyaratkan `mySignatures.length > 0` (admin yang bukan signer
+  //   tetap boleh finalisasi).
+  // - Mode simpan (signer biasa): blokir saat tombol sedang submit, sudah
+  //   ada TTD final milik user (cegah double-submit setelah klik pertama),
+  //   atau belum ada TTD yang ditempelkan ke PDF.
+  const disableFinalizeAction = isFinalizeMode
+    ? (isFinalizing || iFinalized)
+    : (isSubmitting || hasMyFinalSig || mySignatures.length === 0);
 
   // ── Handler klik PDF (drop signature) ─────────────────────────────────────
   const handleCanvasClick = useCallback(
@@ -124,6 +141,7 @@ export function useGroupSigningPage() {
       isFinalizeMode,
       finalizeText,
       submittingAny,
+      disableFinalizeAction,
       // pass-through dari useGroupSigning
       ...signing,
     },

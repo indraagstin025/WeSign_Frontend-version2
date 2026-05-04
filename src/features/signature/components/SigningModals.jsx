@@ -20,7 +20,11 @@ const SigningModals = ({
   handleFinalSign,
   isSubmitting,
   statusModal,
-  setStatusModal
+  setStatusModal,
+  // Optional: diteruskan ke MobileBottomSheet untuk customization label tombol
+  // & disable state (mis. cegah double submit, mode finalisasi admin).
+  finalizeText,
+  disableFinalize = null,
 }) => {
   return (
     <>
@@ -41,6 +45,8 @@ const SigningModals = ({
         onRemoveSignature={removeSignature}
         onFinalize={handleFinalSign}
         isSubmitting={isSubmitting}
+        finalizeText={finalizeText}
+        disabled={disableFinalize}
       />
 
       {/* 3. Global Feedback Status Modal */}

@@ -12,8 +12,11 @@ import {
 } from 'lucide-react';
 import { pdfjs, Document, Page } from 'react-pdf';
 
-// Konfigurasi Worker PDF.js
-pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+// Konfigurasi Worker PDF.js — bundle lokal via Vite (lepas dependency unpkg CDN)
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.mjs',
+  import.meta.url,
+).toString();
 
 import { useTheme } from '../../../hooks/useTheme';
 import { usePackagePreview } from '../hooks/usePackagePreview';

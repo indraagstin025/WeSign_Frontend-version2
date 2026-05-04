@@ -2,8 +2,11 @@ import React from 'react';
 import { AlertCircle, CheckCircle } from 'lucide-react';
 import { pdfjs, Document, Page } from 'react-pdf';
 
-// Konfigurasi Worker PDF.js
-pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+// Konfigurasi Worker PDF.js — bundle lokal via Vite (lepas dependency unpkg CDN)
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.mjs',
+  import.meta.url,
+).toString();
 
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
@@ -35,8 +38,10 @@ const GroupSigningPage = () => {
     mySignatures,
     mySignatureCount,
     isCompleted,
+    isFinalizeMode,
     finalizeText,
     submittingAny,
+    disableFinalizeAction,
 
     // Data
     groupData,
@@ -103,6 +108,10 @@ const GroupSigningPage = () => {
   }
 
   // ── Completed ─────────────────────────────────────────────────────────────
+  // Layar "Dokumen Telah Difinalisasi" hanya ditampilkan untuk user yang
+  // benar-benar menekan tombol finalisasi pada session ini (lihat gating
+  // `iFinalized` pada `useGroupSigningPage`). User lain tetap berada di
+  // halaman signing dan hanya menerima notifikasi via modal/socket.
   if (isCompleted) {
     return (
       <div className="fixed inset-0 bg-zinc-50 dark:bg-zinc-950 flex flex-col items-center justify-center p-6 text-center">
@@ -160,6 +169,7 @@ const GroupSigningPage = () => {
           onFinalize={actions.finalizeAction}
           isSubmitting={submittingAny}
           finalizeText={finalizeText}
+          disabled={disableFinalizeAction}
         />
 
         {/* MAIN PDF AREA */}
@@ -234,6 +244,17 @@ const GroupSigningPage = () => {
           onFinalize={actions.finalizeAction}
           signatureCount={mySignatureCount}
           isSubmitting={submittingAny}
+          // Hint "Ketuk PDF" muncul saat user sudah punya signature draft tapi
+          // belum drop ke PDF (mySignatureCount === 0). Ekuivalen dengan hint
+          // di SigningFooter yang `hidden md:block`.
+          showPlacementHint={canSign && !!currentSignature && mySignatureCount === 0}
+          // Mode finalisasi (admin + readyToFinalize) → tombol kanan tampil
+          // sebagai "Finalisasi Dokumen" berlabel & flex-1 di mobile bar.
+          isFinalizeMode={isFinalizeMode}
+          finalizeText={finalizeText}
+          // Cegah double submit setelah klik pertama (lihat `disableFinalizeAction`
+          // pada `useGroupSigningPage`).
+          disabled={disableFinalizeAction}
         />
       )}
 
@@ -251,6 +272,8 @@ const GroupSigningPage = () => {
         isSubmitting={submittingAny}
         statusModal={statusModal}
         setStatusModal={setStatusModal}
+        finalizeText={finalizeText}
+        disableFinalize={disableFinalizeAction}
       />
     </div>
   );

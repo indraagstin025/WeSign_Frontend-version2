@@ -16,11 +16,19 @@ const MobileBottomSheet = ({
   signatures, 
   onRemoveSignature,
   onFinalize,
-  isSubmitting
+  isSubmitting,
+  // Optional: label tombol aksi utama (default: "Selesaikan Dokumen").
+  finalizeText = 'Selesaikan Dokumen',
+  // Optional: jika diberikan (boolean), menggantikan logic disable internal.
+  // Berguna untuk parent yang ingin kontrol penuh (mis. cegah double submit
+  // setelah TTD final tersimpan, atau force-enable mode finalisasi admin
+  // tanpa signature).
+  disabled = null,
 }) => {
   const sheetRef = useRef(null);
   const { state, actions } = useMobileBottomSheet(isOpen, onClose);
   const canFinalize = signatures.length > 0;
+  const isDisabled = disabled !== null ? disabled : (!canFinalize || isSubmitting);
 
   if (!isOpen) return null;
 
@@ -37,7 +45,10 @@ const MobileBottomSheet = ({
         ref={sheetRef}
         className="sm:hidden fixed bottom-0 left-0 right-0 z-[101] flex flex-col"
         style={{
-          maxHeight: '85vh',
+          // dvh = dynamic viewport height (iOS Safari address bar safe).
+          // Fallback ke 85vh untuk browser yang tidak dukung dvh.
+          maxHeight: 'min(85vh, 85dvh)',
+          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
           ...state.sheetStyle
         }}
       >
@@ -67,7 +78,10 @@ const MobileBottomSheet = ({
           </div>
 
           {/* Scrollable Content */}
-          <div className="flex-1 overflow-y-auto px-5 pb-4 space-y-4" style={{ maxHeight: 'calc(85vh - 180px)' }}>
+          <div
+            className="flex-1 overflow-y-auto px-5 pb-4 space-y-4"
+            style={{ maxHeight: 'min(calc(85vh - 180px), calc(85dvh - 180px))' }}
+          >
             
             {/* Tombol Tambah Tanda Tangan */}
             <button 
@@ -138,9 +152,9 @@ const MobileBottomSheet = ({
                 onFinalize();
                 onClose();
               }}
-              disabled={!canFinalize || isSubmitting}
+              disabled={isDisabled}
               className={`w-full h-12 flex items-center justify-center gap-2 rounded-xl text-sm font-bold transition-all border-none cursor-pointer shadow-lg
-                ${!canFinalize || isSubmitting
+                ${isDisabled
                   ? 'bg-zinc-200 dark:bg-[#111b21] text-zinc-400 dark:text-zinc-600 cursor-not-allowed shadow-none' 
                   : 'bg-emerald-600 text-white hover:bg-emerald-700 active:scale-95 shadow-emerald-600/20'
                 }
@@ -151,7 +165,7 @@ const MobileBottomSheet = ({
               ) : (
                 <>
                   <Check size={18} />
-                  <span>Selesaikan Dokumen</span>
+                  <span>{finalizeText}</span>
                 </>
               )}
             </button>

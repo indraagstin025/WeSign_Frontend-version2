@@ -48,8 +48,12 @@ export const useGroupSocket = ({
   const [activeUsers, setActiveUsers] = useState([]);
   const [socketStatus, setSocketStatus] = useState({ connected: false });
 
-  // Dedup guard: cegah double event dari backend broadcast ke 2 room
-  const lastSavedRef = useRef(new Map());
+  // Dedup guard: cegah double alert/state-update dari backend broadcast
+  // `signature_saved` ke 2 room (document room + group room). Sekali user X
+  // sudah memicu handler, lewati event berikutnya untuk user yang sama —
+  // pakai Set, bukan timestamp, supaya alert (yang blocking) tidak menyebabkan
+  // window dedup expire saat user lambat menutup alert.
+  const alertedSignersRef = useRef(new Set());
 
   useEffect(() => {
     if (!groupId || !ready) return;
@@ -118,11 +122,15 @@ export const useGroupSocket = ({
       if (!data?.userId) return;
       if (String(data.userId) === String(currentUserId)) return;
 
-      // Dedup: tolak duplicate dalam 2 detik
       const key = String(data.userId);
-      const now = Date.now();
-      if (now - (lastSavedRef.current.get(key) || 0) < 2000) return;
-      lastSavedRef.current.set(key, now);
+      // Dedup berbasis Set: backend broadcast `signature_saved` ke 2 room
+      // (document + group), jadi event ini fire 2x. Cek dulu SEBELUM update
+      // state & alert. `alert` blocking, kalau pakai timestamp window pendek,
+      // event ke-2 yang queued di balik alert bisa lolos saat user lambat
+      // menutup alert pertama. Set di-mutate sync sebelum alert → event ke-2
+      // pasti ter-skip.
+      if (alertedSignersRef.current.has(key)) return;
+      alertedSignersRef.current.add(key);
 
       // Update state lokal jika di signing page
       if (setSignatures) {
@@ -140,12 +148,9 @@ export const useGroupSocket = ({
         );
       }
 
-      setStatusModal?.({
-        isOpen: true, type: 'info',
-        title: 'Tanda Tangan Masuk',
-        message: `${data.userName || 'Seseorang'} telah menandatangani dokumen.`,
-        onConfirm: null,
-      });
+      // Tampilkan notifikasi TTD masuk via window.alert (bukan modal)
+      // sesuai request: flow simpan TTD seharusnya cukup pakai alert.
+      window.alert(`${data.userName || 'Seseorang'} telah menandatangani dokumen.`);
     };
 
     socketService.on('signature_saved', handleSigSaved);

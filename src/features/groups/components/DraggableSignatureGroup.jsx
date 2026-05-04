@@ -53,8 +53,13 @@ const DraggableSignatureGroup = ({
     displayName,
   } = state;
 
-  const handleBase =
-    'absolute w-3 h-3 bg-blue-500 border-2 border-white rounded-full z-[60] pointer-events-auto shadow-sm active:scale-125 transition-all';
+  // Hit area lebih besar di mobile (28px) untuk jari, visual dot tetap 12px.
+  // Negative offset disesuaikan agar pusat handle tetap di pojok signature.
+  // Mobile: -top-3.5 -left-3.5 = -14px (separuh 28). Desktop: -top-1.5 = -6px (separuh 12).
+  const handleHitArea =
+    'resize-handle absolute z-[60] flex items-center justify-center pointer-events-auto shadow-sm transition-all w-7 h-7 sm:w-3 sm:h-3';
+  const handleVisual =
+    'block w-3 h-3 bg-blue-500 border-2 border-white rounded-full active:scale-125 transition-transform pointer-events-none';
 
   return (
     <Draggable
@@ -136,10 +141,18 @@ const DraggableSignatureGroup = ({
         {/* ── Resize handles (hanya owner draft) ── */}
         {canInteract && (
           <>
-            <div ref={handleNWRef} className={`resize-handle ${handleBase} ${isVisible ? 'opacity-100' : 'opacity-0'} -top-1.5 -left-1.5 cursor-nwse-resize`} style={{ touchAction: 'none' }} />
-            <div ref={handleNERef} className={`resize-handle ${handleBase} ${isVisible ? 'opacity-100' : 'opacity-0'} -top-1.5 -right-1.5 cursor-nesw-resize`} style={{ touchAction: 'none' }} />
-            <div ref={handleSWRef} className={`resize-handle ${handleBase} ${isVisible ? 'opacity-100' : 'opacity-0'} -bottom-1.5 -left-1.5 cursor-nesw-resize`} style={{ touchAction: 'none' }} />
-            <div ref={handleSERef} className={`resize-handle ${handleBase} ${isVisible ? 'opacity-100' : 'opacity-0'} -bottom-1.5 -right-1.5 cursor-nwse-resize`} style={{ touchAction: 'none' }} />
+            <div ref={handleNWRef} className={`${handleHitArea} ${isVisible ? 'opacity-100' : 'opacity-0'} -top-3.5 sm:-top-1.5 -left-3.5 sm:-left-1.5 cursor-nwse-resize`} style={{ touchAction: 'none' }}>
+              <span className={handleVisual} />
+            </div>
+            <div ref={handleNERef} className={`${handleHitArea} ${isVisible ? 'opacity-100' : 'opacity-0'} -top-3.5 sm:-top-1.5 -right-3.5 sm:-right-1.5 cursor-nesw-resize`} style={{ touchAction: 'none' }}>
+              <span className={handleVisual} />
+            </div>
+            <div ref={handleSWRef} className={`${handleHitArea} ${isVisible ? 'opacity-100' : 'opacity-0'} -bottom-3.5 sm:-bottom-1.5 -left-3.5 sm:-left-1.5 cursor-nesw-resize`} style={{ touchAction: 'none' }}>
+              <span className={handleVisual} />
+            </div>
+            <div ref={handleSERef} className={`${handleHitArea} ${isVisible ? 'opacity-100' : 'opacity-0'} -bottom-3.5 sm:-bottom-1.5 -right-3.5 sm:-right-1.5 cursor-nwse-resize`} style={{ touchAction: 'none' }}>
+              <span className={handleVisual} />
+            </div>
           </>
         )}
 
