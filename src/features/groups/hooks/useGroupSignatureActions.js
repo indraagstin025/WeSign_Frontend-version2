@@ -1,10 +1,12 @@
 import { useCallback, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
+import { toast } from 'react-toastify';
 import {
   saveDraft,
   updateDraftPosition,
   deleteDraft,
   signDocument,
+  rejectDocument,
 } from '../api/groupSignatureService';
 import { finalizeGroupDocument } from '../api/groupService';
 import { socketService } from '../../../services/socketService';
@@ -231,7 +233,7 @@ export const useGroupSignatureActions = ({
   // ── Simpan TTD Final (Per User) ───────────────────────────────────────────
   const handleSaveMySignature = useCallback(async () => {
     if (!mySignature) {
-      window.alert('Silakan letakkan tanda tangan Anda di dokumen terlebih dahulu.');
+      toast.warning('Silakan letakkan tanda tangan Anda di dokumen terlebih dahulu.');
       return;
     }
     // Guard double-submit: tombol di UI sudah di-disable lewat
@@ -275,13 +277,13 @@ export const useGroupSignatureActions = ({
 
       socketService.emitSignatureSaved(documentId, groupId);
 
-      window.alert(
+      toast.success(
         remainingSigners > 0
           ? `Tanda tangan Anda berhasil disimpan. Menunggu ${remainingSigners} orang lagi.`
           : 'Tanda tangan Anda berhasil disimpan. Semua penandatangan sudah selesai. Admin dapat melakukan finalisasi.'
       );
     } catch (err) {
-      window.alert(`Gagal menyimpan tanda tangan: ${err.message || 'Terjadi kesalahan. Silakan coba lagi.'}`);
+      toast.error(err.message || 'Gagal menyimpan tanda tangan. Silakan coba lagi.');
     } finally {
       submitInFlightRef.current = false;
       setIsSubmitting(false);
@@ -325,6 +327,22 @@ export const useGroupSignatureActions = ({
     }
   }, [isAdmin, readyToFinalize, groupId, documentId, documentTitle, setDocumentStatus, setIFinalized, setIsFinalizing, setStatusModal]);
 
+  // ── Reject Document (Signer menolak) ──────────────────────────────────────
+  const handleRejectDocument = useCallback(async (reason = null) => {
+    try {
+      await rejectDocument(documentId, reason);
+      toast.info('Dokumen berhasil ditolak.');
+
+      // Emit socket agar user lain tahu
+      socketService.emitSignatureSaved(documentId, groupId);
+
+      // Redirect kembali ke halaman grup setelah reject
+      if (fetchGroupData) fetchGroupData();
+    } catch (err) {
+      toast.error(err.message || 'Gagal menolak dokumen.');
+    }
+  }, [documentId, groupId, fetchGroupData]);
+
   return {
     handleAddSignature,
     handleUpdateSignature,
@@ -332,5 +350,6 @@ export const useGroupSignatureActions = ({
     handleDeleteSignature,
     handleSaveMySignature,
     handleFinalizeDocument,
+    handleRejectDocument,
   };
 };

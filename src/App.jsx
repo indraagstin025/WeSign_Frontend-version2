@@ -1,5 +1,7 @@
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import ProtectedRoute from './components/Auth/ProtectedRoute';
 import GuestRoute from './components/Auth/GuestRoute';
 import NetworkStatus from './components/UI/NetworkStatus';
@@ -40,6 +42,17 @@ function App() {
     <BrowserRouter>
       <UserProvider>
         <NetworkStatus />
+        <ToastContainer
+          position="top-right"
+          autoClose={4000}
+          hideProgressBar={false}
+          newestOnTop
+          closeOnClick
+          pauseOnFocusLoss={false}
+          draggable
+          pauseOnHover
+          theme="colored"
+        />
         <Suspense fallback={<PageLoader />}>
           <Routes>
             <Route path="/" element={

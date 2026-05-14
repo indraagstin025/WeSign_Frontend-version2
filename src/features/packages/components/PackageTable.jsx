@@ -1,217 +1,211 @@
-import React from 'react';
-import { 
-  MoreVertical, 
-  Trash2, 
-  Eye, 
-  Download,
-  Layers,
-  PenTool
-} from 'lucide-react';
+import React, { useState } from 'react';
+import { MoreVertical, Trash2, Eye, Download, Layers, PenTool, FileText, Pencil } from 'lucide-react';
 import { usePackageTable } from '../hooks/usePackageTable';
 
+const STATUS_BADGE = {
+  draft:     { label: 'Draft',    cls: 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400' },
+  pending:   { label: 'Menunggu', cls: 'bg-amber-50 text-amber-600 border border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20' },
+  completed: { label: 'Selesai',  cls: 'bg-emerald-50 text-emerald-600 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20' },
+  archived:  { label: 'Arsip',    cls: 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400' },
+};
+
+const LABEL_BADGE = {
+  General: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+  Legal:   'bg-blue-50 text-blue-700 border border-blue-200',
+  HR:      'bg-purple-50 text-purple-700 border border-purple-200',
+  Finance: 'bg-orange-50 text-orange-700 border border-orange-200',
+};
+
 const PackageTable = ({ packages, onAction }) => {
-  const {
-    openMenuId,
-    setOpenMenuId,
-    menuRef,
-    helpers,
-    handleActionClick
-  } = usePackageTable(onAction);
+  const { openMenuId, setOpenMenuId, menuRef, helpers, handleActionClick } = usePackageTable(onAction);
+  const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
+
+  const handleOpenMenu = (e, pkgId) => {
+    e.stopPropagation();
+    if (openMenuId === pkgId) {
+      setOpenMenuId(null);
+      return;
+    }
+    const rect = e.currentTarget.getBoundingClientRect();
+    const dropdownHeight = 200; // estimasi tinggi dropdown
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const showAbove = spaceBelow < dropdownHeight;
+
+    setMenuPos({
+      top: showAbove ? rect.top - dropdownHeight - 4 : rect.bottom + 4,
+      right: window.innerWidth - rect.right,
+    });
+    setOpenMenuId(pkgId);
+  };
+
+  const activePkg = openMenuId ? packages.find(p => p.id === openMenuId) : null;
 
   if (!packages || packages.length === 0) return null;
 
   return (
-    <div className="w-full relative">
-      {/* 1. MOBILE VIEW (List Style yang Responsif) */}
-      <div className="lg:hidden divide-y divide-zinc-100 dark:divide-zinc-800/60">
-        {packages.map((pkg) => (
-          <div key={pkg.id} className="py-5 px-3 bg-white dark:bg-zinc-900/40 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 transition-all group border-b border-zinc-100 dark:border-zinc-800/50 last:border-none">
-            <div className="flex items-start justify-between gap-4 overflow-hidden" onClick={() => onAction('info', pkg)}>
-              <div className="flex items-center gap-4 shrink-0 flex-1 min-w-0">
-                <div className="w-12 h-12 bg-primary/10 dark:bg-primary/20 rounded-2xl flex items-center justify-center shrink-0 border border-primary-100 dark:border-primary-900/20 shadow-sm transition-transform group-hover:scale-105">
-                  <Layers size={22} className="text-primary" />
-                </div>
-                <div className="truncate flex-1">
-                  <h4 className="text-[15px] font-bold text-zinc-900 dark:text-white truncate mb-1 leading-tight">{pkg.title || 'Tanpa Judul'}</h4>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] text-zinc-400 font-medium">{helpers.formatDate(pkg.createdAt)}</span>
-                    <span className="text-zinc-300 dark:text-zinc-700">·</span>
-                    <span className="text-[11px] text-zinc-400 font-black uppercase tracking-tight">{pkg.label || 'Umum'}</span>
-                  </div>
-                </div>
-              </div>
-              <div className="flex flex-col items-end gap-2 shrink-0">
-                <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${helpers.getStatusStyles(pkg.status)}`}>
-                  {pkg.status}
-                </span>
-                <span className="text-[10px] font-bold text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-md">
-                  {pkg.documentCount || 0} File
-                </span>
-              </div>
-            </div>
+    <div className="w-full" ref={menuRef}>
 
-            {/* Quick Actions Mobile */}
-            <div className="mt-5 flex items-center gap-2 pt-4 border-t border-zinc-50 dark:border-zinc-800/40">
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onAction('preview', pkg);
-                  }}
-                  className="flex-1 h-11 flex items-center justify-center gap-2 bg-zinc-100 dark:bg-white/5 hover:bg-zinc-200 dark:hover:bg-white/10 text-zinc-600 dark:text-zinc-300 rounded-xl text-[11px] font-black uppercase tracking-widest border-none cursor-pointer transition-all active:scale-95"
-                >
-                  <Eye size={18} className="text-primary" />
-                  <span>Preview</span>
-                </button>
+      {/* ── DESKTOP TABLE ─────────────────────────────────────────── */}
+      <div className="hidden lg:block">
+        {/* Header */}
+        <div className="grid grid-cols-[48px_1fr_120px_120px_160px_140px_60px] items-center px-5 py-3 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/30">
+          {['NO.', 'NAMA PAKET', 'KATEGORI', 'STATUS', 'DOKUMEN', 'DIBUAT', 'AKSI'].map((h) => (
+            <div key={h} className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">{h}</div>
+          ))}
+        </div>
 
-                {pkg.status === 'draft' && (
-                   <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onAction('sign', pkg);
-                    }}
-                    className="flex-1 h-11 flex items-center justify-center gap-2 bg-emerald-500/10 dark:bg-emerald-500/20 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-xl text-[11px] font-black uppercase tracking-widest border-none cursor-pointer transition-all active:scale-95 shadow-sm"
-                  >
-                    <PenTool size={18} />
-                    <span>Sign Paket</span>
-                  </button>
-                )}
-
-                {pkg.status === 'completed' && (
-                   <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onAction('download', pkg);
-                    }}
-                    className="flex-1 h-11 flex items-center justify-center gap-2 bg-zinc-100 dark:bg-white/5 hover:bg-zinc-200 text-zinc-600 dark:text-zinc-300 rounded-xl text-[11px] font-black uppercase tracking-widest border-none cursor-pointer transition-all active:scale-95"
-                  >
-                    <Download size={18} />
-                    <span>Download</span>
-                  </button>
-                )}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* 2. DESKTOP VIEW (Flex Row Style - lg:flex) */}
-      <div className="hidden lg:flex flex-col" ref={menuRef}>
+        {/* Rows */}
         {packages.map((pkg, index) => {
-          const isNearBottom = index >= packages.length - 2 && packages.length > 2;
+          const badge = STATUS_BADGE[pkg.status?.toLowerCase()] || STATUS_BADGE.draft;
+          const labelCls = LABEL_BADGE[pkg.label] || 'bg-zinc-50 text-zinc-500 border border-zinc-200';
+          const signedCount = pkg.signedCount || 0;
+          const docCount = pkg.documentCount || 0;
 
           return (
-            <div 
-              key={pkg.id} 
-              className="flex items-center px-6 py-4 border-b border-zinc-100 dark:border-zinc-800/50 hover:bg-zinc-200/30 dark:hover:bg-zinc-800/40 transition-all duration-300 group"
+            <div
+              key={pkg.id}
+              className="grid grid-cols-[48px_1fr_120px_120px_160px_140px_60px] items-center px-5 py-3.5 border-b border-zinc-50 dark:border-zinc-800/50 hover:bg-zinc-50/50 dark:hover:bg-zinc-800/20 transition-colors group"
             >
-              {/* 0. Nomor (5%) */}
-              <div className="w-[5%] text-[11px] font-bold text-zinc-400 dark:text-zinc-600 pl-2">
+              {/* No */}
+              <div className="text-[11px] font-semibold text-zinc-400">
                 {String(index + 1).padStart(2, '0')}
               </div>
 
-              {/* 1. Nama Paket (36%) */}
-              <div className="w-[36%] flex items-center gap-4 min-w-0 pr-4">
-                <div className="w-10 h-10 bg-primary/10 dark:bg-primary/20 rounded-lg flex items-center justify-center shrink-0 border border-primary/20 dark:border-primary/30 transition-transform group-hover:scale-105">
-                  <Layers size={18} className="text-primary" />
+              {/* Nama Paket */}
+              <div className="flex items-center gap-3 min-w-0 pr-4 cursor-pointer" onClick={() => onAction('info', pkg)}>
+                <div className="w-9 h-9 bg-emerald-50 dark:bg-emerald-500/10 rounded-xl flex items-center justify-center shrink-0">
+                  <Layers size={16} className="text-emerald-600" />
                 </div>
-                <div className="flex flex-col min-w-0 pointer-events-auto cursor-pointer" onClick={() => onAction('info', pkg)}>
-                  <span className="text-sm font-medium text-zinc-900 dark:text-white truncate transition-colors group-hover:text-primary">
+                <div className="min-w-0">
+                  <p className="text-[12px] font-semibold text-zinc-900 dark:text-white truncate group-hover:text-emerald-600 transition-colors">
                     {pkg.title || 'Tanpa Judul'}
-                  </span>
-                  <span className="text-[10px] text-zinc-400 font-medium">{helpers.formatDate(pkg.createdAt)}</span>
+                  </p>
+                  <p className="text-[10px] text-zinc-400">ID: PKT-{String(index + 1).padStart(4, '0')}</p>
                 </div>
               </div>
 
-              {/* 2. Kategori (15%) */}
-              <div className="w-[15%] flex justify-center">
-                <span className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800/50 px-2.5 py-1 rounded-md uppercase tracking-tight">
-                  {pkg.label || 'Umum'}
+              {/* Kategori */}
+              <div>
+                <span className={`px-2.5 py-1 rounded-md text-[10px] font-semibold uppercase tracking-wide ${labelCls}`}>
+                  {pkg.label || 'General'}
                 </span>
               </div>
 
-              {/* 3. Status (15%) */}
-              <div className="w-[15%] flex justify-center">
-                <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-tight ${helpers.getStatusStyles(pkg.status)}`}>
-                  {pkg.status}
+              {/* Status */}
+              <div>
+                <span className={`px-2.5 py-1 rounded-md text-[10px] font-semibold uppercase tracking-wide ${badge.cls}`}>
+                  {badge.label}
                 </span>
               </div>
 
-              {/* 4. Jumlah Dokumen (15%) */}
-              <div className="w-[15%] flex justify-center focus:outline-none">
-                <div className="w-7 h-7 rounded-lg bg-primary/5 dark:bg-primary/10 border border-primary/20 flex items-center justify-center text-[11px] text-primary font-bold shadow-sm">
-                  {pkg.documentCount || 0}
+              {/* Dokumen */}
+              <div className="flex items-center gap-2">
+                <FileText size={14} className="text-emerald-500 shrink-0" />
+                <div>
+                  <p className="text-[12px] font-medium text-zinc-700 dark:text-zinc-300">{docCount} dokumen</p>
+                  {docCount > 0 && (
+                    <p className={`text-[10px] font-semibold ${signedCount === docCount ? 'text-emerald-500' : 'text-zinc-400'}`}>
+                      {signedCount}/{docCount} signed
+                    </p>
+                  )}
                 </div>
               </div>
 
-              {/* 5. Aksi (14%) */}
-              <div className="w-[14%] flex justify-end items-center relative pr-6">
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setOpenMenuId(openMenuId === pkg.id ? null : pkg.id);
-                  }}
-                  className="p-2.5 rounded-2xl hover:bg-zinc-100 dark:hover:bg-zinc-800 bg-transparent border-none cursor-pointer text-zinc-400 hover:text-zinc-800 dark:hover:text-white transition-all opacity-100 shadow-sm"
+              {/* Dibuat */}
+              <div>
+                <p className="text-[12px] font-medium text-zinc-700 dark:text-zinc-300">
+                  {helpers.formatDate(pkg.createdAt)}
+                </p>
+                <p className="text-[10px] text-zinc-400">
+                  {pkg.createdAt ? new Date(pkg.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-'}
+                </p>
+              </div>
+
+              {/* Aksi */}
+              <div className="flex justify-end">
+                <button
+                  onClick={(e) => handleOpenMenu(e, pkg.id)}
+                  className="p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 bg-transparent border-none cursor-pointer text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-all"
                 >
-                  <MoreVertical size={20} />
+                  <MoreVertical size={16} />
                 </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
 
-                {openMenuId === pkg.id && (
-                  <div className={`absolute right-0 w-56 bg-white dark:bg-zinc-800 rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.18)] dark:shadow-[0_20px_60px_rgba(0,0,0,0.4)] border border-zinc-100 dark:border-zinc-700 z-[100] overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300 ${isNearBottom ? 'bottom-full mb-3' : 'top-full mt-3'}`}>
-                    <button 
-                      onClick={() => handleActionClick('info', pkg)}
-                      className="w-full flex items-center gap-3.5 px-5 py-3 text-[13px] font-bold text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 transition-all border-none bg-transparent cursor-pointer group/item"
-                    >
-                      <Eye size={16} className="shrink-0 transition-transform group-hover/item:scale-110" />
-                      <span className="flex-1 text-left uppercase tracking-wider">Info Detail</span>
-                    </button>
-
-                    <div className="h-px bg-zinc-50 dark:bg-zinc-700/50 my-1 mx-2" />
-
-                    <button 
-                      onClick={() => handleActionClick('preview', pkg)}
-                      className="w-full flex items-center gap-3.5 px-5 py-3 text-[13px] font-bold text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 transition-all border-none bg-transparent cursor-pointer group/item"
-                    >
-                      <Eye size={16} className="text-primary shrink-0 transition-transform group-hover/item:scale-110" />
-                      <span className="flex-1 text-left uppercase tracking-wider">Preview Paket</span>
-                    </button>
-
-                    <div className="h-px bg-zinc-50 dark:bg-zinc-700/50 my-1 mx-2" />
-
-                    {pkg.status === 'draft' && (
-                      <button 
-                        onClick={() => handleActionClick('sign', pkg)}
-                        className="w-full flex items-center gap-3.5 px-5 py-3 text-[13px] font-bold text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 transition-all border-none bg-transparent cursor-pointer group/item"
-                      >
-                        <PenTool size={16} className="text-emerald-500 shrink-0 transition-transform group-hover/item:scale-110" />
-                        <span className="flex-1 text-left uppercase tracking-wider">Sign Paket</span>
-                      </button>
-                    )}
-
-                    {pkg.status === 'completed' && (
-                      <button 
-                        onClick={() => handleActionClick('download', pkg)}
-                        className="w-full flex items-center gap-3.5 px-5 py-3 text-[13px] font-bold text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 transition-all border-none bg-transparent cursor-pointer group/item"
-                      >
-                        <Download size={16} className="shrink-0 transition-transform group-hover/item:scale-110" />
-                        <span className="flex-1 text-left uppercase tracking-wider">Unduh (.zip)</span>
-                      </button>
-                    )}
-
-                    <div className="h-px bg-zinc-50 dark:bg-zinc-700/50 my-1 mx-2" />
-
-                    <button 
-                      onClick={() => handleActionClick('delete', pkg)}
-                      className="w-full flex items-center gap-3.5 px-5 py-3 text-[13px] font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-all border-none bg-transparent cursor-pointer group/item"
-                    >
-                      <Trash2 size={16} className="shrink-0 transition-transform group-hover/item:scale-110" />
-                      <span className="flex-1 text-left uppercase tracking-wider">Hapus Paket</span>
-                    </button>
+      {/* ── MOBILE LIST ───────────────────────────────────────────── */}
+      <div className="lg:hidden divide-y divide-zinc-50 dark:divide-zinc-800">
+        {packages.map((pkg) => {
+          const badge = STATUS_BADGE[pkg.status?.toLowerCase()] || STATUS_BADGE.draft;
+          const labelCls = LABEL_BADGE[pkg.label] || 'bg-zinc-50 text-zinc-500 border border-zinc-200';
+          return (
+            <div key={pkg.id} className="p-4 hover:bg-zinc-50/50 dark:hover:bg-zinc-800/20 transition-colors">
+              <div className="flex items-start justify-between gap-3" onClick={() => onAction('info', pkg)}>
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className="w-10 h-10 bg-emerald-50 dark:bg-emerald-500/10 rounded-xl flex items-center justify-center shrink-0">
+                    <Layers size={18} className="text-emerald-600" />
                   </div>
+                  <div className="min-w-0">
+                    <p className="text-[13px] font-semibold text-zinc-900 dark:text-white truncate">{pkg.title || 'Tanpa Judul'}</p>
+                    <p className="text-[10px] text-zinc-400">{helpers.formatDate(pkg.createdAt)}</p>
+                  </div>
+                </div>
+                <div className="flex flex-col items-end gap-1.5 shrink-0">
+                  <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold ${badge.cls}`}>{badge.label}</span>
+                  <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold ${labelCls}`}>{pkg.label || 'General'}</span>
+                </div>
+              </div>
+              <div className="mt-3 flex items-center gap-2 pt-3 border-t border-zinc-50 dark:border-zinc-800">
+                <button onClick={() => onAction('preview', pkg)} className="flex-1 py-2 flex items-center justify-center gap-1.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 rounded-lg text-[11px] font-semibold border-none cursor-pointer">
+                  <Eye size={13} /> Preview
+                </button>
+                {pkg.status?.toLowerCase() === 'draft' && (
+                  <button onClick={() => onAction('sign', pkg)} className="flex-1 py-2 flex items-center justify-center gap-1.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 rounded-lg text-[11px] font-semibold border-none cursor-pointer">
+                    <PenTool size={13} /> Sign
+                  </button>
                 )}
               </div>
             </div>
           );
         })}
       </div>
+
+      {/* ── FIXED DROPDOWN PORTAL — tidak terpotong overflow ──────── */}
+      {activePkg && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpenMenuId(null)} />
+          <div
+            className="fixed z-50 w-52 bg-white dark:bg-zinc-800 rounded-xl shadow-2xl border border-zinc-100 dark:border-zinc-700 py-1 animate-in fade-in zoom-in-95 duration-150"
+            style={{ top: menuPos.top, right: menuPos.right }}
+          >
+            <button onClick={() => handleActionClick('info', activePkg)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 bg-transparent border-none cursor-pointer text-left">
+              <Eye size={14} /> Info Detail
+            </button>
+            <button onClick={() => handleActionClick('edit', activePkg)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 bg-transparent border-none cursor-pointer text-left">
+              <Pencil size={14} className="text-blue-500" /> Edit Paket
+            </button>
+            <button onClick={() => handleActionClick('preview', activePkg)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 bg-transparent border-none cursor-pointer text-left">
+              <Eye size={14} className="text-emerald-500" /> Preview Paket
+            </button>
+            {activePkg.status?.toLowerCase() === 'draft' && (
+              <button onClick={() => handleActionClick('sign', activePkg)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 bg-transparent border-none cursor-pointer text-left">
+                <PenTool size={14} className="text-emerald-500" /> Sign Paket
+              </button>
+            )}
+            {activePkg.status?.toLowerCase() === 'completed' && (
+              <button onClick={() => handleActionClick('download', activePkg)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 bg-transparent border-none cursor-pointer text-left">
+                <Download size={14} /> Unduh (.zip)
+              </button>
+            )}
+            <div className="h-px bg-zinc-100 dark:bg-zinc-700 my-1" />
+            <button onClick={() => handleActionClick('delete', activePkg)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 bg-transparent border-none cursor-pointer text-left">
+              <Trash2 size={14} /> Hapus Paket
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 };

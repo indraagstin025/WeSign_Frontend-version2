@@ -156,12 +156,31 @@ export const useCreatePackage = (onSuccess, onClose) => {
 
     try {
       const response = await uploadPackageDocuments(formData);
+
       if (response?.status === 'success') {
+        // Semua file berhasil
         setSuccess(true);
         setTimeout(() => {
           onSuccess();
           resetAndClose();
         }, 1500);
+      } else if (response?.status === 'partial_success') {
+        // Sebagian file gagal — tampilkan detail
+        const { data } = response;
+        const failedDetails = (data?.failed || [])
+          .map(f => `• ${f.fileName}: ${f.reason}`)
+          .join('\n');
+
+        setSuccess(true);
+        setError(
+          `${data?.summary?.success} dari ${data?.summary?.total} file berhasil diunggah.\n` +
+          `${data?.summary?.failed} file gagal:\n${failedDetails}`
+        );
+        // Tetap anggap sukses (package terbuat), tapi tampilkan warning
+        setTimeout(() => {
+          onSuccess();
+          resetAndClose();
+        }, 4000); // Beri waktu lebih lama untuk baca error detail
       }
     } catch (err) {
       setError(err.message || 'Gagal mengunggah paket. Silakan coba lagi.');

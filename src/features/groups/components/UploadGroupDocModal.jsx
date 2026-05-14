@@ -42,22 +42,14 @@ const UploadGroupDocModal = ({ isOpen, onClose, groupId, members = [], onSuccess
         <div className="flex-1 overflow-y-auto px-8 py-6 space-y-8">
 
           {/* Status Info */}
-          <div className={`flex items-start gap-4 p-5 rounded-3xl border transition-colors
-            ${willBeDraft
-              ? 'bg-amber-500/5 border-amber-500/20 text-amber-700 dark:text-amber-400'
-              : 'bg-emerald-500/5 border-emerald-500/20 text-emerald-700 dark:text-emerald-400'
-            }`}
-          >
+          <div className="flex items-start gap-4 p-5 rounded-3xl border bg-amber-500/5 border-amber-500/20 text-amber-700 dark:text-amber-400 transition-colors">
             <div className="p-2 rounded-xl bg-white dark:bg-zinc-900 shrink-0 shadow-sm">
               <Info size={16} />
             </div>
             <div>
               <p className="text-[10px] font-black uppercase tracking-widest mb-1">Status Dokumen</p>
               <p className="text-xs font-medium leading-relaxed">
-                {willBeDraft
-                  ? 'Dokumen akan diupload sebagai DRAFT. Anda perlu menambahkan penandatangan nanti agar dokumen bisa diproses.'
-                  : `Dokumen akan langsung masuk status PENDING dan mengirimkan permintaan tanda tangan ke ${selectedSigners.length} anggota.`
-                }
+                Dokumen akan diupload sebagai DRAFT. Gunakan "Manage Signers" setelah upload untuk menambahkan penandatangan.
               </p>
             </div>
           </div>
@@ -126,58 +118,6 @@ const UploadGroupDocModal = ({ isOpen, onClose, groupId, members = [], onSuccess
               </div>
             </div>
 
-            {/* Pilih Signer */}
-            <div className="space-y-4 pt-4 border-t border-zinc-100 dark:border-white/5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Users size={14} className="text-emerald-500" />
-                  <label className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">Penandatangan</label>
-                </div>
-                {members.length > 0 && (
-                  <button onClick={actions.toggleAll} className="text-[10px] font-black text-emerald-600 uppercase tracking-widest bg-transparent border-none cursor-pointer hover:underline">
-                    {selectedSigners.length === members.length ? 'Hapus Semua' : 'Pilih Semua Anggota'}
-                  </button>
-                )}
-              </div>
-
-              {members.length === 0 ? (
-                <div className="p-8 text-center bg-zinc-50 dark:bg-white/5 rounded-3xl">
-                  <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">Belum ada anggota tim</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
-                  {members.map((member) => {
-                    const userId = member.userId || member.id;
-                    const name = member.user?.name || member.name || 'User';
-                    const email = member.user?.email || member.email || '';
-                    const initials = name.trim().split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase();
-                    const isSelected = selectedSigners.includes(userId);
-
-                    return (
-                      <div
-                        key={userId}
-                        onClick={() => actions.toggleSigner(userId)}
-                        className={`flex items-center gap-3 p-4 rounded-2xl cursor-pointer transition-all border
-                          ${isSelected
-                            ? 'border-emerald-500/50 bg-emerald-500/5 ring-1 ring-emerald-500/20'
-                            : 'border-zinc-100 dark:border-white/5 hover:border-emerald-500/30'
-                          }`}
-                      >
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0
-                          ${isSelected ? 'bg-emerald-600 text-white' : 'bg-zinc-100 dark:bg-white/10 text-zinc-400'}
-                        `}>
-                          {isSelected ? <CheckSquare size={14} /> : <div className="text-[9px] font-black uppercase">{initials}</div>}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-xs font-black text-zinc-800 dark:text-white truncate uppercase tracking-tight">{name}</p>
-                          <p className="text-[9px] font-bold text-zinc-400 truncate tracking-tight">{email}</p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
           </div>
 
           {/* Error */}

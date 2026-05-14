@@ -42,6 +42,7 @@ export function useGroupSigningPage() {
     handleAddSignature,
     handleSaveMySignature,
     handleFinalizeDocument,
+    handleRejectDocument,
     refreshData,
   } = signing;
 
@@ -160,6 +161,7 @@ export function useGroupSigningPage() {
       // composed actions
       handleCanvasClick,
       finalizeAction,
+      handleRejectDocument,
     },
   };
 }

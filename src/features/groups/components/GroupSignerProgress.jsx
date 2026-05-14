@@ -61,6 +61,7 @@ const GroupSignerProgress = ({
             {onlineSigners.length > 0 ? (
               onlineSigners.map((sr) => {
                 const isSigned = sr.status === 'SIGNED';
+                const isRejected = sr.status === 'REJECTED';
                 const isMe = String(sr.userId) === String(currentUser?.id);
                 const name = sr.user?.name || 'User';
                 const initials = name.trim().split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase();
@@ -71,14 +72,16 @@ const GroupSignerProgress = ({
                     className={`flex items-center gap-2 pl-1 pr-3 py-1 rounded-xl border transition-all animate-in zoom-in-90 duration-300
                       ${isMe
                         ? 'bg-emerald-600 text-white border-emerald-500 shadow-lg shadow-emerald-500/20'
-                        : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-white/5 shadow-sm'}
+                        : isRejected
+                          ? 'bg-rose-50 dark:bg-rose-900/20 border-rose-200 dark:border-rose-800 shadow-sm'
+                          : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-white/5 shadow-sm'}
                     `}
                   >
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black shrink-0 relative
-                      ${isMe ? 'bg-white/20 text-white' : (isSigned ? 'bg-emerald-500 text-white' : 'bg-zinc-100 dark:bg-zinc-700 text-zinc-400')}`}
+                      ${isMe ? 'bg-white/20 text-white' : (isSigned ? 'bg-emerald-500 text-white' : isRejected ? 'bg-rose-500 text-white' : 'bg-zinc-100 dark:bg-zinc-700 text-zinc-400')}`}
                     >
                       {initials}
-                      <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-500 border-2 border-white dark:border-zinc-900 rounded-full shadow-sm" />
+                      {!isRejected && <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-500 border-2 border-white dark:border-zinc-900 rounded-full shadow-sm" />}
                     </div>
 
                     <div className="flex flex-col min-w-0">
@@ -88,9 +91,9 @@ const GroupSignerProgress = ({
                         {isMe ? 'Anda' : name.split(' ')[0]}
                       </p>
                       <p className={`text-[8px] font-bold uppercase tracking-widest leading-none mt-1
-                        ${isMe ? 'text-white/70' : (isSigned ? 'text-emerald-500' : 'text-zinc-400')}`}
+                        ${isMe ? 'text-white/70' : (isSigned ? 'text-emerald-500' : isRejected ? 'text-rose-500' : 'text-zinc-400')}`}
                       >
-                        {isSigned ? 'Signed' : 'Editing'}
+                        {isSigned ? 'Signed' : isRejected ? 'Rejected' : 'Editing'}
                       </p>
                     </div>
                     {isSigned && !isMe && <CheckCircle size={12} className="text-emerald-500 ml-1" />}

@@ -53,6 +53,7 @@ const GroupSigningPage = () => {
 
     // Status
     canSign,
+    hasMyFinalSig,
     currentSignature,
 
     // PDF state
@@ -170,7 +171,21 @@ const GroupSigningPage = () => {
           isSubmitting={submittingAny}
           finalizeText={finalizeText}
           disabled={disableFinalizeAction}
-        />
+        >
+          {/* Tombol Tolak Dokumen — hanya tampil untuk admin */}
+          {isAdmin && !isFinalizeMode && !hasMyFinalSig && canSign && (
+            <button
+              type="button"
+              onClick={() => {
+                const reason = window.prompt('Alasan penolakan (opsional):');
+                if (reason !== null) actions.handleRejectDocument(reason || null);
+              }}
+              className="w-full mt-3 px-4 py-3 text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-xl hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-all cursor-pointer"
+            >
+              Tolak Dokumen
+            </button>
+          )}
+        </SigningSidebar>
 
         {/* MAIN PDF AREA */}
         <main

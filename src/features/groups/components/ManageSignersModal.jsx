@@ -69,6 +69,8 @@ const ManageSignersModal = ({ isOpen, onClose, groupId, doc, members = [], onSuc
                   const initials = name.trim().split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase();
                   const isSelected = selectedSigners.includes(userId);
                   const isSigned = actions.isUserSigned(userId);
+                  const isRejected = actions.isUserRejected(userId);
+                  const rejectionReason = actions.getRejectionReason(userId);
 
                   return (
                     <div
@@ -76,9 +78,10 @@ const ManageSignersModal = ({ isOpen, onClose, groupId, doc, members = [], onSuc
                       onClick={() => !isSigned && actions.toggleSigner(userId)}
                       className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all
                         ${isSigned ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}
-                        ${isSelected
+                        ${isRejected ? 'border-rose-200 dark:border-rose-800 bg-rose-50/50 dark:bg-rose-900/10' : ''}
+                        ${isSelected && !isRejected
                           ? 'border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/20'
-                          : 'border-transparent hover:bg-zinc-50 dark:hover:bg-zinc-800'
+                          : !isRejected ? 'border-transparent hover:bg-zinc-50 dark:hover:bg-zinc-800' : ''
                         }`}
                     >
                       {isSelected
@@ -94,10 +97,18 @@ const ManageSignersModal = ({ isOpen, onClose, groupId, doc, members = [], onSuc
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-bold text-zinc-700 dark:text-zinc-200 truncate">{name}</p>
                         <p className="text-[10px] text-zinc-400 truncate">{email}</p>
+                        {isRejected && rejectionReason && (
+                          <p className="text-[10px] text-rose-500 truncate mt-0.5">Alasan: {rejectionReason}</p>
+                        )}
                       </div>
                       {isSigned && (
                         <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded-full flex-shrink-0">
                           Sudah TTD
+                        </span>
+                      )}
+                      {isRejected && (
+                        <span className="text-[10px] font-bold text-rose-600 bg-rose-50 dark:bg-rose-900/30 px-2 py-0.5 rounded-full flex-shrink-0">
+                          Ditolak
                         </span>
                       )}
                     </div>

@@ -12,11 +12,18 @@ export async function uploadPackageDocuments(formData, options = {}) {
 }
 
 /**
- * Get all packages for the logged in user
- * @returns {Promise<Array>} List of packages
+ * Get all packages for the logged in user with server-side pagination
+ * @param {object} params - { page, limit, status, search }
+ * @returns {Promise<{ data: Array, meta: { total, page, limit, totalPages } }>}
  */
-export async function getAllPackages() {
-  return apiFetch(`/packages`, {
+export async function getAllPackages({ page = 1, limit = 5, status = '', search = '' } = {}) {
+  const params = new URLSearchParams();
+  params.set('page', page);
+  params.set('limit', limit);
+  if (status) params.set('status', status);
+  if (search) params.set('search', search);
+
+  return apiFetch(`/packages?${params.toString()}`, {
     method: 'GET',
   });
 }

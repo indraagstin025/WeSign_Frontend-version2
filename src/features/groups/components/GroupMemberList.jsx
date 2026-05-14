@@ -4,7 +4,7 @@ import { useGroupMemberListView } from '../hooks/useGroupMemberListView';
 
 /**
  * @component GroupMemberList
- * @description List anggota grup. Pure presentation — logic expand di `useGroupMemberListView`.
+ * @description List anggota grup — compact row style sesuai mockup.
  */
 const GroupMemberList = ({ members, adminId, currentUserId, onKick, kickingId }) => {
   const { state, actions } = useGroupMemberListView({ members });
@@ -12,90 +12,95 @@ const GroupMemberList = ({ members, adminId, currentUserId, onKick, kickingId })
 
   if (!members || members.length === 0) {
     return (
-      <div className="py-10 text-center">
-        <p className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">No members yet</p>
+      <div className="py-6 text-center">
+        <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Belum ada anggota</p>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-1">
-      <div className="space-y-1">
-        {displayMembers.map((member) => {
-          const isAdmin = String(member.userId) === String(adminId);
-          const isMe = String(member.userId) === String(currentUserId);
-          const name = member.user?.name || member.name || 'User';
-          const email = member.user?.email || member.email || '';
+    <div className="space-y-1">
+      {displayMembers.map((member) => {
+        const isAdminMember = String(member.userId) === String(adminId);
+        const isMe = String(member.userId) === String(currentUserId);
+        const name = member.user?.name || member.name || 'User';
+        const email = member.user?.email || member.email || '';
+        const avatarUrl = member.user?.profilePictureUrl;
+        const initials = name.trim().split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase();
 
-          const initials = name
-            .split(' ')
-            .map((n) => n[0])
-            .join('')
-            .substring(0, 2)
-            .toUpperCase();
-
-          return (
-            <div
-              key={member.id || member.userId}
-              className="group flex items-center justify-between p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/5 transition-all duration-300 cursor-default"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                {/* Avatar */}
-                <div className={`w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 border-2 relative
-                  ${isAdmin
-                    ? 'bg-amber-500/10 text-amber-600 border-amber-500/20'
-                    : isMe
-                      ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
-                      : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-100 border-zinc-100 dark:border-white/5'
-                  }
-                `}>
-                  {initials}
-                  <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white dark:border-zinc-900" />
-                </div>
-
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <p className="text-[12px] font-black text-zinc-900 dark:text-white truncate tracking-tight">
-                      {name}
-                    </p>
-                    {isAdmin && (
-                      <div className="flex items-center justify-center p-0.5 rounded-md bg-amber-500/10 text-amber-500" title="Admin">
-                        <Crown size={10} />
-                      </div>
-                    )}
-                    {isMe && (
-                      <span className="text-[8px] font-black text-emerald-500 uppercase tracking-tighter border border-emerald-500/20 px-1 rounded">YOU</span>
-                    )}
+        return (
+          <div
+            key={member.id || member.userId}
+            className="group flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-zinc-50 dark:hover:bg-white/5 transition-all cursor-default"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              {/* Avatar */}
+              <div className="relative shrink-0">
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt={name}
+                    className="w-8 h-8 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black
+                    ${isAdminMember
+                      ? 'bg-amber-100 dark:bg-amber-500/10 text-amber-600'
+                      : isMe
+                        ? 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600'
+                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-300'}
+                  `}>
+                    {initials}
                   </div>
-                  <p className="text-[10px] font-bold text-zinc-400 dark:text-zinc-100 opacity-50 truncate tracking-tight">{email}</p>
-                </div>
+                )}
+                {/* Online dot */}
+                <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white dark:border-zinc-900" />
               </div>
 
-              {/* Actions */}
-              {onKick && isAdmin && !isMe && (
-                <button
-                  onClick={() => onKick(member.userId, name)}
-                  disabled={kickingId === member.userId}
-                  className="p-1.5 rounded-lg text-zinc-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 opacity-0 group-hover:opacity-100 transition-all border-none bg-transparent cursor-pointer disabled:opacity-50"
-                >
-                  {kickingId === member.userId ? (
-                    <Loader2 size={12} className="animate-spin" />
-                  ) : (
-                    <UserMinus size={14} />
+              {/* Info */}
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <p className="text-[12px] font-bold text-zinc-900 dark:text-white truncate max-w-[120px]">
+                    {name}
+                  </p>
+                  {isAdminMember && (
+                    <Crown size={10} className="text-amber-500 shrink-0" />
                   )}
-                </button>
-              )}
+                  {isMe && (
+                    <span className="text-[8px] font-black text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 px-1.5 py-0.5 rounded-full uppercase tracking-wide shrink-0">
+                      YOU
+                    </span>
+                  )}
+                </div>
+                <p className="text-[10px] text-zinc-400 truncate max-w-[140px]">{email}</p>
+              </div>
             </div>
-          );
-        })}
-      </div>
+
+            {/* Kick button — admin only, not self */}
+            {onKick && !isAdminMember && !isMe && (
+              <button
+                onClick={() => onKick(member.userId, name)}
+                disabled={kickingId === member.userId}
+                className="p-1.5 rounded-lg text-zinc-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 opacity-0 group-hover:opacity-100 transition-all border-none bg-transparent cursor-pointer disabled:opacity-50 shrink-0"
+                title="Keluarkan anggota"
+              >
+                {kickingId === member.userId ? (
+                  <Loader2 size={12} className="animate-spin" />
+                ) : (
+                  <UserMinus size={13} />
+                )}
+              </button>
+            )}
+          </div>
+        );
+      })}
 
       {hasMore && (
         <button
           onClick={actions.toggleExpand}
-          className="mt-2 w-full py-3 rounded-xl border border-dashed border-zinc-200 dark:border-white/10 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 hover:text-emerald-500 hover:border-emerald-500/30 transition-all cursor-pointer bg-transparent"
+          className="w-full mt-1 py-2 rounded-xl text-[11px] font-bold text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/5 transition-all cursor-pointer bg-transparent border-none"
         >
-          {isExpanded ? 'Show Less' : `See All Members (${members.length})`}
+          {isExpanded ? 'Tampilkan lebih sedikit' : `Lihat semua (${members.length})`}
         </button>
       )}
     </div>

@@ -184,6 +184,7 @@ const GroupDocumentPreviewPage = () => {
                   {signerRequests.map((sr) => {
                     const isMe = String(sr.userId) === String(currentUser?.id);
                     const signed = sr.status?.toUpperCase() === 'SIGNED';
+                    const rejected = sr.status?.toUpperCase() === 'REJECTED';
                     const name = sr.user?.name || sr.name || 'User';
                     const initials = name.trim().split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase();
 
@@ -192,12 +193,15 @@ const GroupDocumentPreviewPage = () => {
                         key={sr.id || sr.userId}
                         className={`flex items-center gap-3 p-3 rounded-2xl border transition-all duration-300
                           ${isMe ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-transparent border-transparent'}
+                          ${rejected ? 'bg-rose-500/5 border-rose-500/20' : ''}
                         `}
                       >
                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-[10px] font-black shrink-0
                           ${signed
                             ? 'bg-emerald-500 text-white'
-                            : 'bg-zinc-100 dark:bg-white/5 text-zinc-400'}
+                            : rejected
+                              ? 'bg-rose-500 text-white'
+                              : 'bg-zinc-100 dark:bg-white/5 text-zinc-400'}
                         `}>
                           {initials}
                         </div>
@@ -205,9 +209,15 @@ const GroupDocumentPreviewPage = () => {
                           <p className="text-xs font-black text-zinc-800 dark:text-white truncate uppercase">
                             {name} {isMe && <span className="text-[9px] text-emerald-500">(Anda)</span>}
                           </p>
-                          <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-tight">{sr.status}</p>
+                          <p className={`text-[9px] font-bold uppercase tracking-tight ${rejected ? 'text-rose-500' : 'text-zinc-400'}`}>
+                            {sr.status}
+                            {rejected && sr.rejectionReason && (
+                              <span className="normal-case tracking-normal ml-1 text-rose-400">— {sr.rejectionReason}</span>
+                            )}
+                          </p>
                         </div>
                         {signed && <ShieldCheck size={16} className="text-emerald-500 shrink-0" />}
+                        {rejected && <span className="text-[9px] font-black text-rose-500 bg-rose-50 dark:bg-rose-900/30 px-2 py-0.5 rounded-full shrink-0">Ditolak</span>}
                       </div>
                     );
                   })}

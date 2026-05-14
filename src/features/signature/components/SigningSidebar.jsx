@@ -18,6 +18,7 @@ const SigningSidebar = ({
   // submit setelah TTD final tersimpan, atau force-enable di mode finalisasi
   // admin tanpa signature).
   disabled = null,
+  children = null,
 }) => {
   const canFinalize = signatures.length > 0;
   const isDisabled = disabled !== null ? disabled : (!canFinalize || isSubmitting);
@@ -117,6 +118,7 @@ const SigningSidebar = ({
             </>
           )}
         </button>
+        {children}
       </div>
     </aside>
   );

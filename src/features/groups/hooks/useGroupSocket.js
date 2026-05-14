@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { toast } from 'react-toastify';
 import { socketService } from '../../../services/socketService';
 import { drainOutbox } from '../../../services/outboxDrain';
 
@@ -157,9 +158,8 @@ export const useGroupSocket = ({
         });
       }
 
-      // Tampilkan notifikasi TTD masuk via window.alert (bukan modal)
-      // sesuai request: flow simpan TTD seharusnya cukup pakai alert.
-      window.alert(`${data.userName || 'Seseorang'} telah menandatangani dokumen.`);
+      // Tampilkan notifikasi TTD masuk via toast (non-blocking)
+      toast.info(`${data.userName || 'Seseorang'} telah menandatangani dokumen.`);
     };
 
     socketService.on('signature_saved', handleSigSaved);

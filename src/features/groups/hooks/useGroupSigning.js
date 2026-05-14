@@ -108,6 +108,7 @@ export const useGroupSigning = ({ groupId, documentId, currentUser }) => {
     handleDeleteSignature,
     handleSaveMySignature,
     handleFinalizeDocument,
+    handleRejectDocument,
   } = useGroupSignatureActions({
     documentId,
     groupId,
@@ -224,6 +225,7 @@ export const useGroupSigning = ({ groupId, documentId, currentUser }) => {
     handleDeleteSignature,
     handleSaveMySignature,
     handleFinalizeDocument,
+    handleRejectDocument,
     onDocumentLoadSuccess,
     handlePageLoadSuccess,
     refreshData: fetchGroupData,

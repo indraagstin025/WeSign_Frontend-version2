@@ -38,6 +38,16 @@ export async function getDocumentDetail(id) {
 }
 
 /**
+ * Mengambil daftar tipe dokumen yang boleh dipilih user.
+ * @returns {Promise<object>} Daftar tipe dokumen dari backend
+ */
+export async function getDocumentTypes() {
+  return apiFetch('/documents/types', {
+    method: 'GET',
+  });
+}
+
+/**
  * Menghapus dokumen (Soft/Hard delete ditangani backend).
  * @param {string} id - Document ID
  * @returns {Promise<object>} Pesan konfirmasi

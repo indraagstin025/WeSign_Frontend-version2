@@ -1,112 +1,242 @@
-import React from 'react';
-import { FileText, RefreshCcw, Plus } from 'lucide-react';
-
-// --- COMPONENTS & HOOKS ---
+import React, { useState } from 'react';
+import { FileText, RefreshCcw, Plus, Search, SlidersHorizontal, RotateCcw, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useDocuments } from '../hooks/useDocuments';
 import DocumentTable from '../components/DocumentTable';
-import Pagination from '../components/Pagination';
-import DocumentHeader from '../components/DocumentHeader';
-import DocumentToolbar from '../components/DocumentToolbar';
 import DocumentModals from '../components/DocumentModals';
 
-/**
- * @page DocumentsPage
- * @description Halaman utama Brankas Dokumen (Dashboard).
- * High-Level Orchestrator: Hanya mengelola tata letak dan distribusi data ke sub-komponen.
- */
+const STATUS_TABS = [
+  { label: 'Semua', value: '' },
+  { label: 'Draft', value: 'draft' },
+  { label: 'Proses', value: 'pending' },
+  { label: 'Selesai', value: 'completed' },
+];
+
 const DocumentsPage = () => {
-  const {
-    documents,
-    loading,
-    error,
-    meta,
-    filters,
-    modals,
-    actions
-  } = useDocuments();
+  const { documents, loading, error, meta, filters, modals, actions } = useDocuments();
+  const [sortBy, setSortBy] = useState('Terbaru');
+
+  const countByStatus = (status) => {
+    if (!status) return meta.total;
+    return documents.filter((d) => d.status?.toLowerCase() === status).length;
+  };
+
+  const showPagination = meta.totalPages > 1;
+
+  const getPageNumbers = () => {
+    const total = meta.totalPages;
+    const cur = meta.page;
+    if (total <= 5) return Array.from({ length: total }, (_, i) => i + 1);
+    if (cur <= 3) return [1, 2, 3, '...', total];
+    if (cur >= total - 2) return [1, '...', total - 2, total - 1, total];
+    return [1, '...', cur, '...', total];
+  };
 
   return (
-    <div className="flex flex-col h-screen lg:h-[calc(100vh-4rem)] max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 overflow-hidden">
-      
-      {/* 1. TOP AREA (Header & Toolbar) */}
-      <div className="flex-shrink-0 space-y-0">
-        <DocumentHeader onUpload={() => modals.upload.setOpen(true)} />
-        <DocumentToolbar filters={filters} />
+    <div className="flex-1 overflow-y-auto no-scrollbar bg-zinc-50 dark:bg-zinc-950">
+      <div className="max-w-7xl mx-auto px-5 lg:px-8 py-6">
 
-        {/* 1.1 TABLE COLUMN HEADERS (Fixed Visual) */}
-        <div className="hidden lg:flex items-center px-6 py-4 mt-6 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 transition-colors rounded-t-2xl shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">
-           <div className="w-[5%] text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest pl-2 font-heading">No.</div>
-           <div className="w-[36%] text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest text-left font-heading">Nama Dokumen</div>
-           <div className="w-[15%] text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest text-center font-heading">Status</div>
-           <div className="w-[15%] text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest text-center font-heading">Tipe</div>
-           <div className="w-[18%] text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest text-center font-heading">Tanggal</div>
-           <div className="w-[11%] text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest text-right pr-6 font-heading">Aksi</div>
+        {/* ── HEADER ─────────────────────────────────────────────────── */}
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Brankas Dokumen</h1>
+            <p className="text-[12px] text-zinc-400 mt-1 max-w-md">
+              Kelola, tandatangani, dan pantau seluruh berkas digital Anda dengan aman dan terorganisir.
+            </p>
+          </div>
+          <button
+            onClick={() => modals.upload.setOpen(true)}
+            className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-[12px] font-semibold transition-all shadow-sm border-none cursor-pointer shrink-0 active:scale-95"
+          >
+            <Plus size={15} strokeWidth={2.5} /> Unggah Baru
+          </button>
         </div>
-      </div>
 
-      {/* 2. SCROLLABLE CONTENT AREA */}
-      <div className="flex-1 overflow-y-auto no-scrollbar relative pt-2">
-        {loading ? (
-          <div className="h-full flex flex-col items-center justify-center p-12 space-y-5 animate-in fade-in duration-500">
-             <div className="relative">
-                <div className="w-16 h-16 border-4 border-zinc-100 dark:border-zinc-800 border-t-primary rounded-full animate-spin"></div>
-                <FileText size={28} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-primary" />
-             </div>
-             <div className="text-center animate-pulse">
-               <p className="text-sm font-bold text-zinc-800 dark:text-zinc-200 tracking-wider uppercase">Memproses Data</p>
-               <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Mohon tunggu sebentar...</p>
-             </div>
+        {/* ── FILTER BAR ─────────────────────────────────────────────── */}
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-2xl px-4 py-3 flex flex-wrap items-center gap-3 mb-4 shadow-sm">
+          <div className="relative flex-1 min-w-[160px]">
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+            <input
+              type="text"
+              placeholder="Cari dokumen..."
+              value={filters.search}
+              onChange={(e) => { filters.setSearch(e.target.value); filters.setPage(1); }}
+              className="w-full pl-8 pr-3 py-2 text-[12px] bg-zinc-50 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-zinc-700 dark:text-zinc-200 transition-all"
+            />
           </div>
-        ) : error ? (
-          <div className="h-full flex flex-col items-center justify-center p-12 space-y-6 text-center animate-in fade-in duration-500">
-             <div className="w-20 h-20 bg-rose-50 dark:bg-rose-900/10 rounded-[32px] flex items-center justify-center text-rose-500 border border-rose-100 dark:border-rose-900/30">
-                <RefreshCcw size={32} />
-             </div>
-             <div>
-               <h3 className="text-xl font-bold text-zinc-900 dark:text-white mb-2">Terjadi Gangguan</h3>
-               <p className="text-sm text-zinc-500 dark:text-zinc-400 max-w-xs mx-auto leading-relaxed">{error}</p>
-             </div>
-             <button onClick={actions.refresh} className="px-8 py-3 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-sm font-bold rounded-2xl border-none cursor-pointer hover:bg-zinc-800 transition-all active:scale-95 shadow-lg shadow-zinc-900/20 dark:shadow-white/10">
-                Muat Ulang Halaman
-             </button>
+
+          <div className="relative">
+            <select
+              value={filters.status || ''}
+              onChange={(e) => filters.setStatus(e.target.value)}
+              className="appearance-none pl-3 pr-8 py-2 text-[12px] bg-zinc-50 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 text-zinc-600 dark:text-zinc-300 cursor-pointer"
+            >
+              <option value="">Status</option>
+              <option value="draft">Draft</option>
+              <option value="pending">Proses</option>
+              <option value="completed">Selesai</option>
+            </select>
+            <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
           </div>
-        ) : documents.length > 0 ? (
-          <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 pb-12">
+
+          <div className="relative">
+            <select className="appearance-none pl-3 pr-8 py-2 text-[12px] bg-zinc-50 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 text-zinc-600 dark:text-zinc-300 cursor-pointer">
+              <option>Tipe</option>
+              <option>General</option>
+              <option>Contract</option>
+              <option>Invoice</option>
+              <option>Certificate</option>
+            </select>
+            <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
+          </div>
+
+          <button className="flex items-center gap-1.5 px-3 py-2 text-[12px] text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-200 bg-zinc-50 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 rounded-lg cursor-pointer transition-all bg-transparent">
+            <SlidersHorizontal size={13} /> Filter Lainnya
+          </button>
+
+          <button
+            onClick={() => { filters.setSearch(''); filters.setStatus(''); filters.setPage(1); }}
+            className="flex items-center gap-1.5 px-3 py-2 text-[12px] text-emerald-600 hover:text-emerald-700 bg-transparent border-none cursor-pointer transition-all ml-auto"
+          >
+            <RotateCcw size={12} /> Reset
+          </button>
+        </div>
+
+        {/* ── STATUS CEPAT + SORT ─────────────────────────────────────── */}
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[11px] font-semibold text-zinc-400 mr-1">Status Cepat</span>
+            {STATUS_TABS.map((tab) => {
+              const count = countByStatus(tab.value);
+              const isActive = (filters.status || '') === tab.value;
+              const pendingStyle = tab.value === 'pending' && count > 0 ? 'border-amber-300 text-amber-600 bg-amber-50 dark:bg-amber-500/10' : '';
+              const completedStyle = tab.value === 'completed' && count > 0 ? 'border-emerald-300 text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10' : '';
+              return (
+                <button
+                  key={tab.value}
+                  onClick={() => filters.setStatus(tab.value)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold border transition-all cursor-pointer
+                    ${isActive
+                      ? 'bg-emerald-500 text-white border-emerald-500 shadow-sm'
+                      : pendingStyle || completedStyle || 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:border-zinc-300'
+                    }`}
+                >
+                  {tab.label}
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${isActive ? 'bg-white/20 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'}`}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-zinc-400">Urutkan:</span>
+            <div className="relative">
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="appearance-none pl-3 pr-7 py-1.5 text-[11px] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg focus:outline-none text-zinc-600 dark:text-zinc-300 cursor-pointer"
+              >
+                <option>Terbaru</option>
+                <option>Terlama</option>
+                <option>A-Z</option>
+              </select>
+              <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
+            </div>
+          </div>
+        </div>
+
+        {/* ── TABLE ──────────────────────────────────────────────────── */}
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-20 gap-4">
+              <div className="w-10 h-10 border-4 border-zinc-100 dark:border-zinc-800 border-t-emerald-500 rounded-full animate-spin" />
+              <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-widest">Memuat dokumen...</p>
+            </div>
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
+              <RefreshCcw size={28} className="text-rose-400" />
+              <p className="text-sm text-zinc-500">{error}</p>
+              <button onClick={actions.refresh} className="px-5 py-2 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-[12px] font-semibold rounded-xl border-none cursor-pointer">
+                Muat Ulang
+              </button>
+            </div>
+          ) : documents.length > 0 ? (
             <DocumentTable documents={documents} onAction={actions.handleAction} modals={modals} />
-            <div className="pt-10 pb-8">
-              <Pagination currentPage={meta.page} totalPages={meta.totalPages} onPageChange={actions.handlePageChange} />
+          ) : (
+            <div className="flex flex-col items-center justify-center py-20 gap-5 text-center">
+              <div className="w-16 h-16 bg-zinc-50 dark:bg-zinc-800 rounded-2xl flex items-center justify-center border-2 border-dashed border-zinc-200 dark:border-zinc-700">
+                <FileText size={28} className="text-zinc-300 dark:text-zinc-600" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-1">
+                  {filters.search || filters.status ? 'Tidak Ditemukan' : 'Belum Ada Dokumen'}
+                </h3>
+                <p className="text-[11px] text-zinc-400 max-w-xs mx-auto">
+                  {filters.search || filters.status
+                    ? 'Tidak ada dokumen yang sesuai dengan filter.'
+                    : 'Unggah dokumen pertama Anda untuk mulai.'}
+                </p>
+              </div>
+              {!filters.search && !filters.status && (
+                <button
+                  onClick={() => modals.upload.setOpen(true)}
+                  className="flex items-center gap-2 bg-emerald-500 text-white px-5 py-2.5 rounded-xl text-[12px] font-semibold border-none cursor-pointer hover:bg-emerald-600 transition-all"
+                >
+                  <Plus size={14} /> Unggah Sekarang
+                </button>
+              )}
             </div>
-          </div>
-        ) : (
-          <div className="h-full flex flex-col items-center justify-center p-12 text-center space-y-8 animate-in fade-in duration-700">
-            <div className="w-28 h-28 bg-zinc-50 dark:bg-zinc-800/40 rounded-[40px] flex items-center justify-center text-zinc-200 dark:text-zinc-700 border-2 border-dashed border-zinc-200 dark:border-zinc-800 shadow-inner">
-              <FileText size={48} />
+          )}
+        </div>
+
+        {/* ── PAGINATION ─────────────────────────────────────────────── */}
+        {showPagination && (
+          <div className="flex items-center justify-between mt-4 px-1">
+            <p className="text-[11px] text-zinc-400">
+              Menampilkan {(meta.page - 1) * meta.limit + 1} - {Math.min(meta.page * meta.limit, meta.total)} dari {meta.total} dokumen
+            </p>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => actions.handlePageChange(meta.page - 1)}
+                disabled={meta.page === 1}
+                className="w-7 h-7 rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-400 hover:text-zinc-700 flex items-center justify-center bg-white dark:bg-zinc-900 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              >
+                <ChevronLeft size={13} />
+              </button>
+
+              {getPageNumbers().map((p, i) =>
+                p === '...' ? (
+                  <span key={`e-${i}`} className="text-zinc-300 text-[11px] px-1">...</span>
+                ) : (
+                  <button
+                    key={p}
+                    onClick={() => actions.handlePageChange(p)}
+                    className={`w-7 h-7 rounded-lg text-[11px] font-semibold transition-all cursor-pointer border
+                      ${p === meta.page
+                        ? 'bg-emerald-500 text-white border-emerald-500'
+                        : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 text-zinc-500 hover:border-zinc-300'
+                      }`}
+                  >
+                    {p}
+                  </button>
+                )
+              )}
+
+              <button
+                onClick={() => actions.handlePageChange(meta.page + 1)}
+                disabled={meta.page === meta.totalPages}
+                className="w-7 h-7 rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-400 hover:text-zinc-700 flex items-center justify-center bg-white dark:bg-zinc-900 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              >
+                <ChevronRight size={13} />
+              </button>
             </div>
-            <div className="space-y-3">
-              <h3 className="text-2xl font-bold text-zinc-900 dark:text-white font-heading">
-                {filters.search || filters.status ? 'Pencarian Nihil' : 'Belum Ada Dokumen'}
-              </h3>
-              <p className="text-sm text-zinc-500 dark:text-zinc-400 max-w-sm mx-auto leading-relaxed">
-                {filters.search || filters.status 
-                  ? 'Kami tidak menemukan berkas yang sesuai dengan kriteria filter atau pencarian Anda.' 
-                  : 'Sistem belum menemukan dokumen apapun di akun Anda. Ayo mulai amankan dokumen Anda hari ini.'}
-              </p>
-            </div>
-            {!filters.search && !filters.status && (
-               <button 
-                 onClick={() => modals.upload.setOpen(true)} 
-                 className="flex items-center gap-3 bg-primary/10 dark:bg-primary/20 hover:bg-primary/20 text-primary px-10 py-4 rounded-full text-sm font-bold border border-primary/20 dark:border-primary/40 backdrop-blur-sm cursor-pointer transition-all active:scale-95 shadow-sm"
-               >
-                 <Plus size={20} strokeWidth={2.5} /> Unggah File Pertama
-               </button>
-            )}
           </div>
         )}
       </div>
 
-      {/* 3. GLOBAL MODALS CONTAINER */}
+      {/* ── MODALS ─────────────────────────────────────────────────── */}
       <DocumentModals modals={modals} actions={actions} />
-
     </div>
   );
 };

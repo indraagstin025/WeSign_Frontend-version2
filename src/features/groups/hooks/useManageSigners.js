@@ -42,6 +42,16 @@ export function useManageSigners({ isOpen, doc, groupId, members = [], onSuccess
     return record?.status === 'SIGNED';
   };
 
+  const isUserRejected = (userId) => {
+    const record = doc?.signerRequests?.find((sr) => sr.userId === userId);
+    return record?.status === 'REJECTED';
+  };
+
+  const getRejectionReason = (userId) => {
+    const record = doc?.signerRequests?.find((sr) => sr.userId === userId);
+    return record?.rejectionReason || null;
+  };
+
   const handleSave = async () => {
     if (!doc) return;
     setIsSaving(true);
@@ -78,6 +88,8 @@ export function useManageSigners({ isOpen, doc, groupId, members = [], onSuccess
       toggleAll,
       handleSave,
       isUserSigned,
+      isUserRejected,
+      getRejectionReason,
     },
   };
 }

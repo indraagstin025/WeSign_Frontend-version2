@@ -185,7 +185,14 @@ export const useUploadDoc = (onSuccess, onClose) => {
     actions: {
       setTitle,
       setType,
-      setFile: (f) => f && processSelectedFile(f),
+      setFile: (f) => {
+        if (f === null) {
+          setFile(null);
+          setError(null);
+        } else if (f) {
+          processSelectedFile(f);
+        }
+      },
       handleSubmit,
       handleClose,
       handleDrop: (e) => {

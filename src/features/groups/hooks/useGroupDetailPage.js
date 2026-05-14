@@ -1,13 +1,15 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useUser } from '../../../context/UserContext';
 import {
   getGroupDetail,
+  getGroupDocuments,
   createInvitation,
   finalizeGroupDocument,
   deleteGroupDocument,
   removeMember,
 } from '../api/groupService';
+import { rejectDocument } from '../api/groupSignatureService';
 import { useGroupSocket } from './useGroupSocket';
 
 const COPY_FEEDBACK_MS = 2000;
@@ -30,6 +32,18 @@ export function useGroupDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // ── Document pagination state ─────────────────────────────────────────────
+  const [documents, setDocuments] = useState([]);
+  const [docMeta, setDocMeta] = useState({ total: 0, page: 1, limit: 5, totalPages: 1 });
+  const [docPage, setDocPage] = useState(1);
+  const [docSearch, setDocSearch] = useState('');
+  const [docSortBy, setDocSortBy] = useState('newest');
+  const [docLoading, setDocLoading] = useState(false);
+
+  // Ref untuk menyimpan current pagination values — menghindari stale closure
+  const paginationRef = useRef({ page: 1, search: '', sortBy: 'newest' });
+  paginationRef.current = { page: docPage, search: docSearch, sortBy: docSortBy };
+
   // ── Modal & action states ─────────────────────────────────────────────────
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [manageSignersDoc, setManageSignersDoc] = useState(null);
@@ -47,14 +61,18 @@ export function useGroupDetailPage() {
     message: '',
   });
 
-  // ── Fetch group ───────────────────────────────────────────────────────────
+  // ── Fetch group (metadata + members only) ────────────────────────────────
   const fetchGroup = useCallback(
     async (silent = false) => {
       if (!silent) setLoading(true);
       try {
         const res = await getGroupDetail(groupId);
-        if (res.status === 'success') setGroupData(res.data);
-        else throw new Error(res.message);
+        if (res.status === 'success') {
+          const { documents: _docs, ...groupMeta } = res.data;
+          setGroupData(groupMeta);
+        } else {
+          throw new Error(res.message);
+        }
       } catch (err) {
         if (!silent) setError(err.message);
       } finally {
@@ -64,9 +82,43 @@ export function useGroupDetailPage() {
     [groupId]
   );
 
+  // ── Fetch documents with pagination ──────────────────────────────────────
+  // Stable reference — tidak bergantung pada docPage/docSearch/docSortBy di dependency.
+  // Selalu baca nilai terbaru dari paginationRef atau parameter eksplisit.
+  const fetchDocuments = useCallback(
+    async ({ page, search, sortBy, silent = false } = {}) => {
+      const p = page ?? paginationRef.current.page;
+      const s = search ?? paginationRef.current.search;
+      const sb = sortBy ?? paginationRef.current.sortBy;
+
+      if (!silent) setDocLoading(true);
+      try {
+        const res = await getGroupDocuments(groupId, { page: p, limit: 5, search: s, sortBy: sb });
+        if (res.status === 'success') {
+          const payload = res.data;
+          if (payload?.data && payload?.meta) {
+            setDocuments(payload.data);
+            setDocMeta(payload.meta);
+          }
+        }
+      } catch (err) {
+        console.warn('[useGroupDetailPage] fetchDocuments error:', err.message);
+      } finally {
+        if (!silent) setDocLoading(false);
+      }
+    },
+    [groupId]
+  );
+
+  // Initial fetch group
   useEffect(() => {
     fetchGroup();
   }, [fetchGroup]);
+
+  // Fetch documents ketika pagination/sort/search berubah
+  useEffect(() => {
+    fetchDocuments({ page: docPage, search: docSearch, sortBy: docSortBy });
+  }, [groupId, docPage, docSearch, docSortBy, fetchDocuments]);
 
   // ── Realtime via Socket ───────────────────────────────────────────────────
   useGroupSocket({
@@ -75,7 +127,7 @@ export function useGroupDetailPage() {
     currentUserId: currentUser?.id,
     ready: !!currentUser,
     setStatusModal,
-    onRefresh: fetchGroup,
+    onRefresh: (silent) => { fetchGroup(silent); fetchDocuments({ silent: true }); },
     onKicked: () => navigate('/dashboard/groups'),
   });
 
@@ -132,6 +184,7 @@ export function useGroupDetailPage() {
         message: `Dokumen "${title}" telah berhasil difinalisasi.`,
       });
       fetchGroup(true);
+      fetchDocuments({ silent: true });
     } catch (err) {
       setStatusModal({ isOpen: true, type: 'error', title: 'Gagal', message: err.message });
     } finally {
@@ -146,6 +199,7 @@ export function useGroupDetailPage() {
       await deleteGroupDocument(groupId, deleteTarget.id);
       setDeleteTarget(null);
       fetchGroup(true);
+      fetchDocuments({ silent: true });
     } catch (err) {
       setStatusModal({ isOpen: true, type: 'error', title: 'Gagal', message: err.message });
     } finally {
@@ -164,6 +218,22 @@ export function useGroupDetailPage() {
       setStatusModal({ isOpen: true, type: 'error', title: 'Gagal', message: err.message });
     } finally {
       setKickingId(null);
+    }
+  };
+
+  const handleReject = async (documentId, reason) => {
+    try {
+      await rejectDocument(documentId, reason);
+      setStatusModal({
+        isOpen: true,
+        type: 'success',
+        title: 'Dokumen Ditolak',
+        message: 'Anda telah menolak dokumen ini. Admin akan mendapat notifikasi.',
+      });
+      fetchGroup(true);
+      fetchDocuments({ silent: true });
+    } catch (err) {
+      setStatusModal({ isOpen: true, type: 'error', title: 'Gagal', message: err.message });
     }
   };
 
@@ -209,9 +279,17 @@ export function useGroupDetailPage() {
       kickTarget,
       kickingId,
       statusModal,
+      // Document pagination
+      documents,
+      docMeta,
+      docPage,
+      docSearch,
+      docSortBy,
+      docLoading,
     },
     actions: {
       fetchGroup,
+      fetchDocuments,
       getMySignerStatus,
       handleInvite,
       copyToClipboard,
@@ -219,6 +297,7 @@ export function useGroupDetailPage() {
       handleFinalize,
       handleDelete,
       handleKick,
+      handleReject,
       goBackToList,
       goToSign,
       goToPreview,
@@ -227,6 +306,9 @@ export function useGroupDetailPage() {
       openManageSigners,
       closeManageSigners,
       requestDelete,
+      setDocPage,
+      setDocSearch,
+      setDocSortBy,
       cancelDelete,
       requestKick,
       cancelKick,

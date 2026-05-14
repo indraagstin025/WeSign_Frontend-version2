@@ -68,3 +68,15 @@ export const signDocument = (documentId, payload) =>
     method: 'POST',
     body: payload,
   });
+
+/**
+ * Menolak dokumen — signer PENDING bisa reject alih-alih tanda tangan.
+ * @param {string} documentId
+ * @param {string|null} reason - Alasan penolakan (opsional)
+ * @returns {Promise<{ message, documentId, reason }>}
+ */
+export const rejectDocument = (documentId, reason = null) =>
+  apiFetch(`/group-signatures/${documentId}/reject`, {
+    method: 'POST',
+    body: { reason },
+  });

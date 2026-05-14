@@ -86,5 +86,25 @@ export const updateDocumentSigners = (groupId, documentId, signerUserIds) =>
  * Finalisasi dokumen: burn PDF dengan semua tanda tangan.
  * Hanya bisa dipanggil oleh admin group setelah semua signer sudah sign.
  */
+/**
+ * Mengambil dokumen grup dengan server-side pagination.
+ * @param {string|number} groupId
+ * @param {object} params - { page, limit, search, status, sortBy }
+ *   sortBy: 'newest' | 'oldest' | 'az' | 'za' | 'status' | 'signers'
+ * @returns {Promise<{ data: Array, meta: { total, page, limit, totalPages } }>}
+ */
+export const getGroupDocuments = (
+  groupId,
+  { page = 1, limit = 10, search = '', status = '', sortBy = 'newest' } = {}
+) => {
+  const params = new URLSearchParams();
+  params.set('page', page);
+  params.set('limit', limit);
+  if (search) params.set('search', search);
+  if (status) params.set('status', status);
+  if (sortBy) params.set('sortBy', sortBy);
+  return apiFetch(`/groups/${groupId}/documents?${params.toString()}`);
+};
+
 export const finalizeGroupDocument = (groupId, documentId) =>
   apiFetch(`/groups/${groupId}/documents/${documentId}/finalize`, { method: 'POST' });
