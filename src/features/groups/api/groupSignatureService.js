@@ -67,6 +67,7 @@ export const signDocument = (documentId, payload) =>
   apiFetch(`/group-signatures/${documentId}/sign`, {
     method: 'POST',
     body: payload,
+    timeout: 120000, // 2 menit — signing butuh waktu lama (generate PDF + digital sign + upload)
   });
 
 /**

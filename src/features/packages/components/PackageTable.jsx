@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MoreVertical, Trash2, Eye, Download, Layers, PenTool, FileText, Pencil } from 'lucide-react';
+import { MoreVertical, Trash2, Eye, Download, Layers, PenTool, FileText, Pencil, RotateCcw } from 'lucide-react';
 import { usePackageTable } from '../hooks/usePackageTable';
 
 const STATUS_BADGE = {
@@ -16,7 +16,7 @@ const LABEL_BADGE = {
   Finance: 'bg-orange-50 text-orange-700 border border-orange-200',
 };
 
-const PackageTable = ({ packages, onAction }) => {
+const PackageTable = ({ packages, onAction, isTrashMode = false }) => {
   const { openMenuId, setOpenMenuId, menuRef, helpers, handleActionClick } = usePackageTable(onAction);
   const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
 
@@ -158,13 +158,21 @@ const PackageTable = ({ packages, onAction }) => {
                 </div>
               </div>
               <div className="mt-3 flex items-center gap-2 pt-3 border-t border-zinc-50 dark:border-zinc-800">
-                <button onClick={() => onAction('preview', pkg)} className="flex-1 py-2 flex items-center justify-center gap-1.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 rounded-lg text-[11px] font-semibold border-none cursor-pointer">
-                  <Eye size={13} /> Preview
-                </button>
-                {pkg.status?.toLowerCase() === 'draft' && (
-                  <button onClick={() => onAction('sign', pkg)} className="flex-1 py-2 flex items-center justify-center gap-1.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 rounded-lg text-[11px] font-semibold border-none cursor-pointer">
-                    <PenTool size={13} /> Sign
+                {isTrashMode ? (
+                  <button onClick={() => onAction('restore', pkg)} className="flex-1 py-2 flex items-center justify-center gap-1.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 rounded-lg text-[11px] font-semibold border-none cursor-pointer">
+                    <RotateCcw size={13} /> Pulihkan
                   </button>
+                ) : (
+                  <>
+                    <button onClick={() => onAction('preview', pkg)} className="flex-1 py-2 flex items-center justify-center gap-1.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 rounded-lg text-[11px] font-semibold border-none cursor-pointer">
+                      <Eye size={13} /> Preview
+                    </button>
+                    {pkg.status?.toLowerCase() === 'draft' && (
+                      <button onClick={() => onAction('sign', pkg)} className="flex-1 py-2 flex items-center justify-center gap-1.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 rounded-lg text-[11px] font-semibold border-none cursor-pointer">
+                        <PenTool size={13} /> Sign
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             </div>
@@ -180,29 +188,42 @@ const PackageTable = ({ packages, onAction }) => {
             className="fixed z-50 w-52 bg-white dark:bg-zinc-800 rounded-xl shadow-2xl border border-zinc-100 dark:border-zinc-700 py-1 animate-in fade-in zoom-in-95 duration-150"
             style={{ top: menuPos.top, right: menuPos.right }}
           >
-            <button onClick={() => handleActionClick('info', activePkg)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 bg-transparent border-none cursor-pointer text-left">
-              <Eye size={14} /> Info Detail
-            </button>
-            <button onClick={() => handleActionClick('edit', activePkg)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 bg-transparent border-none cursor-pointer text-left">
-              <Pencil size={14} className="text-blue-500" /> Edit Paket
-            </button>
-            <button onClick={() => handleActionClick('preview', activePkg)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 bg-transparent border-none cursor-pointer text-left">
-              <Eye size={14} className="text-emerald-500" /> Preview Paket
-            </button>
-            {activePkg.status?.toLowerCase() === 'draft' && (
-              <button onClick={() => handleActionClick('sign', activePkg)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 bg-transparent border-none cursor-pointer text-left">
-                <PenTool size={14} className="text-emerald-500" /> Sign Paket
-              </button>
+            {isTrashMode ? (
+              <>
+                <button onClick={() => handleActionClick('restore', activePkg)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 bg-transparent border-none cursor-pointer text-left">
+                  <RotateCcw size={14} /> Pulihkan Paket
+                </button>
+                <button onClick={() => handleActionClick('info', activePkg)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 bg-transparent border-none cursor-pointer text-left">
+                  <Eye size={14} /> Info Detail
+                </button>
+              </>
+            ) : (
+              <>
+                <button onClick={() => handleActionClick('info', activePkg)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 bg-transparent border-none cursor-pointer text-left">
+                  <Eye size={14} /> Info Detail
+                </button>
+                <button onClick={() => handleActionClick('edit', activePkg)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 bg-transparent border-none cursor-pointer text-left">
+                  <Pencil size={14} className="text-blue-500" /> Edit Paket
+                </button>
+                <button onClick={() => handleActionClick('preview', activePkg)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 bg-transparent border-none cursor-pointer text-left">
+                  <Eye size={14} className="text-emerald-500" /> Preview Paket
+                </button>
+                {activePkg.status?.toLowerCase() === 'draft' && (
+                  <button onClick={() => handleActionClick('sign', activePkg)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 bg-transparent border-none cursor-pointer text-left">
+                    <PenTool size={14} className="text-emerald-500" /> Sign Paket
+                  </button>
+                )}
+                {activePkg.status?.toLowerCase() === 'completed' && (
+                  <button onClick={() => handleActionClick('download', activePkg)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 bg-transparent border-none cursor-pointer text-left">
+                    <Download size={14} /> Unduh (.zip)
+                  </button>
+                )}
+                <div className="h-px bg-zinc-100 dark:bg-zinc-700 my-1" />
+                <button onClick={() => handleActionClick('delete', activePkg)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 bg-transparent border-none cursor-pointer text-left">
+                  <Trash2 size={14} /> Hapus Paket
+                </button>
+              </>
             )}
-            {activePkg.status?.toLowerCase() === 'completed' && (
-              <button onClick={() => handleActionClick('download', activePkg)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 bg-transparent border-none cursor-pointer text-left">
-                <Download size={14} /> Unduh (.zip)
-              </button>
-            )}
-            <div className="h-px bg-zinc-100 dark:bg-zinc-700 my-1" />
-            <button onClick={() => handleActionClick('delete', activePkg)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 bg-transparent border-none cursor-pointer text-left">
-              <Trash2 size={14} /> Hapus Paket
-            </button>
           </div>
         </>
       )}

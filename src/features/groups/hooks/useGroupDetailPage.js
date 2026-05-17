@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import { useUser } from '../../../context/UserContext';
 import {
   getGroupDetail,
@@ -8,6 +9,8 @@ import {
   finalizeGroupDocument,
   deleteGroupDocument,
   removeMember,
+  getDeletedGroupDocuments,
+  restoreGroupDocument,
 } from '../api/groupService';
 import { rejectDocument } from '../api/groupSignatureService';
 import { useGroupSocket } from './useGroupSocket';
@@ -50,6 +53,7 @@ export function useGroupDetailPage() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [isDeleting, setIsDeleting] = useState(null);
   const [isFinalizing, setIsFinalizing] = useState(null);
+  const [finalizeTarget, setFinalizeTarget] = useState(null); // { id, title }
   const [inviteLink, setInviteLink] = useState(null);
   const [isCopied, setIsCopied] = useState(false);
   const [kickTarget, setKickTarget] = useState(null);
@@ -173,10 +177,10 @@ export function useGroupDetailPage() {
 
   const closeInviteLink = () => setInviteLink(null);
 
-  const handleFinalize = async (docId, title) => {
+  const handleFinalize = async (docId, title, auditTrailMode = "embedded") => {
     setIsFinalizing(docId);
     try {
-      await finalizeGroupDocument(groupId, docId);
+      await finalizeGroupDocument(groupId, docId, auditTrailMode);
       setStatusModal({
         isOpen: true,
         type: 'success',
@@ -195,11 +199,28 @@ export function useGroupDetailPage() {
   const handleDelete = async () => {
     if (!deleteTarget) return;
     setIsDeleting(deleteTarget.id);
+    const deletedTitle = deleteTarget.title || 'Dokumen';
     try {
       await deleteGroupDocument(groupId, deleteTarget.id);
       setDeleteTarget(null);
       fetchGroup(true);
-      fetchDocuments({ silent: true });
+      fetchTrashCount();
+
+      // Jika item terakhir di halaman ini, mundur ke halaman sebelumnya.
+      const isLastItemOnPage = documents.length === 1;
+      const shouldGoBack = isLastItemOnPage && docPage > 1;
+      if (shouldGoBack) {
+        setDocPage(docPage - 1);
+        // useEffect akan auto-fetch halaman baru
+      } else {
+        fetchDocuments({ silent: true });
+      }
+
+      // Info ke user: dokumen tidak hilang permanen.
+      toast.success(
+        `Dokumen "${deletedTitle}" dihapus. Bisa dipulihkan dalam 30 hari di tab Terhapus grup ini.`,
+        { autoClose: 5000 }
+      );
     } catch (err) {
       setStatusModal({ isOpen: true, type: 'error', title: 'Gagal', message: err.message });
     } finally {
@@ -244,6 +265,60 @@ export function useGroupDetailPage() {
   const goToPreview = (docId) =>
     navigate(`/dashboard/groups/${groupId}/documents/${docId}/preview`);
 
+  // ── Trash (Soft Delete) — Group Document ──────────────────────────────────
+  const [trashDocs, setTrashDocs] = useState([]);
+  const [trashMeta, setTrashMeta] = useState({ total: 0, page: 1, limit: 10, totalPages: 1 });
+  const [trashPage, setTrashPage] = useState(1);
+  const [trashLoading, setTrashLoading] = useState(false);
+  const [trashCount, setTrashCount] = useState(0);
+
+  const fetchTrashDocuments = useCallback(async ({ page, silent = false } = {}) => {
+    const p = page ?? trashPage;
+    if (!silent) setTrashLoading(true);
+    try {
+      const res = await getDeletedGroupDocuments(groupId, { page: p, limit: 10 });
+      if (res?.status === 'success') {
+        const payload = res.data;
+        if (payload?.data && payload?.meta) {
+          setTrashDocs(payload.data);
+          setTrashMeta(payload.meta);
+          setTrashCount(payload.meta.total);
+        } else {
+          const arr = Array.isArray(payload) ? payload : [];
+          setTrashDocs(arr);
+          setTrashCount(arr.length);
+        }
+      }
+    } catch { /* silent */ }
+    finally { if (!silent) setTrashLoading(false); }
+  }, [groupId, trashPage]);
+
+  // Fetch trash count on mount (light)
+  const fetchTrashCount = useCallback(async () => {
+    try {
+      const res = await getDeletedGroupDocuments(groupId, { page: 1, limit: 1 });
+      if (res?.status === 'success') {
+        const m = res.data?.meta || res.meta;
+        setTrashCount(m?.total || 0);
+      }
+    } catch { /* silent */ }
+  }, [groupId]);
+
+  useEffect(() => { fetchTrashCount(); }, [fetchTrashCount]);
+
+  const handleRestoreGroupDoc = async (doc) => {
+    try {
+      await restoreGroupDocument(groupId, doc.id);
+      toast.success(`Dokumen "${doc.title || 'Tanpa Judul'}" berhasil dipulihkan.`);
+      fetchTrashDocuments({ silent: true });
+      fetchTrashCount();
+      fetchDocuments({ silent: true });
+      fetchGroup(true);
+    } catch (err) {
+      toast.error(err.message || 'Gagal me-restore dokumen.');
+    }
+  };
+
   // ── Modal helpers ─────────────────────────────────────────────────────────
   const openUploadModal = () => setIsUploadModalOpen(true);
   const closeUploadModal = () => setIsUploadModalOpen(false);
@@ -256,6 +331,13 @@ export function useGroupDetailPage() {
       isCompleted: doc.status?.toUpperCase() === 'COMPLETED',
     });
   const cancelDelete = () => setDeleteTarget(null);
+  const requestFinalize = (doc) => setFinalizeTarget({ id: doc.id, title: doc.title });
+  const cancelFinalize = () => setFinalizeTarget(null);
+  const confirmFinalize = (auditTrailMode) => {
+    if (!finalizeTarget) return;
+    handleFinalize(finalizeTarget.id, finalizeTarget.title, auditTrailMode);
+    setFinalizeTarget(null);
+  };
   const requestKick = (userId, name) => setKickTarget({ userId, name });
   const cancelKick = () => setKickTarget(null);
   const closeStatusModal = () =>
@@ -274,6 +356,7 @@ export function useGroupDetailPage() {
       deleteTarget,
       isDeleting,
       isFinalizing,
+      finalizeTarget,
       inviteLink,
       isCopied,
       kickTarget,
@@ -286,6 +369,12 @@ export function useGroupDetailPage() {
       docSearch,
       docSortBy,
       docLoading,
+      // Trash
+      trashDocs,
+      trashMeta,
+      trashPage,
+      trashLoading,
+      trashCount,
     },
     actions: {
       fetchGroup,
@@ -310,9 +399,16 @@ export function useGroupDetailPage() {
       setDocSearch,
       setDocSortBy,
       cancelDelete,
+      requestFinalize,
+      cancelFinalize,
+      confirmFinalize,
       requestKick,
       cancelKick,
       closeStatusModal,
+      // Trash
+      fetchTrashDocuments,
+      setTrashPage,
+      handleRestoreGroupDoc,
     },
   };
 }

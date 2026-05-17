@@ -31,6 +31,7 @@ export function useGroupSigningPage() {
     isAdmin,
     readyToFinalize,
     currentSignature,
+    currentMethod,
     isSubmitting,
     isFinalizing,
     iFinalized,
@@ -70,7 +71,8 @@ export function useGroupSigningPage() {
   // ke layar selesai. User lain tetap di halaman signing dengan notifikasi.
   const isCompleted = iFinalized && documentStatus?.toUpperCase() === 'COMPLETED';
   const isFinalizeMode = isAdmin && readyToFinalize;
-  const finalizeAction = isFinalizeMode ? handleFinalizeDocument : handleSaveMySignature;
+  const [auditTrailMode, setAuditTrailMode] = useState("embedded");
+  const finalizeAction = isFinalizeMode ? () => handleFinalizeDocument(auditTrailMode) : handleSaveMySignature;
   const finalizeText = isFinalizeMode ? 'Finalisasi Dokumen' : 'Simpan Tanda Tangan';
   const submittingAny = isSubmitting || isFinalizing;
 
@@ -116,6 +118,8 @@ export function useGroupSigningPage() {
         positionY: Math.max(0, clickY - 0.05),
         width: DEFAULT_SIG_WIDTH,
         height: DEFAULT_SIG_HEIGHT,
+        method: currentMethod || 'canvas',
+        category: ['canvas', 'signature', 'initial', 'date'].includes(currentMethod) ? 'signing' : 'annotation',
       });
     },
     [canSign, currentSignature, mySignatures.length, pageNumber, handleAddSignature, setIsCanvasOpen, setStatusModal]
@@ -143,6 +147,8 @@ export function useGroupSigningPage() {
       finalizeText,
       submittingAny,
       disableFinalizeAction,
+      auditTrailMode,
+      setAuditTrailMode,
       // pass-through dari useGroupSigning
       ...signing,
     },

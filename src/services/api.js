@@ -90,7 +90,10 @@ export async function apiFetch(endpoint, options = {}) {
     clearTimeout(timeoutId);
 
     // --- INTERCEPTOR 401 (UNAUTHORIZED) ---
-    if (response.status === 401 && !options._retry && endpoint !== "/auth/login") {
+    // Skip auto-refresh untuk endpoint auth publik (reset-password, forgot-password)
+    const skipRefreshEndpoints = ["/auth/login", "/auth/reset-password", "/auth/forgot-password"];
+    const shouldSkipRefresh = skipRefreshEndpoints.some((p) => endpoint.startsWith(p));
+    if (response.status === 401 && !options._retry && !shouldSkipRefresh) {
       console.warn(`[apiFetch] 401 detected on ${options.method} ${endpoint}, attempting token refresh...`);
       const refreshToken = localStorage.getItem("wesign_refresh_token");
 
@@ -171,7 +174,11 @@ export async function apiFetch(endpoint, options = {}) {
     }
 
     if (!response.ok) {
-      if (response.status === 401) handleLogout();
+      // Jangan auto-logout untuk endpoint auth publik yang bisa return 401
+      // (login: password salah, reset-password: token expired/invalid, forgot-password: edge case)
+      const authPublicEndpoints = ["/auth/login", "/auth/reset-password", "/auth/forgot-password"];
+      const isAuthPublic = authPublicEndpoints.some((p) => endpoint.startsWith(p));
+      if (response.status === 401 && !isAuthPublic) handleLogout();
 
       // Petakan error code dari backend ke pesan ramah pengguna
       const errorCode = data?.code;
@@ -257,7 +264,7 @@ function getFriendlyErrorMessage(code, status, originalMessage) {
   // Peta berdasarkan HTTP status jika tidak ada error code spesifik
   const statusMessages = {
     400: originalMessage || "Permintaan tidak valid. Periksa kembali data yang dikirimkan.",
-    401: "Sesi Anda telah berakhir. Silakan login kembali.",
+    401: originalMessage || "Sesi Anda telah berakhir. Silakan login kembali.",
     403: "Anda tidak memiliki izin untuk melakukan aksi ini.",
     404: "Data yang diminta tidak ditemukan.",
     408: "Permintaan gagal: Waktu tunggu habis. Coba lagi dalam beberapa saat.",

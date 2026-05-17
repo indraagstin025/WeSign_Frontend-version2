@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   ChevronLeft, FileText, Download, ExternalLink,
   AlertCircle, Loader2, CheckCircle2,
-  Users, PenLine, RefreshCw, ShieldCheck,
+  Users, PenLine, RefreshCw, ShieldCheck, ClipboardList,
 } from 'lucide-react';
 import StatusModal from '../../../components/UI/StatusModal';
 import { useGroupDocumentPreviewPage } from '../hooks/useGroupDocumentPreviewPage';
@@ -30,6 +30,7 @@ const GroupDocumentPreviewPage = () => {
     canSign,
     docStatusCfg,
     signUrl,
+    isAuditTrailMode,
   } = state;
 
   const DocStatusIcon = docStatusCfg.icon;
@@ -75,6 +76,19 @@ const GroupDocumentPreviewPage = () => {
 
           {!loading && pdfUrl && (
             <div className="flex items-center gap-2 border-l border-zinc-100 dark:border-white/5 pl-3">
+              {doc?.currentVersion?.auditTrailUrl && (
+                <button
+                  onClick={actions.toggleAuditTrail}
+                  className={`flex items-center gap-2 px-5 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer border shadow-sm ${
+                    isAuditTrailMode
+                      ? 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-white/5 text-zinc-700 dark:text-zinc-300 hover:border-zinc-300'
+                      : 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20 text-emerald-600 hover:bg-emerald-100'
+                  }`}
+                >
+                  <ClipboardList size={14} />
+                  {isAuditTrailMode ? 'Dokumen' : 'Audit Trail'}
+                </button>
+              )}
               <button
                 onClick={actions.handleDownload}
                 className="flex items-center gap-2 px-5 py-3 rounded-xl bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-white/5 text-zinc-700 dark:text-zinc-300 text-[10px] font-black uppercase tracking-widest hover:border-emerald-500 transition-all cursor-pointer shadow-sm"

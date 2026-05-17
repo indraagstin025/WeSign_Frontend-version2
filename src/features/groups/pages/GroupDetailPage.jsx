@@ -3,7 +3,7 @@ import {
   Users, FileText, FilePlus, Share2, RefreshCw,
   Loader2, Copy, CheckCircle, ArrowLeft, UserPlus,
   Settings, Search, SlidersHorizontal, LayoutGrid, List,
-  Activity,
+  Activity, Trash2, RotateCcw, ChevronDown,
 } from 'lucide-react';
 import GroupDocumentCard from '../components/GroupDocumentCard';
 import GroupMemberList from '../components/GroupMemberList';
@@ -12,6 +12,78 @@ import ManageSignersModal from '../components/ManageSignersModal';
 import StatusModal from '../../../components/UI/StatusModal';
 import ConfirmModal from '../../../components/UI/ConfirmModal';
 import { useGroupDetailPage } from '../hooks/useGroupDetailPage';
+import AuditTrailToggle from '../../signature/components/AuditTrailToggle';
+
+/**
+ * Collapsible section untuk dokumen terhapus di grup.
+ */
+const TrashSection = ({ trashDocs, trashMeta, trashPage, trashLoading, trashCount, onFetch, onRestore, onPageChange }) => {
+  const [isOpen, setIsOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    if (isOpen && trashDocs.length === 0) {
+      onFetch({ page: 1 });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
+
+  return (
+    <div className="mt-4 bg-rose-50/50 dark:bg-rose-500/5 border border-rose-100 dark:border-rose-500/10 rounded-2xl overflow-hidden">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between px-5 py-3 bg-transparent border-none cursor-pointer text-left"
+      >
+        <div className="flex items-center gap-2">
+          <Trash2 size={14} className="text-rose-500" />
+          <span className="text-[11px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-widest">Terhapus</span>
+          <span className="text-[10px] font-bold bg-rose-100 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400 px-2 py-0.5 rounded-md">{trashCount}</span>
+        </div>
+        <ChevronDown size={14} className={`text-rose-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+
+      {isOpen && (
+        <div className="px-5 pb-4 space-y-2">
+          {trashLoading ? (
+            <div className="flex justify-center py-6">
+              <Loader2 size={20} className="animate-spin text-rose-400" />
+            </div>
+          ) : trashDocs.length > 0 ? (
+            <>
+              {trashDocs.map((doc) => (
+                <div key={doc.id} className="flex items-center justify-between bg-white dark:bg-zinc-900 rounded-xl px-4 py-3 border border-zinc-100 dark:border-zinc-800">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <FileText size={16} className="text-zinc-400 shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-[12px] font-semibold text-zinc-700 dark:text-zinc-200 truncate">{doc.title || 'Tanpa Judul'}</p>
+                      <p className="text-[10px] text-zinc-400">
+                        Dihapus {doc.deletedAt ? new Date(doc.deletedAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => onRestore(doc)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 rounded-lg text-[11px] font-semibold border-none cursor-pointer hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-all"
+                  >
+                    <RotateCcw size={12} /> Pulihkan
+                  </button>
+                </div>
+              ))}
+              {trashMeta.totalPages > 1 && (
+                <div className="flex items-center justify-center gap-1 pt-2">
+                  <button onClick={() => onPageChange(trashPage - 1)} disabled={trashPage === 1} className="w-6 h-6 rounded border border-zinc-200 dark:border-zinc-700 text-zinc-400 text-[11px] bg-white dark:bg-zinc-900 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">‹</button>
+                  <span className="text-[10px] text-zinc-400 px-2">{trashPage}/{trashMeta.totalPages}</span>
+                  <button onClick={() => onPageChange(trashPage + 1)} disabled={trashPage === trashMeta.totalPages} className="w-6 h-6 rounded border border-zinc-200 dark:border-zinc-700 text-zinc-400 text-[11px] bg-white dark:bg-zinc-900 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">›</button>
+                </div>
+              )}
+            </>
+          ) : (
+            <p className="text-[11px] text-zinc-400 text-center py-4">Tidak ada dokumen terhapus.</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
 
 /**
  * @page GroupDetailPage
@@ -30,6 +102,7 @@ const GroupDetailPage = () => {
     deleteTarget,
     isDeleting,
     isFinalizing,
+    finalizeTarget,
     inviteLink,
     isCopied,
     kickTarget,
@@ -209,7 +282,7 @@ const GroupDetailPage = () => {
                   isDeleting={isDeleting === doc.id}
                   onSign={() => actions.goToSign(doc.id)}
                   onPreview={() => actions.goToPreview(doc.id)}
-                  onFinalize={() => actions.handleFinalize(doc.id, doc.title)}
+                  onFinalize={() => actions.requestFinalize(doc)}
                   onManageSigners={() => actions.openManageSigners(doc)}
                   onDelete={() => actions.requestDelete(doc)}
                   onReject={actions.handleReject}
@@ -252,6 +325,20 @@ const GroupDetailPage = () => {
                 <button onClick={() => actions.setDocPage(docPage + 1)} disabled={docPage === docMeta.totalPages} className="w-7 h-7 rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-400 hover:text-zinc-700 flex items-center justify-center bg-white dark:bg-zinc-900 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed text-[12px]">›</button>
               </div>
             </div>
+          )}
+
+          {/* ── TRASH SECTION (Collapsible) ──────────────────────────── */}
+          {state.trashCount > 0 && (
+            <TrashSection
+              trashDocs={state.trashDocs}
+              trashMeta={state.trashMeta}
+              trashPage={state.trashPage}
+              trashLoading={state.trashLoading}
+              trashCount={state.trashCount}
+              onFetch={actions.fetchTrashDocuments}
+              onRestore={actions.handleRestoreGroupDoc}
+              onPageChange={actions.setTrashPage}
+            />
           )}
         </div>
 
@@ -401,6 +488,55 @@ const GroupDetailPage = () => {
         {...statusModal}
         onClose={actions.closeStatusModal}
       />
+
+      {/* Finalize Modal with Audit Trail Toggle */}
+      {finalizeTarget && (
+        <FinalizeWithAuditModal
+          docTitle={finalizeTarget.title}
+          onConfirm={actions.confirmFinalize}
+          onCancel={actions.cancelFinalize}
+          isLoading={!!isFinalizing}
+        />
+      )}
+    </div>
+  );
+};
+
+/**
+ * Modal konfirmasi finalisasi dengan opsi audit trail.
+ */
+const FinalizeWithAuditModal = ({ docTitle, onConfirm, onCancel, isLoading }) => {
+  const [auditMode, setAuditMode] = React.useState("embedded");
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onCancel} />
+      <div className="relative bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl border border-zinc-200 dark:border-zinc-800 w-full max-w-md p-6 space-y-5">
+        <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Finalisasi Dokumen</h3>
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+          Semua penanda tangan sudah selesai. Finalisasi dokumen <strong>"{docTitle}"</strong>?
+        </p>
+
+        <AuditTrailToggle value={auditMode} onChange={setAuditMode} />
+
+        <div className="flex justify-end gap-3 pt-2">
+          <button
+            onClick={onCancel}
+            disabled={isLoading}
+            className="px-4 py-2.5 text-sm font-bold text-zinc-600 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 rounded-xl border-none cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all disabled:opacity-50"
+          >
+            Batal
+          </button>
+          <button
+            onClick={() => onConfirm(auditMode)}
+            disabled={isLoading}
+            className="px-5 py-2.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl border-none cursor-pointer transition-all disabled:opacity-50 flex items-center gap-2"
+          >
+            {isLoading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : null}
+            Finalisasi Sekarang
+          </button>
+        </div>
+      </div>
     </div>
   );
 };

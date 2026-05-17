@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   FileText, MoreVertical, Info, Eye, Download,
-  Trash2, PenTool, FileEdit, History,
+  Trash2, PenTool, FileEdit, History, RotateCcw,
 } from 'lucide-react';
 import { useDocumentTable } from '../hooks/useDocumentTable';
 
@@ -12,7 +12,7 @@ const STATUS_BADGE = {
   archived:  { label: 'Arsip',   cls: 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400' },
 };
 
-const DocumentTable = ({ documents, onAction, modals = {} }) => {
+const DocumentTable = ({ documents, onAction, modals = {}, isTrashMode = false }) => {
   const { state, helpers } = useDocumentTable(onAction);
   const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
 
@@ -147,32 +147,42 @@ const DocumentTable = ({ documents, onAction, modals = {} }) => {
             className="fixed z-50 w-52 bg-white dark:bg-zinc-800 rounded-xl shadow-2xl border border-zinc-100 dark:border-zinc-700 py-1 animate-in fade-in zoom-in-95 duration-150"
             style={{ top: menuPos.top, right: menuPos.right }}
           >
-            <button onClick={() => helpers.handleAction('info', activeDoc)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 bg-transparent border-none cursor-pointer text-left">
-              <Info size={14} /> Info Detail
-            </button>
-            {activeDoc.status?.toLowerCase() !== 'completed' && (
-              <button onClick={() => helpers.handleAction('sign', activeDoc)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 bg-transparent border-none cursor-pointer text-left">
-                <PenTool size={14} className="text-emerald-500" /> Tanda Tangani
-              </button>
+            {isTrashMode ? (
+              <>
+                <button onClick={() => helpers.handleAction('restore', activeDoc)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 bg-transparent border-none cursor-pointer text-left">
+                  <RotateCcw size={14} /> Restore
+                </button>
+              </>
+            ) : (
+              <>
+                <button onClick={() => helpers.handleAction('info', activeDoc)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 bg-transparent border-none cursor-pointer text-left">
+                  <Info size={14} /> Info Detail
+                </button>
+                {activeDoc.status?.toLowerCase() !== 'completed' && (
+                  <button onClick={() => helpers.handleAction('sign', activeDoc)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 bg-transparent border-none cursor-pointer text-left">
+                    <PenTool size={14} className="text-emerald-500" /> Tanda Tangani
+                  </button>
+                )}
+                <button onClick={() => helpers.handleAction('view', activeDoc)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 bg-transparent border-none cursor-pointer text-left">
+                  <Eye size={14} className="text-emerald-500" /> Pratinjau
+                </button>
+                {modals.version && (
+                  <button onClick={() => helpers.handleAction('history', activeDoc)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 bg-transparent border-none cursor-pointer text-left">
+                    <History size={14} /> Riwayat Versi
+                  </button>
+                )}
+                <button onClick={() => helpers.handleAction('edit', activeDoc)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 bg-transparent border-none cursor-pointer text-left">
+                  <FileEdit size={14} /> Ubah Judul
+                </button>
+                <button onClick={() => helpers.handleAction('download', activeDoc)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 bg-transparent border-none cursor-pointer text-left">
+                  <Download size={14} /> Unduh PDF
+                </button>
+                <div className="h-px bg-zinc-100 dark:bg-zinc-700 my-1" />
+                <button onClick={() => helpers.handleAction('delete', activeDoc)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 bg-transparent border-none cursor-pointer text-left">
+                  <Trash2 size={14} /> Hapus
+                </button>
+              </>
             )}
-            <button onClick={() => helpers.handleAction('view', activeDoc)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 bg-transparent border-none cursor-pointer text-left">
-              <Eye size={14} className="text-emerald-500" /> Pratinjau
-            </button>
-            {modals.version && (
-              <button onClick={() => helpers.handleAction('history', activeDoc)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 bg-transparent border-none cursor-pointer text-left">
-                <History size={14} /> Riwayat Versi
-              </button>
-            )}
-            <button onClick={() => helpers.handleAction('edit', activeDoc)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 bg-transparent border-none cursor-pointer text-left">
-              <FileEdit size={14} /> Ubah Judul
-            </button>
-            <button onClick={() => helpers.handleAction('download', activeDoc)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 bg-transparent border-none cursor-pointer text-left">
-              <Download size={14} /> Unduh PDF
-            </button>
-            <div className="h-px bg-zinc-100 dark:bg-zinc-700 my-1" />
-            <button onClick={() => helpers.handleAction('delete', activeDoc)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 bg-transparent border-none cursor-pointer text-left">
-              <Trash2 size={14} /> Hapus
-            </button>
           </div>
         </>
       )}

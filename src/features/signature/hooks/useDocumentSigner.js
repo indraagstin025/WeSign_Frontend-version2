@@ -26,7 +26,12 @@ export const useDocumentSigner = (documentId) => {
   const [signatures, setSignatures] = useState([]); 
   const [isCanvasOpen, setIsCanvasOpen] = useState(false);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
-  const [currentSignature, setCurrentSignature] = useState(null); 
+  const [currentSignature, setCurrentSignature] = useState(null);
+  // activeElement menyimpan info tool yang sedang aktif: { type, imageUrl }
+  // type: 'signature' | 'initial' | 'stamp' | 'text'
+  const [activeElement, setActiveElement] = useState(null);
+  // Simpan asset terakhir per tipe agar bisa di-switch tanpa buat ulang
+  const [savedAssets, setSavedAssets] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   // Guard sinkron untuk klik ganda — lihat catatan di useGroupSignatureActions.
   const submitInFlightRef = useRef(false);
@@ -34,6 +39,9 @@ export const useDocumentSigner = (documentId) => {
   const [statusModal, setStatusModal] = useState({ 
     isOpen: false, type: 'success', title: '', message: '', onConfirm: null 
   });
+
+  // Audit Trail mode: "embedded" | "separate" | "none"
+  const [auditTrailMode, setAuditTrailMode] = useState("embedded");
 
   const fetchDocument = useCallback(async () => {
     if (!documentId) return;
@@ -81,7 +89,39 @@ export const useDocumentSigner = (documentId) => {
   const onDocumentLoadError = (err) => setLoadError(err.message || 'Error memuat PDF');
   const handlePageLoadSuccess = (page) => setPageDimensions({ width: page.originalWidth, height: page.originalHeight });
 
-  const handleSaveCanvas = (dataUrl) => { setCurrentSignature(dataUrl); setIsCanvasOpen(false); };
+  const handleSaveCanvas = (dataUrl) => { 
+    setCurrentSignature(dataUrl); 
+    setActiveElement({ type: 'signature', imageUrl: dataUrl });
+    setSavedAssets(prev => ({ ...prev, signature: dataUrl }));
+    setIsCanvasOpen(false); 
+  };
+
+  /**
+   * Menyimpan elemen dari tool (paraf/stamp/text/date) sebagai elemen aktif.
+   * @param {string} dataUrl - base64 image
+   * @param {string} type - 'initial' | 'stamp' | 'text' | 'date'
+   * @param {object} metadata - metadata tambahan (optional)
+   */
+  const handleSaveToolElement = (dataUrl, type, metadata = null) => {
+    setCurrentSignature(dataUrl);
+    setActiveElement({ type, imageUrl: dataUrl, metadata });
+    setSavedAssets(prev => ({ ...prev, [type]: dataUrl }));
+  };
+
+  /**
+   * Switch ke tool tertentu tanpa buka modal (jika asset sudah pernah dibuat).
+   * @param {string} type - 'signature' | 'initial' | 'stamp' | 'text'
+   * @returns {boolean} true jika berhasil switch, false jika perlu buka modal
+   */
+  const switchToTool = (type) => {
+    const saved = savedAssets[type];
+    if (saved) {
+      setCurrentSignature(saved);
+      setActiveElement({ type, imageUrl: saved });
+      return true;
+    }
+    return false;
+  };
 
   const handleCanvasClick = (e) => {
     if (!currentSignature) { setIsCanvasOpen(true); return; }
@@ -97,9 +137,10 @@ export const useDocumentSigner = (documentId) => {
       positionX: Math.max(0, Math.min(1 - defaultWidth, clickX - (defaultWidth / 2))),
       positionY: Math.max(0, clickY - 0.05),
       width: defaultWidth,
-      height: 0.1, // Sementara, akan diupdate otomatis oleh handleImageLoad di child
+      height: 0.1,
       signatureImageUrl: currentSignature,
-      method: 'canvas'
+      method: activeElement?.type || 'canvas',
+      metadata: activeElement?.metadata || null,
     }]);
   };
 
@@ -131,10 +172,12 @@ export const useDocumentSigner = (documentId) => {
         height: sig.height,
         signatureImageUrl: sig.signatureImageUrl,
         method: sig.method || 'canvas',
+        category: ['signature', 'initial', 'date'].includes(sig.method) ? 'signing' : 'annotation',
+        metadata: sig.metadata || null,
         displayQrCode: true
       }));
 
-      const res = await addPersonalSignature({ signatures: signaturesToSubmit });
+      const res = await addPersonalSignature({ signatures: signaturesToSubmit, auditTrailMode });
       if (res.status === 'success') {
         clearDraft();
         setStatusModal({
@@ -154,9 +197,10 @@ export const useDocumentSigner = (documentId) => {
 
   return {
     document, pdfUrl, loading, error, loadError, isRendering, setIsRendering, isSubmitting, containerRef, containerWidth, isReady,
-    numPages, pageNumber, setPageNumber, pageDimensions, signatures, currentSignature, setCurrentSignature, removeSignature,
-    updateSignaturePosition, updateSignatureSize, isCanvasOpen, setIsCanvasOpen, handleSaveCanvas, isSheetOpen, setIsSheetOpen,
-    onDocumentLoadSuccess, onDocumentLoadError, handlePageLoadSuccess, handleCanvasClick, handleFinalSign, statusModal, setStatusModal
+    numPages, pageNumber, setPageNumber, pageDimensions, signatures, currentSignature, setCurrentSignature, activeElement, removeSignature,
+    updateSignaturePosition, updateSignatureSize, isCanvasOpen, setIsCanvasOpen, handleSaveCanvas, handleSaveToolElement, switchToTool, isSheetOpen, setIsSheetOpen,
+    onDocumentLoadSuccess, onDocumentLoadError, handlePageLoadSuccess, handleCanvasClick, handleFinalSign, statusModal, setStatusModal,
+    auditTrailMode, setAuditTrailMode
   };
 };
 

@@ -1,6 +1,12 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getAllPackages, deletePackage } from '../api/packageService';
+import { toast } from 'react-toastify';
+import {
+  getAllPackages,
+  deletePackage,
+  getMyTrashPackages,
+  restoreMyPackage,
+} from '../api/packageService';
 
 const PAGE_SIZE = 5;
 
@@ -12,8 +18,11 @@ export const usePackages = () => {
   const [meta, setMeta] = useState({ total: 0, page: 1, limit: PAGE_SIZE, totalPages: 1 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [trashCount, setTrashCount] = useState(0);
+  const [statusCounts, setStatusCounts] = useState({ all: 0, draft: 0, completed: 0 });
 
   // ── Filter state ─────────────────────────────────────────────────────────
+  // status: '', 'draft', 'completed', 'trash'
   const [status, setStatus] = useState('');
   const [search, setSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -25,26 +34,33 @@ export const usePackages = () => {
   const [deletePkg, setDeletePkg] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  const isTrashMode = status === 'trash';
+
   // ── Fetch ────────────────────────────────────────────────────────────────
   const fetchPackages = useCallback(async (page = 1) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await getAllPackages({
-        page,
-        limit: PAGE_SIZE,
-        status: status || '',
-        search: search || '',
-      });
+      let response;
+      if (status === 'trash') {
+        response = await getMyTrashPackages({ page, limit: PAGE_SIZE });
+      } else {
+        response = await getAllPackages({
+          page,
+          limit: PAGE_SIZE,
+          status: status || '',
+          search: search || '',
+        });
+      }
+
       if (response?.status === 'success') {
         const payload = response.data;
-        // Backend baru: { data: [...], meta: { total, page, limit, totalPages } }
+        // Backend: { data: [...], meta: { total, page, limit, totalPages } }
         if (payload && typeof payload === 'object' && !Array.isArray(payload) && payload.data && payload.meta) {
           setPackages(payload.data);
           setMeta(payload.meta);
         } else {
-          // Fallback: backend lama masih return array langsung
-          // Lakukan client-side pagination
+          // Fallback (legacy): payload = array
           const arr = Array.isArray(payload) ? payload : [];
           const start = (page - 1) * PAGE_SIZE;
           const sliced = arr.slice(start, start + PAGE_SIZE);
@@ -64,9 +80,43 @@ export const usePackages = () => {
     }
   }, [status, search]);
 
+  // Fetch trash count secara terpisah (untuk badge di tab "Terhapus")
+  const fetchTrashCount = useCallback(async () => {
+    try {
+      const res = await getMyTrashPackages({ page: 1, limit: 1 });
+      if (res?.status === 'success') {
+        const m = res.data?.meta || res.meta;
+        setTrashCount(m?.total || 0);
+      }
+    } catch { /* silent */ }
+  }, []);
+
+  // Fetch count per status (Semua / Draft / Selesai) — independen dari view aktif.
+  // Pakai limit=1 supaya light, hanya butuh meta.total.
+  const fetchStatusCounts = useCallback(async () => {
+    try {
+      const [all, draft, completed] = await Promise.all([
+        getAllPackages({ page: 1, limit: 1 }),
+        getAllPackages({ page: 1, limit: 1, status: 'draft' }),
+        getAllPackages({ page: 1, limit: 1, status: 'completed' }),
+      ]);
+      setStatusCounts({
+        all: all?.data?.meta?.total ?? all?.meta?.total ?? 0,
+        draft: draft?.data?.meta?.total ?? draft?.meta?.total ?? 0,
+        completed: completed?.data?.meta?.total ?? completed?.meta?.total ?? 0,
+      });
+    } catch { /* silent */ }
+  }, []);
+
   useEffect(() => {
     fetchPackages(currentPage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, search, currentPage]);
+
+  useEffect(() => {
+    fetchTrashCount();
+    fetchStatusCounts();
+  }, [fetchTrashCount, fetchStatusCounts]);
 
   // Reset to page 1 when filters change
   const handleSetStatus = (val) => {
@@ -93,7 +143,7 @@ export const usePackages = () => {
         break;
       case 'sign':
         if (pkg.status?.toLowerCase() === 'completed') {
-          alert('Paket ini sudah selesai dan tidak dapat ditandatangani ulang.');
+          toast.warning('Paket ini sudah selesai dan tidak dapat ditandatangani ulang.');
           return;
         }
         navigate(`/dashboard/packages/sign/${pkg.id}`);
@@ -105,10 +155,21 @@ export const usePackages = () => {
         navigate(`/dashboard/packages/preview/${pkg.id}`);
         break;
       case 'download':
-        alert('Fitur download zip paket akan segera hadir.');
+        toast.info('Fitur download zip paket akan segera hadir.');
         break;
       case 'delete':
         setDeletePkg(pkg);
+        break;
+      case 'restore':
+        try {
+          await restoreMyPackage(pkg.id);
+          toast.success(`Paket "${pkg.title || 'Tanpa Judul'}" berhasil di-restore.`);
+          fetchPackages(currentPage);
+          fetchTrashCount();
+          fetchStatusCounts();
+        } catch (err) {
+          toast.error(err.message || 'Gagal me-restore paket.');
+        }
         break;
       default:
         break;
@@ -121,13 +182,22 @@ export const usePackages = () => {
     setIsDeleting(true);
     try {
       await deletePackage(target.id);
+      const deletedTitle = target.title || 'Tanpa Judul';
       if (deletePkg && target.id === deletePkg.id) setDeletePkg(null);
+
       // Refresh current page (or go back one if last item on page)
       const newPage = packages.length === 1 && currentPage > 1 ? currentPage - 1 : currentPage;
       setCurrentPage(newPage);
       fetchPackages(newPage);
+      fetchTrashCount();
+      fetchStatusCounts();
+
+      toast.success(
+        `Paket "${deletedTitle}" dipindahkan ke Terhapus. Bisa di-restore dalam 30 hari.`,
+        { autoClose: 4000 }
+      );
     } catch (err) {
-      alert(err.message || 'Gagal menghapus paket.');
+      toast.error(err.message || 'Gagal menghapus paket.');
     } finally {
       setIsDeleting(false);
     }
@@ -138,6 +208,9 @@ export const usePackages = () => {
     meta,
     loading,
     error,
+    trashCount,
+    statusCounts,
+    isTrashMode,
     filters: {
       status,
       setStatus: handleSetStatus,
@@ -153,7 +226,11 @@ export const usePackages = () => {
       showPagination: meta.total > PAGE_SIZE,
     },
     actions: {
-      refresh: () => fetchPackages(currentPage),
+      refresh: () => {
+        fetchPackages(currentPage);
+        fetchTrashCount();
+        fetchStatusCounts();
+      },
       handleAction,
       handleConfirmDelete,
       setStatus: handleSetStatus,

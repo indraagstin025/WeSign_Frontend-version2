@@ -4,7 +4,8 @@ import {
   Download, 
   AlertCircle,
   ExternalLink,
-  ChevronLeft
+  ChevronLeft,
+  ClipboardList
 } from 'lucide-react';
 import { useDocumentPreview } from '../hooks/useDocumentPreview';
 
@@ -48,6 +49,32 @@ const DocumentPreviewPage = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          {state.doc?.currentVersion?.auditTrailUrl && (
+            <button
+              onClick={() => {
+                const params = new URLSearchParams(window.location.search);
+                if (params.get('mode') === 'audit-trail') {
+                  // Sudah di mode audit trail — kembali ke dokumen
+                  params.delete('mode');
+                  window.history.replaceState(null, '', `${window.location.pathname}`);
+                  window.location.reload();
+                } else {
+                  // Navigasi ke mode audit trail
+                  window.history.replaceState(null, '', `${window.location.pathname}?mode=audit-trail`);
+                  window.location.reload();
+                }
+              }}
+              className={`hidden sm:flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition-all border-none bg-transparent cursor-pointer ${
+                new URLSearchParams(window.location.search).get('mode') === 'audit-trail'
+                  ? 'text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                  : 'text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20'
+              }`}
+              title={new URLSearchParams(window.location.search).get('mode') === 'audit-trail' ? 'Lihat Dokumen' : 'Lihat Audit Trail'}
+            >
+              <ClipboardList size={16} />
+              {new URLSearchParams(window.location.search).get('mode') === 'audit-trail' ? 'Dokumen' : 'Audit Trail'}
+            </button>
+          )}
           <button 
             onClick={actions.handleDownload}
             className="hidden sm:flex items-center gap-2 px-4 py-2 text-xs font-bold text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl transition-all border-none bg-transparent cursor-pointer"

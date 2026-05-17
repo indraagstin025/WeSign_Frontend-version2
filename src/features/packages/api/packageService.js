@@ -44,10 +44,11 @@ export async function getPackageDetails(packageId) {
  * @param {string} packageId 
  * @param {Array} signaturesPayload - Array konfigurasi tanda tangan untuk setiap dokumen
  */
-export async function signPackage(packageId, signaturesPayload) {
+export async function signPackage(packageId, signaturesPayload, auditTrailMode = "embedded") {
   return apiFetch(`/packages/${packageId}/sign`, {
     method: 'POST',
-    body: { signatures: signaturesPayload },
+    body: { signatures: signaturesPayload, auditTrailMode },
+    timeout: 120000, // 2 menit — signing butuh waktu lama (generate PDF + upload per dokumen)
   });
 }
 
@@ -71,4 +72,26 @@ export async function deletePackage(packageId) {
   return apiFetch(`/packages/${packageId}`, {
     method: 'DELETE',
   });
+}
+
+// ── Trash (Soft Delete) — User Self-Service ──────────────────────────────
+
+/**
+ * Mengambil daftar paket di trash (soft-deleted) milik user sendiri.
+ * @param {object} params - { page, limit }
+ * @returns {Promise<object>} Data paket terhapus + metadata paginasi
+ */
+export async function getMyTrashPackages({ page = 1, limit = 10 } = {}) {
+  const query = new URLSearchParams({ page: page.toString(), limit: limit.toString() }).toString();
+  return apiFetch(`/packages/trash?${query}`, { method: 'GET' });
+}
+
+/**
+ * Restore paket milik user dari trash. Akan ikut me-restore semua dokumen
+ * turunan PackageItem yang ada di paket tersebut.
+ * @param {string} packageId
+ * @returns {Promise<object>} Paket yang di-restore
+ */
+export async function restoreMyPackage(packageId) {
+  return apiFetch(`/packages/trash/${packageId}/restore`, { method: 'POST' });
 }

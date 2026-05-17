@@ -186,8 +186,11 @@ export const useGroupSigning = ({ groupId, documentId, currentUser }) => {
     setPageDimensions({ width: page.originalWidth, height: page.originalHeight });
 
   // ── Canvas Handler ────────────────────────────────────────────────────────
-  const handleSaveCanvas = (dataUrl) => {
+  const [currentMethod, setCurrentMethod] = useState('canvas');
+
+  const handleSaveCanvas = (dataUrl, method = 'canvas') => {
     setCurrentSignature(dataUrl);
+    setCurrentMethod(method);
     setIsCanvasOpen(false);
   };
 
@@ -219,6 +222,7 @@ export const useGroupSigning = ({ groupId, documentId, currentUser }) => {
 
     // Handlers
     handleSaveCanvas,
+    currentMethod,
     handleAddSignature,
     handleUpdateSignature,
     handleUpdateSize,

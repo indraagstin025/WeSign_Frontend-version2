@@ -70,7 +70,7 @@ export const useGroupSignatureActions = ({
         positionY: dropData.positionY,
         width: dropData.width,
         height: dropData.height,
-        method: 'canvas',
+        method: dropData.method || 'canvas',
         // [FIX] Flag optimistic — handleUpdateSize/Position akan skip PATCH
         // selama flag ini true. Mencegah race condition dengan handleImageLoad
         // yang fire INSTANT sebelum saveDraft response (yang bawa server-generated
@@ -93,7 +93,9 @@ export const useGroupSignatureActions = ({
           positionY: dropData.positionY,
           width: dropData.width,
           height: dropData.height,
-          method: 'canvas',
+          method: dropData.method || 'canvas',
+          category: dropData.category || 'signing',
+          metadata: dropData.metadata || undefined,
         });
 
         const serverSig = res.data;
@@ -291,14 +293,14 @@ export const useGroupSignatureActions = ({
   }, [mySignature, documentId, groupId, currentUser?.id, setSignatures, setHasMyFinalSig, setReadyToFinalize, setPendingSigners, setIsSubmitting]);
 
   // ── Finalisasi Dokumen (Admin Only) ───────────────────────────────────────
-  const handleFinalizeDocument = useCallback(async () => {
+  const handleFinalizeDocument = useCallback(async (auditTrailMode = "embedded") => {
     if (!isAdmin || !readyToFinalize) return;
     if (finalizeInFlightRef.current) return;
 
     finalizeInFlightRef.current = true;
     setIsFinalizing(true);
     try {
-      const res = await finalizeGroupDocument(groupId, documentId);
+      const res = await finalizeGroupDocument(groupId, documentId, auditTrailMode);
       const { document: finalDoc } = res.data || {};
 
       // Tandai bahwa user ini yang melakukan finalisasi — supaya hanya dia

@@ -8,7 +8,8 @@ import {
   FileText,
   Download,
   Layers,
-  CheckCircle2
+  CheckCircle2,
+  ClipboardList
 } from 'lucide-react';
 import { pdfjs, Document, Page } from 'react-pdf';
 
@@ -63,11 +64,13 @@ const PackagePreviewPage = () => {
     containerRef,
     containerWidth,
     isReady,
+    isAuditTrailMode,
 
     // Actions
     nextDocument,
     prevDocument,
-    goToDocument
+    goToDocument,
+    toggleAuditTrail
   } = usePackagePreview(id);
 
   // Logic for buttons
@@ -135,6 +138,19 @@ const PackagePreviewPage = () => {
           </div>
 
           <div className="flex items-center gap-3">
+              {activeDoc?.docVersion?.auditTrailUrl && (
+                <button
+                  onClick={toggleAuditTrail}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all border-none cursor-pointer ${
+                    isAuditTrailMode
+                      ? 'bg-zinc-100 dark:bg-white/5 hover:bg-zinc-200 dark:hover:bg-white/10 text-zinc-700 dark:text-zinc-300'
+                      : 'bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 text-emerald-600'
+                  }`}
+                >
+                  <ClipboardList size={16} />
+                  <span className="hidden sm:inline">{isAuditTrailMode ? 'Dokumen' : 'Audit Trail'}</span>
+                </button>
+              )}
               <button 
                 onClick={handleDownload}
                 className="flex items-center gap-2 px-4 py-2.5 bg-zinc-100 dark:bg-white/5 hover:bg-zinc-200 dark:hover:bg-white/10 rounded-xl text-xs font-bold text-zinc-700 dark:text-zinc-300 transition-all border-none cursor-pointer"

@@ -4,6 +4,7 @@ import { Clock, CheckCircle2, Lock } from 'lucide-react';
 import { useUser } from '../../../context/UserContext';
 import { getGroupDetail } from '../api/groupService';
 import { getDocumentFile } from '../../documents/api/docService';
+import { apiFetch } from '../../../services/api';
 import { useGroupSocket } from './useGroupSocket';
 
 const STATUS_CONFIG = {
@@ -36,6 +37,7 @@ export function useGroupDocumentPreviewPage() {
     title: '',
     message: '',
   });
+  const [isAuditTrailMode, setIsAuditTrailMode] = useState(false);
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
   const loadData = useCallback(
@@ -53,11 +55,20 @@ export function useGroupDocumentPreviewPage() {
         if (!foundDoc) throw new Error('Dokumen tidak ditemukan di grup ini.');
         setDoc(foundDoc);
 
-        const urlRes = await getDocumentFile(documentId, 'view');
-        if (urlRes.status === 'success' && urlRes.data?.url) {
-          setPdfUrl(urlRes.data.url);
+        if (isAuditTrailMode && foundDoc.currentVersion?.auditTrailUrl) {
+          const auditRes = await apiFetch(`/documents/${documentId}/audit-trail`);
+          if (auditRes?.status === 'success' && auditRes.data?.url) {
+            setPdfUrl(auditRes.data.url);
+          } else {
+            throw new Error('Audit trail tidak tersedia.');
+          }
         } else {
-          throw new Error('Gagal mendapatkan akses ke file dokumen.');
+          const urlRes = await getDocumentFile(documentId, 'view');
+          if (urlRes.status === 'success' && urlRes.data?.url) {
+            setPdfUrl(urlRes.data.url);
+          } else {
+            throw new Error('Gagal mendapatkan akses ke file dokumen.');
+          }
         }
       } catch (err) {
         setError(err.message || 'Gagal memuat dokumen.');
@@ -65,7 +76,7 @@ export function useGroupDocumentPreviewPage() {
         if (!silent) setLoading(false);
       }
     },
-    [groupId, documentId]
+    [groupId, documentId, isAuditTrailMode]
   );
 
   useEffect(() => {
@@ -160,6 +171,7 @@ export function useGroupDocumentPreviewPage() {
       loading,
       error,
       statusModal,
+      isAuditTrailMode,
       ...derived,
     },
     actions: {
@@ -169,6 +181,7 @@ export function useGroupDocumentPreviewPage() {
       goBackToGroup,
       openInNewTab,
       closeStatusModal,
+      toggleAuditTrail: () => setIsAuditTrailMode(prev => !prev),
     },
   };
 }

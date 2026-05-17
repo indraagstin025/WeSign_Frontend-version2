@@ -106,5 +106,29 @@ export const getGroupDocuments = (
   return apiFetch(`/groups/${groupId}/documents?${params.toString()}`);
 };
 
-export const finalizeGroupDocument = (groupId, documentId) =>
-  apiFetch(`/groups/${groupId}/documents/${documentId}/finalize`, { method: 'POST' });
+export const finalizeGroupDocument = (groupId, documentId, auditTrailMode = "embedded") =>
+  apiFetch(`/groups/${groupId}/documents/${documentId}/finalize`, {
+    method: 'POST',
+    body: { auditTrailMode },
+    timeout: 120000,
+  });
+
+// ── Trash (Soft Delete) — Group Document ──────────────────────────────────
+
+/**
+ * Mengambil dokumen grup yang sudah di-soft-delete.
+ * @param {string|number} groupId
+ * @param {object} params - { page, limit }
+ */
+export const getDeletedGroupDocuments = (groupId, { page = 1, limit = 10 } = {}) => {
+  const params = new URLSearchParams({ page: page.toString(), limit: limit.toString() });
+  return apiFetch(`/groups/${groupId}/documents/trash?${params.toString()}`);
+};
+
+/**
+ * Restore dokumen grup dari trash.
+ * @param {string|number} groupId
+ * @param {string} documentId
+ */
+export const restoreGroupDocument = (groupId, documentId) =>
+  apiFetch(`/groups/${groupId}/documents/trash/${documentId}/restore`, { method: 'POST' });

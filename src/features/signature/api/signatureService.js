@@ -11,11 +11,13 @@ import { apiFetch } from '../../../services/api';
  * @param {object} payload - { signatures: [...] }
  * @returns {Promise<object>} Status sukses dan data dokumen baru
  */
-export async function addPersonalSignature({ signatures }) {
+export async function addPersonalSignature({ signatures, auditTrailMode = "embedded" }) {
   return apiFetch('/signatures/personal', {
     method: 'POST',
     body: {
-      signatures // Backend mengharapkan field 'signatures' berupa array
-    }
+      signatures, // Backend mengharapkan field 'signatures' berupa array
+      auditTrailMode,
+    },
+    timeout: 120000, // 2 menit — signing butuh waktu lama (generate PDF + digital sign + upload)
   });
 }

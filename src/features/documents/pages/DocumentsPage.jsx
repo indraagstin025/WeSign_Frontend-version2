@@ -9,15 +9,19 @@ const STATUS_TABS = [
   { label: 'Draft', value: 'draft' },
   { label: 'Proses', value: 'pending' },
   { label: 'Selesai', value: 'completed' },
+  { label: 'Terhapus', value: 'trash' },
 ];
 
 const DocumentsPage = () => {
-  const { documents, loading, error, meta, filters, modals, actions } = useDocuments();
+  const { documents, loading, error, meta, trashCount, statusCounts, filters, modals, actions } = useDocuments();
   const [sortBy, setSortBy] = useState('Terbaru');
 
   const countByStatus = (status) => {
-    if (!status) return meta.total;
-    return documents.filter((d) => d.status?.toLowerCase() === status).length;
+    if (status === 'trash') return trashCount;
+    if (status === 'draft') return statusCounts.draft;
+    if (status === 'pending') return statusCounts.pending;
+    if (status === 'completed') return statusCounts.completed;
+    return statusCounts.all; // '' = Semua
   };
 
   const showPagination = meta.totalPages > 1;
@@ -110,6 +114,7 @@ const DocumentsPage = () => {
               const isActive = (filters.status || '') === tab.value;
               const pendingStyle = tab.value === 'pending' && count > 0 ? 'border-amber-300 text-amber-600 bg-amber-50 dark:bg-amber-500/10' : '';
               const completedStyle = tab.value === 'completed' && count > 0 ? 'border-emerald-300 text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10' : '';
+              const trashStyle = tab.value === 'trash' ? 'border-rose-200 text-rose-500 bg-rose-50 dark:bg-rose-500/10' : '';
               return (
                 <button
                   key={tab.value}
@@ -117,7 +122,7 @@ const DocumentsPage = () => {
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold border transition-all cursor-pointer
                     ${isActive
                       ? 'bg-emerald-500 text-white border-emerald-500 shadow-sm'
-                      : pendingStyle || completedStyle || 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:border-zinc-300'
+                      : pendingStyle || completedStyle || trashStyle || 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:border-zinc-300'
                     }`}
                 >
                   {tab.label}
@@ -162,7 +167,7 @@ const DocumentsPage = () => {
               </button>
             </div>
           ) : documents.length > 0 ? (
-            <DocumentTable documents={documents} onAction={actions.handleAction} modals={modals} />
+            <DocumentTable documents={documents} onAction={actions.handleAction} modals={modals} isTrashMode={filters.status === 'trash'} />
           ) : (
             <div className="flex flex-col items-center justify-center py-20 gap-5 text-center">
               <div className="w-16 h-16 bg-zinc-50 dark:bg-zinc-800 rounded-2xl flex items-center justify-center border-2 border-dashed border-zinc-200 dark:border-zinc-700">

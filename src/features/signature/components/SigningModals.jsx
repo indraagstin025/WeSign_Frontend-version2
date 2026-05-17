@@ -21,10 +21,12 @@ const SigningModals = ({
   isSubmitting,
   statusModal,
   setStatusModal,
-  // Optional: diteruskan ke MobileBottomSheet untuk customization label tombol
-  // & disable state (mis. cegah double submit, mode finalisasi admin).
   finalizeText,
   disableFinalize = null,
+  // Saved assets props
+  savedAssets = [],
+  onDeleteAsset,
+  onSelectAsset,
 }) => {
   return (
     <>
@@ -33,6 +35,9 @@ const SigningModals = ({
         isOpen={isCanvasOpen}
         onClose={() => setIsCanvasOpen(false)}
         onSave={handleSaveCanvas}
+        savedAssets={savedAssets}
+        onDeleteAsset={onDeleteAsset}
+        onSelectAsset={onSelectAsset}
       />
 
       {/* 2. Mobile Bottom Control Sheet */}

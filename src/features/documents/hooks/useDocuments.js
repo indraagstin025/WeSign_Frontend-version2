@@ -1,11 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import { 
   getUserDocuments, 
   getDocumentFile, 
   getDocumentDetail, 
   deleteDocument,
-  updateDocument 
+  updateDocument,
+  getMyTrashDocuments,
+  restoreMyDocument,
 } from '../api/docService';
 
 /**
@@ -15,17 +18,31 @@ import {
  */
 export const useDocuments = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // --- STATE DATA ---
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [meta, setMeta] = useState({ total: 0, page: 1, limit: 10, totalPages: 1 });
+  const [trashCount, setTrashCount] = useState(0);
+  const [statusCounts, setStatusCounts] = useState({ all: 0, draft: 0, pending: 0, completed: 0 });
   
-  // --- STATE FILTER ---
-  const [status, setStatus] = useState(''); // '', 'draft', 'pending', 'completed', 'archived'
+  // --- STATE FILTER ─────────────────────────────────────────────────────
+  // Initial value diambil dari URL `?status=` agar bisa deep-link ke tab tertentu
+  // (misal: dari toast group document delete → /dashboard/documents?status=trash).
+  const [status, setStatus] = useState(() => searchParams.get('status') || '');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+
+  // Sync state -> URL agar bisa share/bookmark, dan agar back-button konsisten.
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    if (status) params.set('status', status);
+    else params.delete('status');
+    setSearchParams(params, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]);
 
   // --- STATE MODAL & DETAIL ---
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -44,10 +61,15 @@ export const useDocuments = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await getUserDocuments({ page, status, search, limit: 10 });
+      let response;
+      if (status === 'trash') {
+        response = await getMyTrashDocuments({ page, limit: 10 });
+      } else {
+        response = await getUserDocuments({ page, status, search, limit: 10 });
+      }
       if (response?.status === 'success') {
-        setDocuments(response.data);
-        setMeta(response.meta);
+        setDocuments(response.data?.data || response.data || []);
+        setMeta(response.data?.meta || response.meta || { total: 0, page: 1, limit: 10, totalPages: 1 });
       }
     } catch (err) {
       console.error('Failed to fetch documents:', err);
@@ -57,9 +79,43 @@ export const useDocuments = () => {
     }
   }, [page, status, search]);
 
+  // Fetch trash count secara terpisah (untuk badge di tab)
+  const fetchTrashCount = useCallback(async () => {
+    try {
+      const res = await getMyTrashDocuments({ page: 1, limit: 1 });
+      if (res?.status === 'success') {
+        const m = res.data?.meta || res.meta;
+        setTrashCount(m?.total || 0);
+      }
+    } catch { /* silent */ }
+  }, []);
+
+  // Fetch count per status (independen dari view aktif)
+  const fetchStatusCounts = useCallback(async () => {
+    try {
+      const [all, draft, pending, completed] = await Promise.all([
+        getUserDocuments({ page: 1, limit: 1 }),
+        getUserDocuments({ page: 1, limit: 1, status: 'draft' }),
+        getUserDocuments({ page: 1, limit: 1, status: 'pending' }),
+        getUserDocuments({ page: 1, limit: 1, status: 'completed' }),
+      ]);
+      setStatusCounts({
+        all: all?.data?.meta?.total ?? all?.meta?.total ?? 0,
+        draft: draft?.data?.meta?.total ?? draft?.meta?.total ?? 0,
+        pending: pending?.data?.meta?.total ?? pending?.meta?.total ?? 0,
+        completed: completed?.data?.meta?.total ?? completed?.meta?.total ?? 0,
+      });
+    } catch { /* silent */ }
+  }, []);
+
   useEffect(() => {
     fetchDocuments();
   }, [fetchDocuments]);
+
+  useEffect(() => {
+    fetchTrashCount();
+    fetchStatusCounts();
+  }, [fetchTrashCount, fetchStatusCounts]);
 
   // --- HANDLERS ---
   const handleStatusChange = (newStatus) => {
@@ -83,7 +139,7 @@ export const useDocuments = () => {
           }
         } catch (err) {
           console.error("Gagal mengambil detail dokumen:", err);
-          alert("Gagal memuat detail dokumen.");
+          toast.error("Gagal memuat detail dokumen.");
         } finally {
           setIsInfoLoading(false);
         }
@@ -103,7 +159,7 @@ export const useDocuments = () => {
 
       case 'sign':
         if (doc.status?.toLowerCase() === 'completed') {
-          alert('Dokumen ini sudah ditandatangani dan tidak dapat ditandatangani ulang.');
+          toast.warning('Dokumen ini sudah ditandatangani dan tidak dapat ditandatangani ulang.');
           return;
         }
         navigate(`/dashboard/documents/sign/${doc.id}`);
@@ -117,12 +173,24 @@ export const useDocuments = () => {
           }
         } catch (err) {
           console.error(`Gagal mengunduh dokumen:`, err);
-          alert(`Gagal mengunduh dokumen.`);
+          toast.error('Gagal mengunduh dokumen.');
         }
         break;
 
       case 'delete':
         setDeleteDoc(doc);
+        break;
+
+      case 'restore':
+        try {
+          await restoreMyDocument(doc.id);
+          toast.success(`Dokumen "${doc.title}" berhasil di-restore.`);
+          fetchDocuments();
+          fetchTrashCount();
+          fetchStatusCounts();
+        } catch (err) {
+          toast.error(err.message || 'Gagal me-restore dokumen.');
+        }
         break;
 
       default:
@@ -135,11 +203,17 @@ export const useDocuments = () => {
     setIsDeleting(true);
     try {
       await deleteDocument(deleteDoc.id);
+      const deletedTitle = deleteDoc.title;
       setDeleteDoc(null);
-      fetchDocuments(); // Refresh
+      fetchDocuments();
+      fetchTrashCount();
+      fetchStatusCounts();
+
+      // Toast dengan info bahwa dokumen bisa di-restore via admin
+      toast.success(`Dokumen "${deletedTitle}" berhasil dihapus.`, { autoClose: 4000 });
     } catch (err) {
       console.error("Gagal menghapus dokumen:", err);
-      alert("Gagal menghapus dokumen.");
+      toast.error(err.message || "Gagal menghapus dokumen.");
     } finally {
       setIsDeleting(false);
     }
@@ -155,7 +229,7 @@ export const useDocuments = () => {
       }
     } catch (err) {
       console.error("Gagal mengupdate dokumen:", err);
-      alert(err.message || "Gagal memperbarui judul dokumen.");
+      toast.error(err.message || "Gagal memperbarui judul dokumen.");
     } finally {
       setIsUpdating(false);
     }
@@ -208,6 +282,8 @@ export const useDocuments = () => {
     loading,
     error,
     meta,
+    trashCount,
+    statusCounts,
     filters: {
       status, setStatus: handleStatusChange,
       search, setSearch,

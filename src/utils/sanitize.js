@@ -74,6 +74,9 @@ export function validatePasswordStrength(password) {
   if (!password || password.length < 8) {
     errors.push("Password minimal 8 karakter");
   }
+  if (password && password.length > 128) {
+    errors.push("Password maksimal 128 karakter");
+  }
   if (!/[0-9]/.test(password)) {
     errors.push("Password harus mengandung minimal satu angka (0-9)");
   }

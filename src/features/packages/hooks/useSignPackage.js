@@ -35,6 +35,7 @@ export const useSignPackage = (packageId) => {
   const [signaturesMap, setSignaturesMap] = useState({});
   const [isCanvasOpen, setIsCanvasOpen] = useState(false);
   const [currentSignature, setCurrentSignature] = useState(null);
+  const [currentMethod, setCurrentMethod] = useState('canvas');
   const [isSubmitting, setIsSubmitting] = useState(false);
   // Guard sinkron untuk klik ganda — lihat catatan di useGroupSignatureActions.
   const submitInFlightRef = useRef(false);
@@ -48,6 +49,9 @@ export const useSignPackage = (packageId) => {
     message: '',
     onConfirm: null 
   });
+
+  // Audit Trail mode
+  const [auditTrailMode, setAuditTrailMode] = useState("embedded");
 
   // --- Current Active Document Helper ---
   const activeDoc = documents[currentIndex] || null;
@@ -139,8 +143,9 @@ export const useSignPackage = (packageId) => {
 
   // --- Event Handlers ---
 
-  const handleSaveCanvas = (dataUrl) => {
+  const handleSaveCanvas = (dataUrl, method = 'canvas') => {
     setCurrentSignature(dataUrl);
+    setCurrentMethod(method);
     setIsCanvasOpen(false);
   };
 
@@ -165,7 +170,7 @@ export const useSignPackage = (packageId) => {
       width: defaultWidth,
       height: 0.1, // Placeholder, di-update otomatis oleh handleImageLoad di DraggableSignature
       signatureImageUrl: currentSignature,
-      method: 'canvas'
+      method: currentMethod || 'canvas'
     };
 
     setSignaturesMap(prev => ({
@@ -234,12 +239,14 @@ export const useSignPackage = (packageId) => {
             height: parseFloat(s.height),
             signatureImageUrl: s.signatureImageUrl,
             method: s.method || 'canvas',
+            category: ['signature', 'canvas', 'initial', 'date'].includes(s.method) ? 'signing' : 'annotation',
+            metadata: s.metadata || null,
             displayQrCode: true
           });
         });
       });
 
-      const res = await signPackage(packageId, signaturesPayload);
+      const res = await signPackage(packageId, signaturesPayload, auditTrailMode);
       if (res.status === 'success') {
         // Clear draft on success
         clearDraft();
@@ -301,6 +308,8 @@ export const useSignPackage = (packageId) => {
       setIsSheetOpen,
       statusModal,
       setStatusModal,
+      auditTrailMode,
+      setAuditTrailMode,
     },
     actions: {
       handleSaveCanvas,

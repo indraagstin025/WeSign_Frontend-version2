@@ -11,20 +11,23 @@ const STATUS_TABS = [
   { label: 'Semua', value: '' },
   { label: 'Draft', value: 'draft' },
   { label: 'Selesai', value: 'completed' },
+  { label: 'Terhapus', value: 'trash' },
 ];
 
 const PAGE_SIZE = 5; // kept for display text calculation
 
 const PackagesPage = () => {
-  const { packages, meta, loading, error, filters, actions, modals, pagination } = usePackages();
+  const { packages, loading, error, trashCount, statusCounts, isTrashMode, filters, actions, modals, pagination } = usePackages();
   const [sortBy, setSortBy] = useState('Terbaru');
 
   const { currentPage, totalPages, total, showPagination, goToPage } = pagination;
 
-  // Count per status — use meta.total for "Semua", others are approximate from current data
+  // Counter independen dari view aktif — di-fetch terpisah di hook.
   const countByStatus = (status) => {
-    if (!status) return total;
-    return packages.filter((p) => p.status === status).length;
+    if (status === 'trash') return trashCount;
+    if (status === 'draft') return statusCounts.draft;
+    if (status === 'completed') return statusCounts.completed;
+    return statusCounts.all; // '' = Semua
   };
 
   // Page numbers to show
@@ -133,14 +136,17 @@ const PackagesPage = () => {
               const isActive = (filters?.status || '') === tab.value;
               const pendingStyle = tab.value === 'pending' && count > 0 ? 'border-amber-300 text-amber-600 bg-amber-50 dark:bg-amber-500/10' : '';
               const completedStyle = tab.value === 'completed' && count > 0 ? 'border-emerald-300 text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10' : '';
+              const trashStyle = tab.value === 'trash' ? 'border-rose-200 text-rose-500 bg-rose-50 dark:bg-rose-500/10' : '';
               return (
                 <button
                   key={tab.value}
                   onClick={() => filters.setStatus(tab.value)}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold border transition-all cursor-pointer
                     ${isActive
-                      ? 'bg-emerald-500 text-white border-emerald-500 shadow-sm'
-                      : pendingStyle || completedStyle || 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:border-zinc-300'
+                      ? (tab.value === 'trash'
+                          ? 'bg-rose-500 text-white border-rose-500 shadow-sm'
+                          : 'bg-emerald-500 text-white border-emerald-500 shadow-sm')
+                      : pendingStyle || completedStyle || trashStyle || 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:border-zinc-300'
                     }`}
                 >
                   {tab.label}
@@ -186,22 +192,33 @@ const PackagesPage = () => {
               </button>
             </div>
           ) : packages.length > 0 ? (
-            <PackageTable packages={packages} onAction={actions.handleAction} />
+            <PackageTable packages={packages} onAction={actions.handleAction} isTrashMode={isTrashMode} />
           ) : (
             <div className="flex flex-col items-center justify-center py-20 gap-5 text-center">
               <div className="w-16 h-16 bg-zinc-50 dark:bg-zinc-800 rounded-2xl flex items-center justify-center border-2 border-dashed border-zinc-200 dark:border-zinc-700">
                 <Layers size={28} className="text-zinc-300 dark:text-zinc-600" />
               </div>
-              <div>
-                <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-1">Belum Ada Paket</h3>
-                <p className="text-[11px] text-zinc-400 max-w-xs mx-auto">Buat paket pertama Anda untuk mulai menandatangani dokumen secara batch.</p>
-              </div>
-              <button
-                onClick={() => modals.upload.setOpen(true)}
-                className="flex items-center gap-2 bg-emerald-500 text-white px-5 py-2.5 rounded-xl text-[12px] font-semibold border-none cursor-pointer hover:bg-emerald-600 transition-all"
-              >
-                <Plus size={14} /> Buat Paket Sekarang
-              </button>
+              {isTrashMode ? (
+                <div>
+                  <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-1">Tidak Ada Paket Terhapus</h3>
+                  <p className="text-[11px] text-zinc-400 max-w-xs mx-auto">
+                    Paket yang Anda hapus akan muncul di sini dan bisa dipulihkan dalam 30 hari.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-1">Belum Ada Paket</h3>
+                    <p className="text-[11px] text-zinc-400 max-w-xs mx-auto">Buat paket pertama Anda untuk mulai menandatangani dokumen secara batch.</p>
+                  </div>
+                  <button
+                    onClick={() => modals.upload.setOpen(true)}
+                    className="flex items-center gap-2 bg-emerald-500 text-white px-5 py-2.5 rounded-xl text-[12px] font-semibold border-none cursor-pointer hover:bg-emerald-600 transition-all"
+                  >
+                    <Plus size={14} /> Buat Paket Sekarang
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -275,7 +292,7 @@ const PackagesPage = () => {
         onClose={() => modals.delete.setOpen(false)}
         onConfirm={() => actions.handleConfirmDelete()}
         title="Hapus Paket Tanda Tangan?"
-        message={`Anda yakin ingin menghapus paket "${modals.delete?.data?.title || 'ini'}"? Tindakan ini akan menghapus seluruh dokumen PDF di dalam paket secara permanen.`}
+        message={`Anda yakin ingin menghapus paket "${modals.delete?.data?.title || 'ini'}"? Paket akan dipindahkan ke Terhapus dan masih bisa dipulihkan dalam 30 hari sebelum dihapus permanen.`}
         confirmText="Ya, Hapus Paket"
         cancelText="Batal"
         variant="danger"
