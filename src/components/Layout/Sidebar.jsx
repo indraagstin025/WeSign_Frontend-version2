@@ -88,8 +88,9 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
           <button 
             className="lg:hidden p-2 rounded-full text-zinc-400 hover:bg-zinc-100 absolute top-3 right-3"
             onClick={() => setIsOpen(false)}
+            aria-label="Tutup sidebar"
           >
-            <X size={16} />
+            <X size={16} aria-hidden="true" />
           </button>
         </div>
 

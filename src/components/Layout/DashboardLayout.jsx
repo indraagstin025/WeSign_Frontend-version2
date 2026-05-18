@@ -62,8 +62,9 @@ const DashboardLayout = () => {
             <button 
               className="lg:hidden p-2 rounded-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors border-none bg-transparent cursor-pointer"
               onClick={() => setIsSidebarOpen(true)}
+              aria-label="Buka menu navigasi"
             >
-              <Menu size={20} />
+              <Menu size={20} aria-hidden="true" />
             </button>
 
             {/* SEARCH BAR */}
@@ -80,12 +81,12 @@ const DashboardLayout = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            <button onClick={toggleTheme} className="p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400 transition-colors border-none bg-transparent cursor-pointer">
-              {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+            <button onClick={toggleTheme} className="p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400 transition-colors border-none bg-transparent cursor-pointer" aria-label={theme === 'dark' ? 'Aktifkan mode terang' : 'Aktifkan mode gelap'}>
+              {theme === 'dark' ? <Sun size={17} aria-hidden="true" /> : <Moon size={17} aria-hidden="true" />}
             </button>
             
-            <button className="relative p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400 transition-colors border-none bg-transparent cursor-pointer">
-              <Bell size={17} />
+            <button className="relative p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400 transition-colors border-none bg-transparent cursor-pointer" aria-label="Notifikasi (3 belum dibaca)">
+              <Bell size={17} aria-hidden="true" />
               <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-emerald-500 text-white text-[8px] font-bold flex items-center justify-center rounded-full border-2 border-white dark:border-zinc-900">3</span>
             </button>
 
@@ -94,6 +95,9 @@ const DashboardLayout = () => {
               <button 
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                 className="flex items-center gap-2.5 px-2 py-1.5 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all border border-transparent bg-transparent cursor-pointer"
+                aria-label="Buka menu profil"
+                aria-expanded={isDropdownOpen}
+                aria-haspopup="menu"
               >
                 <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-500/20 border border-emerald-200 dark:border-emerald-500/30 flex items-center justify-center overflow-hidden shadow-sm shrink-0">
                   {user?.profilePictureUrl ? (
