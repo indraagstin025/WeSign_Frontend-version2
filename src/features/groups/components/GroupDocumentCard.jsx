@@ -5,6 +5,7 @@ import {
   ShieldCheck, XCircle,
 } from 'lucide-react';
 import { useGroupDocumentCardState } from '../hooks/useGroupDocumentCardState';
+import RejectReasonModal from './RejectReasonModal';
 
 /**
  * @component GroupDocumentCard
@@ -25,6 +26,8 @@ const GroupDocumentCard = ({
   onReject,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
+  // [H-4] State untuk RejectReasonModal — replace blocking window.prompt.
+  const [rejectOpen, setRejectOpen] = useState(false);
   const {
     signedCount,
     totalSigners,
@@ -220,8 +223,9 @@ const GroupDocumentCard = ({
                   <button
                     onClick={() => {
                       setMenuOpen(false);
-                      const reason = window.prompt('Alasan penolakan (opsional):');
-                      if (reason !== null) onReject(doc.id, reason || null);
+                      // [H-4] Buka modal RejectReasonModal alih-alih
+                      // window.prompt yang blocking dan tidak match design.
+                      setRejectOpen(true);
                     }}
                     className="w-full flex items-center gap-2 px-4 py-2.5 text-[12px] font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 bg-transparent border-none cursor-pointer text-left"
                   >
@@ -243,6 +247,19 @@ const GroupDocumentCard = ({
           )}
         </div>
       </div>
+
+      {/* [H-4] Reject reason modal — replace window.prompt */}
+      <RejectReasonModal
+        isOpen={rejectOpen}
+        onClose={() => setRejectOpen(false)}
+        onSubmit={(reason) => {
+          setRejectOpen(false);
+          // Convert empty string -> null untuk konsistensi dengan kontrak lama
+          // (prompt cancel = null, submit empty = "" yang juga di-coerce ke null)
+          onReject(doc.id, reason || null);
+        }}
+        documentTitle={doc?.title}
+      />
     </div>
   );
 };

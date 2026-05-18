@@ -16,6 +16,7 @@ import { useGroupSigningPage } from '../hooks/useGroupSigningPage';
 import { useSignatureAssets } from '../../signature/hooks/useSignatureAssets';
 import DraggableSignatureGroup from '../components/DraggableSignatureGroup';
 import GroupSignerProgress from '../components/GroupSignerProgress';
+import RejectReasonModal from '../components/RejectReasonModal';
 
 // Komponen Reusable dari Personal Signing
 import SigningNavbar from '../../signature/components/SigningNavbar';
@@ -46,6 +47,8 @@ const GroupSigningPage = () => {
   const [isTextOpen, setIsTextOpen] = useState(false);
   const [isDateOpen, setIsDateOpen] = useState(false);
   const [activeElement, setActiveElement] = useState(null);
+  // [H-4] State untuk RejectReasonModal — replace blocking window.prompt.
+  const [rejectOpen, setRejectOpen] = useState(false);
 
   // Saved signature assets (persistent — only signature type for group)
   const { assets, upload: uploadAsset, remove: removeAsset, getDefault } = useSignatureAssets();
@@ -221,8 +224,8 @@ const GroupSigningPage = () => {
           <button
             type="button"
             onClick={() => {
-              const reason = window.prompt('Alasan penolakan (opsional):');
-              if (reason !== null) actions.handleRejectDocument(reason || null);
+              // [H-4] Buka modal alih-alih window.prompt yang blocking
+              setRejectOpen(true);
             }}
             className="w-full mt-2 px-3 py-2 text-[10px] font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-xl hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-all cursor-pointer"
           >
@@ -392,6 +395,17 @@ const GroupSigningPage = () => {
       <StampModal isOpen={isStampOpen} onClose={() => setIsStampOpen(false)} onSave={(dataUrl) => { handleSaveCanvas(dataUrl, 'stamp'); setActiveElement({ type: 'stamp', imageUrl: dataUrl }); setIsStampOpen(false); }} />
       <TextAnnotationModal isOpen={isTextOpen} onClose={() => setIsTextOpen(false)} onSave={(dataUrl) => { handleSaveCanvas(dataUrl, 'text'); setActiveElement({ type: 'text', imageUrl: dataUrl }); setIsTextOpen(false); }} />
       <DateFieldModal isOpen={isDateOpen} onClose={() => setIsDateOpen(false)} onSave={(dataUrl) => { handleSaveCanvas(dataUrl, 'date'); setActiveElement({ type: 'date', imageUrl: dataUrl }); setIsDateOpen(false); }} />
+
+      {/* [H-4] Reject reason modal — replace window.prompt */}
+      <RejectReasonModal
+        isOpen={rejectOpen}
+        onClose={() => setRejectOpen(false)}
+        onSubmit={(reason) => {
+          setRejectOpen(false);
+          actions.handleRejectDocument(reason || null);
+        }}
+        documentTitle={documentTitle}
+      />
     </div>
   );
 };
