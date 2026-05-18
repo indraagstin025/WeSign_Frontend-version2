@@ -36,6 +36,7 @@ const LoginForm = () => {
             onChange={(e) => actions.setEmail(e.target.value)}
             required
             disabled={state.loading}
+            autoComplete="email"
             className="w-full pl-10 pr-4 py-2.5 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 disabled:opacity-50 font-medium text-[13px]"
           />
         </div>
@@ -58,6 +59,7 @@ const LoginForm = () => {
             onChange={(e) => actions.setPassword(e.target.value)}
             required
             disabled={state.loading}
+            autoComplete="current-password"
             className="w-full pl-10 pr-12 py-2.5 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all text-zinc-900 dark:text-white tracking-widest placeholder:tracking-normal placeholder-zinc-400 disabled:opacity-50 font-medium text-[13px]"
           />
           <button

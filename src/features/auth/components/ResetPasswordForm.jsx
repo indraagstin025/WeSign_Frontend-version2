@@ -74,6 +74,7 @@ const ResetPasswordForm = () => {
             className="w-full pl-10 pr-12 py-3 text-[13px] bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-zinc-900 dark:text-white transition-all"
             required
             autoFocus
+            autoComplete="new-password"
           />
           <button
             type="button"
@@ -120,6 +121,7 @@ const ResetPasswordForm = () => {
             onChange={(e) => actions.setConfirmPassword(e.target.value)}
             className="w-full pl-10 pr-4 py-3 text-[13px] bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-zinc-900 dark:text-white transition-all"
             required
+            autoComplete="new-password"
           />
         </div>
         {state.confirmPassword && state.password !== state.confirmPassword && (
