@@ -172,6 +172,7 @@ const GroupDocumentCard = ({
           onClick={onPreview}
           className="p-2 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 border-none bg-transparent cursor-pointer transition-all"
           title="Preview"
+          aria-label="Preview dokumen"
         >
           <Eye size={16} />
         </button>
@@ -182,6 +183,7 @@ const GroupDocumentCard = ({
             onClick={onManageSigners}
             className="p-2 rounded-lg text-zinc-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 border-none bg-transparent cursor-pointer transition-all"
             title="Manage Signers"
+            aria-label="Kelola penandatangan"
           >
             <UserCog size={16} />
           </button>
@@ -192,6 +194,9 @@ const GroupDocumentCard = ({
           <button
             onClick={() => setMenuOpen((v) => !v)}
             className="p-2 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 border-none bg-transparent cursor-pointer transition-all"
+            aria-label="Menu aksi dokumen"
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
           >
             <MoreVertical size={16} />
           </button>
