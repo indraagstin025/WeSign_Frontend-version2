@@ -25,11 +25,19 @@ export const useLogin = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { refreshUser } = useUser();
-  // [H-3] Resolve target path dengan priority:
+  // [H-3 + M-1] Resolve target path dengan priority:
   // 1. pending join token (cross-flow restore)
   // 2. location.state.from (redirect-back-after-protect)
   // 3. default /dashboard
-  const fromPath = location.state?.from?.pathname || '/dashboard';
+  //
+  // [M-1] Preserve full URL: pathname + search (query string) + hash.
+  // Sebelumnya hanya `from.pathname` -> kalau user di "/docs?folder=x#sec"
+  // dan dipaksa redirect ke /login, setelah login redirect-back hanya
+  // sampai /docs (kehilangan query + scroll position via hash).
+  const fromState = location.state?.from;
+  const fromPath = fromState
+    ? `${fromState.pathname || '/dashboard'}${fromState.search || ''}${fromState.hash || ''}`
+    : '/dashboard';
 
   const handleLogin = async (e) => {
     e.preventDefault();
