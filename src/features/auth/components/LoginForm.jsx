@@ -60,11 +60,12 @@ const LoginForm = () => {
             disabled={state.loading}
             className="w-full pl-10 pr-12 py-2.5 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all text-zinc-900 dark:text-white tracking-widest placeholder:tracking-normal placeholder-zinc-400 disabled:opacity-50 font-medium text-[13px]"
           />
-          <button 
+          <button
             type="button"
             onClick={actions.togglePasswordVisibility}
             className="absolute inset-y-0 right-0 pr-4 flex items-center text-zinc-400 hover:text-primary transition-colors cursor-pointer bg-transparent border-none"
-            aria-label="Tampilkan sandi"
+            aria-label={state.showPassword ? "Sembunyikan sandi" : "Tampilkan sandi"}
+            aria-pressed={state.showPassword}
           >
             {state.showPassword ? <EyeOff size={18} strokeWidth={1.5} /> : <Eye size={18} strokeWidth={1.5} />}
           </button>

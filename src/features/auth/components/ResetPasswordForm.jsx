@@ -79,6 +79,8 @@ const ResetPasswordForm = () => {
             type="button"
             onClick={actions.togglePasswordVisibility}
             className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 bg-transparent border-none cursor-pointer"
+            aria-label={state.showPassword ? "Sembunyikan sandi" : "Tampilkan sandi"}
+            aria-pressed={state.showPassword}
           >
             {state.showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
           </button>
