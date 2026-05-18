@@ -1,24 +1,52 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getMyAssets, uploadAsset, deleteAsset, setAssetDefault } from '../api/signatureAssetService';
+import { createLogger } from '../../../utils/logger';
+
+// [M-5] Scoped logger.
+const log = createLogger('SignatureAssets');
 
 /**
  * @hook useSignatureAssets
  * @description Hook untuk mengelola saved signature assets.
  * Fetch saat mount, expose CRUD operations.
+ *
+ * [M-5] Expose `error` state + `retry` action ke konsumer agar UI bisa
+ * tampilkan retry button saat fetch gagal (mis. network error). Sebelumnya
+ * error hanya di-console.error → konsumer tidak tahu fetch gagal, list
+ * kosong padahal user pernah upload signature.
+ *
+ * @returns {{
+ *   assets: Array,
+ *   loading: boolean,
+ *   error: string|null,
+ *   fetchAssets: () => Promise<void>,
+ *   retry: () => Promise<void>,
+ *   upload: (image, type, label, metadata) => Promise<object|null>,
+ *   remove: (id) => Promise<void>,
+ *   makeDefault: (id) => Promise<void>,
+ *   getDefault: (type) => object|undefined,
+ *   getByType: (type) => Array
+ * }}
  */
 export const useSignatureAssets = () => {
   const [assets, setAssets] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const fetchAssets = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await getMyAssets();
       if (res.status === 'success') {
         setAssets(res.data || []);
       }
     } catch (err) {
-      console.error('[useSignatureAssets] Failed to fetch:', err.message);
+      log.error('Failed to fetch:', err.message);
+      // [M-5] Set error state agar konsumer bisa render retry UI.
+      // Pesan tetap user-friendly fallback string non-empty (M-5 pattern
+      // konsisten dengan groups M-5).
+      setError(err.message || 'Gagal memuat signature tersimpan. Coba lagi.');
     } finally {
       setLoading(false);
     }
@@ -38,7 +66,7 @@ export const useSignatureAssets = () => {
         return res.data;
       }
     } catch (err) {
-      console.error('[useSignatureAssets] Upload failed:', err.message);
+      log.error('Upload failed:', err.message);
     }
     return null;
   };
@@ -51,7 +79,7 @@ export const useSignatureAssets = () => {
       await deleteAsset(id);
       setAssets(prev => prev.filter(a => a.id !== id));
     } catch (err) {
-      console.error('[useSignatureAssets] Delete failed:', err.message);
+      log.error('Delete failed:', err.message);
     }
   };
 
@@ -68,7 +96,7 @@ export const useSignatureAssets = () => {
         })));
       }
     } catch (err) {
-      console.error('[useSignatureAssets] Set default failed:', err.message);
+      log.error('Set default failed:', err.message);
     }
   };
 
@@ -78,5 +106,18 @@ export const useSignatureAssets = () => {
   /** Ambil semua assets per tipe */
   const getByType = (type) => assets.filter(a => a.type === type);
 
-  return { assets, loading, fetchAssets, upload, remove, makeDefault, getDefault, getByType };
+  return {
+    assets,
+    loading,
+    error,
+    fetchAssets,
+    // [M-5] retry sebagai alias eksplisit fetchAssets — semantic untuk
+    // konsumer yang render retry button setelah error.
+    retry: fetchAssets,
+    upload,
+    remove,
+    makeDefault,
+    getDefault,
+    getByType,
+  };
 };
