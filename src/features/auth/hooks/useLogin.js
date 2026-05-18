@@ -13,6 +13,24 @@ import { PENDING_GROUP_JOIN_KEY } from '../../../config/sessionKeys';
  * 1. Pending group join token di sessionStorage → /groups/join?token=...
  * 2. `from` location state (origin URL sebelum di-protect-redirect ke login)
  * 3. Default → /dashboard
+ *
+ * @returns {{
+ *   state: {
+ *     email: string,
+ *     password: string,
+ *     rememberMe: boolean,
+ *     showPassword: boolean,
+ *     loading: boolean,
+ *     error: string
+ *   },
+ *   actions: {
+ *     setEmail: (value: string) => void,
+ *     setPassword: (value: string) => void,
+ *     setRememberMe: (value: boolean) => void,
+ *     togglePasswordVisibility: () => void,
+ *     handleLogin: (e: import('react').FormEvent) => Promise<void>
+ *   }
+ * }}
  */
 export const useLogin = () => {
   const [email, setEmail] = useState('');

@@ -30,6 +30,24 @@ function getCooldownRemaining() {
  * [M-3] Tambah rate-limit client-side: setelah submit sukses, simpan
  * timestamp `Date.now() + 60_000` di sessionStorage. Submit berikutnya
  * dalam 60 detik akan ditolak dengan pesan countdown sisa detik.
+ *
+ * Anti-enumeration: pesan sukses generic dan ditampilkan baik saat
+ * email valid (terdaftar) maupun tidak terdaftar — backend juga
+ * menerapkan strategi serupa.
+ *
+ * @returns {{
+ *   state: {
+ *     email: string,
+ *     loading: boolean,
+ *     error: string,
+ *     success: string,
+ *     cooldownSec: number
+ *   },
+ *   actions: {
+ *     setEmail: (value: string) => void,
+ *     handleSubmit: (e: import('react').FormEvent) => Promise<void>
+ *   }
+ * }}
  */
 export const useForgotPassword = () => {
   const [email, setEmail] = useState('');

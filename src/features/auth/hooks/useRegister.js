@@ -7,6 +7,37 @@ import { AUTH_REGISTER_REDIRECT_DELAY_MS } from "../../../config/timeouts";
 /**
  * Hook to manage the logic of the Registration Form.
  * Handles password strength validation, input sanitization, and redirect logic.
+ *
+ * Auto-redirect ke /login setelah register sukses, dengan delay konstanta
+ * dari `config/timeouts.js` (AUTH_REGISTER_REDIRECT_DELAY_MS). Timer
+ * di-cleanup saat unmount agar tidak fire navigate ke route yang sudah
+ * berubah.
+ *
+ * @returns {{
+ *   state: {
+ *     formData: {
+ *       name: string,
+ *       email: string,
+ *       password: string,
+ *       confirmPassword: string,
+ *       isCompany: boolean
+ *     },
+ *     loading: boolean,
+ *     error: string,
+ *     success: string,
+ *     showPassword: boolean,
+ *     showConfirm: boolean,
+ *     passwordErrors: string[],
+ *     isPasswordValid: boolean
+ *   },
+ *   actions: {
+ *     handleFieldChange: (e: import('react').ChangeEvent<HTMLInputElement>) => void,
+ *     setAccountType: (isCompany: boolean) => void,
+ *     handleRegister: (e: import('react').FormEvent) => Promise<void>,
+ *     togglePasswordVisibility: () => void,
+ *     toggleConfirmVisibility: () => void
+ *   }
+ * }}
  */
 export const useRegister = () => {
   const navigate = useNavigate();

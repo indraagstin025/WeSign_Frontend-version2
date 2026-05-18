@@ -7,6 +7,30 @@ import { AUTH_RESET_PASSWORD_REDIRECT_DELAY_MS } from '../../../config/timeouts'
 /**
  * Hook untuk mengelola logika form Reset Password.
  * Token diambil dari URL query param `?token=xxx`.
+ *
+ * Setelah submit sukses, auto-redirect ke /login dengan delay konstanta
+ * dari `config/timeouts.js` (AUTH_RESET_PASSWORD_REDIRECT_DELAY_MS).
+ * Timer di-cleanup saat unmount.
+ *
+ * @returns {{
+ *   state: {
+ *     token: string|null,
+ *     password: string,
+ *     confirmPassword: string,
+ *     showPassword: boolean,
+ *     loading: boolean,
+ *     error: string,
+ *     success: string,
+ *     passwordErrors: string[],
+ *     isPasswordValid: boolean
+ *   },
+ *   actions: {
+ *     setPassword: (value: string) => void,
+ *     setConfirmPassword: (value: string) => void,
+ *     togglePasswordVisibility: () => void,
+ *     handleSubmit: (e: import('react').FormEvent) => Promise<void>
+ *   }
+ * }}
  */
 export const useResetPassword = () => {
   const navigate = useNavigate();
