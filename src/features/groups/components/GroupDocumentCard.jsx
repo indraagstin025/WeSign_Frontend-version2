@@ -5,6 +5,7 @@ import {
   ShieldCheck, XCircle,
 } from 'lucide-react';
 import { useGroupDocumentCardState } from '../hooks/useGroupDocumentCardState';
+import { getGroupDocumentStatus } from '../constants/groupDocumentStatus';
 import RejectReasonModal from './RejectReasonModal';
 
 /**
@@ -37,7 +38,9 @@ const GroupDocumentCard = ({
     canDownload,
     canManageSigners,
     canDelete,
-    status,
+    // Note: `status` di-supply oleh hook tapi tidak dipakai di sini lagi
+    // — pakai `badge` dari getGroupDocumentStatus yang sudah include
+    // semua status keys (DRAFT/PENDING/PROCESSING/SIGNED/COMPLETED/REJECTED).
   } = useGroupDocumentCardState({ doc, isAdmin, myStatus, currentUserId });
 
   // [H-1] Status badge dari centralized config (constants/groupDocumentStatus.js).

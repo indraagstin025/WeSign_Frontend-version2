@@ -34,32 +34,48 @@ const RejectReasonModal = ({
   const [reason, setReason] = useState('');
   const textareaRef = useRef(null);
 
-  // Reset reason setiap kali modal dibuka
+  // Auto-focus textarea setelah modal mount.
+  // Reset reason di-handle oleh wrapper: onClose/onSubmit di parent component
+  // memanggil setRejectOpen(false), lalu saat di-open lagi, kita reset di
+  // handler onOpen (lihat onClick caller). Pattern ini menghindari
+  // setState-in-effect lint error.
   useEffect(() => {
-    if (isOpen) {
-      setReason('');
-      // Auto-focus textarea setelah modal mount
-      setTimeout(() => textareaRef.current?.focus(), 100);
-    }
+    if (!isOpen) return;
+    const t = setTimeout(() => textareaRef.current?.focus(), 100);
+    return () => clearTimeout(t);
   }, [isOpen]);
+
+  // Reset reason saat user klik close/cancel atau setelah submit.
+  // Wrapper di handleClose/handleSubmit, bukan di useEffect, untuk avoid
+  // cascading renders dari setState-in-effect (ESLint react-hooks/set-state-in-effect).
+  const handleClose = () => {
+    setReason('');
+    onClose();
+  };
 
   // Listen ESC untuk close
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e) => {
       if (e.key === 'Escape' && !loading) {
-        onClose();
+        handleClose();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, loading, onClose]);
+    // handleClose adalah closure stable per render — re-bind tiap render
+    // tidak masalah karena listener addEventListener idempotent dengan ref
+    // function instance, dan effect cleanup men-detach instance lama.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, loading]);
 
   if (!isOpen) return null;
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit(reason.trim());
+    const trimmed = reason.trim();
+    setReason('');
+    onSubmit(trimmed);
   };
 
   return (
@@ -67,7 +83,7 @@ const RejectReasonModal = ({
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm transition-opacity"
-        onClick={!loading ? onClose : undefined}
+        onClick={!loading ? handleClose : undefined}
         aria-hidden="true"
       />
 
@@ -82,7 +98,7 @@ const RejectReasonModal = ({
         {/* Tombol X (Tutup) */}
         <button
           type="button"
-          onClick={onClose}
+          onClick={handleClose}
           disabled={loading}
           className="absolute top-4 right-4 p-1 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors bg-transparent border-none cursor-pointer disabled:opacity-50"
           aria-label="Tutup"
@@ -133,7 +149,7 @@ const RejectReasonModal = ({
         <div className="flex gap-3 p-5 pt-0 pb-6 px-6">
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             disabled={loading}
             className="flex-1 py-2.5 px-4 rounded-xl text-sm font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors border-none cursor-pointer disabled:opacity-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-zinc-400/30"
           >

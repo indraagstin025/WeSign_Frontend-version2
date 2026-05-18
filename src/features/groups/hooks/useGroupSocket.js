@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { toast } from 'react-toastify';
 import { socketService } from '../../../services/socketService';
 import { drainOutbox } from '../../../services/outboxDrain';
