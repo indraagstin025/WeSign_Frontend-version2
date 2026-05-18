@@ -15,11 +15,16 @@ import {
 import { rejectDocument } from '../api/groupSignatureService';
 import { useGroupSocket } from './useGroupSocket';
 import { createLogger } from '../../../utils/logger';
+import { GROUPS_COPY_FEEDBACK_MS } from '../../../config/timeouts';
 
 // [M-6] Scoped logger.
 const log = createLogger('GroupDetailPage');
 
-const COPY_FEEDBACK_MS = 2000;
+/**
+ * @deprecated Pakai `GROUPS_COPY_FEEDBACK_MS` dari `config/timeouts.js`.
+ * Alias lokal untuk backward compat.
+ */
+const COPY_FEEDBACK_MS = GROUPS_COPY_FEEDBACK_MS;
 
 /**
  * @hook useGroupDetailPage
