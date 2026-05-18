@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useGroupDocumentCardState } from '../hooks/useGroupDocumentCardState';
 import { getGroupDocumentStatus } from '../constants/groupDocumentStatus';
+import { timeAgo } from '../../../utils/timeAgo';
 import RejectReasonModal from './RejectReasonModal';
 
 /**
@@ -61,25 +62,10 @@ const GroupDocumentCard = ({
   // Uploader name
   const uploaderName = doc?.owner?.name || 'Unknown';
 
-  // Time ago (simple)
-  const timeAgo = (dateStr) => {
-    if (!dateStr) return '';
-    const diff = Date.now() - new Date(dateStr).getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 60) return `${mins} menit lalu`;
-    const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return `${hrs} jam lalu`;
-    const days = Math.floor(hrs / 24);
-    return `${days} hari lalu`;
-  };
-
-  // Left accent color by status
-  const accentColor = {
-    DRAFT: 'bg-zinc-300 dark:bg-zinc-600',
-    PENDING: 'bg-amber-400',
-    COMPLETED: 'bg-emerald-500',
-    REJECTED: 'bg-rose-500',
-  }[docStatus] || 'bg-zinc-300';
+  // [L-3] Left accent bar pakai field `accent` dari getGroupDocumentStatus.
+  // Sebelumnya inline map dengan 4 status keys saja (DRAFT/PENDING/COMPLETED/REJECTED),
+  // sekarang centralized dengan 6 status keys.
+  const accentColor = badge.accent;
 
   return (
     <div className="relative flex items-center gap-4 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-white/5 rounded-2xl px-5 py-4 hover:shadow-md hover:border-zinc-200 dark:hover:border-white/10 transition-all duration-200 group">
@@ -186,6 +172,7 @@ const GroupDocumentCard = ({
           onClick={onPreview}
           className="p-2 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 border-none bg-transparent cursor-pointer transition-all"
           title="Preview"
+          aria-label="Preview dokumen"
         >
           <Eye size={16} />
         </button>
@@ -196,6 +183,7 @@ const GroupDocumentCard = ({
             onClick={onManageSigners}
             className="p-2 rounded-lg text-zinc-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 border-none bg-transparent cursor-pointer transition-all"
             title="Manage Signers"
+            aria-label="Kelola penandatangan"
           >
             <UserCog size={16} />
           </button>
@@ -206,6 +194,9 @@ const GroupDocumentCard = ({
           <button
             onClick={() => setMenuOpen((v) => !v)}
             className="p-2 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 border-none bg-transparent cursor-pointer transition-all"
+            aria-label="Menu aksi dokumen"
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
           >
             <MoreVertical size={16} />
           </button>

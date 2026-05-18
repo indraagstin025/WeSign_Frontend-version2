@@ -13,6 +13,7 @@ import StatusModal from '../../../components/ui/StatusModal';
 import ConfirmModal from '../../../components/ui/ConfirmModal';
 import { useGroupDetailPage } from '../hooks/useGroupDetailPage';
 import AuditTrailToggle from '../../signature/components/AuditTrailToggle';
+import { timeAgo } from '../../../utils/timeAgo';
 
 /**
  * Collapsible section untuk dokumen terhapus di grup.
@@ -412,13 +413,8 @@ const GroupDetailPage = () => {
               {documents.slice(0, 3).map((doc) => {
                 const name = doc.owner?.name || 'Unknown';
                 const initials = name.trim().split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase();
-                const timeAgo = (dateStr) => {
-                  if (!dateStr) return '';
-                  const diff = Date.now() - new Date(dateStr).getTime();
-                  const hrs = Math.floor(diff / 3600000);
-                  if (hrs < 24) return `${hrs} jam lalu`;
-                  return `${Math.floor(hrs / 24)} hari lalu`;
-                };
+                // [L-1] timeAgo dari utils/timeAgo.js. Pakai includeMinutes:false
+                // di sini karena semula format `${hrs} jam lalu` (skip menit).
                 return (
                   <div key={doc.id} className="flex items-start gap-3">
                     <div className="w-7 h-7 rounded-full bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 flex items-center justify-center text-[9px] font-black shrink-0">
@@ -429,7 +425,7 @@ const GroupDetailPage = () => {
                         <span className="font-bold">{name}</span> mengupload dokumen{' '}
                         <span className="font-bold text-zinc-900 dark:text-white">{doc.title}</span>
                       </p>
-                      <p className="text-[10px] text-zinc-400 mt-0.5">{timeAgo(doc.createdAt)}</p>
+                      <p className="text-[10px] text-zinc-400 mt-0.5">{timeAgo(doc.createdAt, { includeMinutes: false })}</p>
                     </div>
                   </div>
                 );

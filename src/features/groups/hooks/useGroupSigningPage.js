@@ -4,16 +4,29 @@ import { useTheme } from '../../../hooks/useTheme';
 import { useUser } from '../../../context/UserContext';
 import { useOutboxDrain } from '../../../hooks/useOutboxDrain';
 import { useGroupSigning } from './useGroupSigning';
-
-const DEFAULT_SIG_WIDTH = 0.25;
-const DEFAULT_SIG_HEIGHT = 0.1;
+import {
+  DEFAULT_SIGNATURE_WIDTH,
+  DEFAULT_SIGNATURE_HEIGHT,
+} from '../constants/groupSignatureLayout';
 
 /**
  * @hook useGroupSigningPage
  * @description Orchestrator state untuk halaman penandatanganan dokumen grup.
- * Membungkus `useGroupSigning` + concerns level-page (theme, navigasi, sheet,
- * canvas-click handler, derivasi UI seperti finalize text & filter signature
- * milik user).
+ * Membungkus `useGroupSigning` + concerns level-page:
+ * - Theme toggle (light/dark)
+ * - Mobile bottom-sheet open state
+ * - Canvas click handler untuk drop signature dengan default size
+ *   (`DEFAULT_SIGNATURE_WIDTH`, `DEFAULT_SIGNATURE_HEIGHT`)
+ * - Derivasi UI: finalize text label, filter signature milik user,
+ *   submit/finalize disable state
+ * - Outbox drain integration (auto-replay HTTP mutation saat reconnect)
+ *
+ * Layered architecture:
+ * - useGroupData    → fetch state grup + dokumen
+ * - useGroupSocket  → koneksi socket + listeners realtime
+ * - useGroupSignatureActions → CRUD signature (add/update/delete/sign/finalize)
+ * - useGroupSigning → orchestrator yang menyatukan 3 di atas
+ * - useGroupSigningPage → wrapper level-page (this hook)
  */
 export function useGroupSigningPage() {
   const { groupId, documentId } = useParams();
@@ -114,10 +127,10 @@ export function useGroupSigningPage() {
 
       handleAddSignature({
         pageNumber,
-        positionX: Math.max(0, Math.min(1 - DEFAULT_SIG_WIDTH, clickX - DEFAULT_SIG_WIDTH / 2)),
+        positionX: Math.max(0, Math.min(1 - DEFAULT_SIGNATURE_WIDTH, clickX - DEFAULT_SIGNATURE_WIDTH / 2)),
         positionY: Math.max(0, clickY - 0.05),
-        width: DEFAULT_SIG_WIDTH,
-        height: DEFAULT_SIG_HEIGHT,
+        width: DEFAULT_SIGNATURE_WIDTH,
+        height: DEFAULT_SIGNATURE_HEIGHT,
         method: currentMethod || 'canvas',
         category: ['canvas', 'signature', 'initial', 'date'].includes(currentMethod) ? 'signing' : 'annotation',
       });

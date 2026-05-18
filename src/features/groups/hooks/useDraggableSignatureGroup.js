@@ -1,9 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useDraggableSignature } from '../../signature/hooks/useDraggableSignature';
 import { socketService } from '../../../services/socketService';
+import {
+  SIGNATURE_VISUAL_PADDING,
+  SIGNATURE_SOCKET_THROTTLE_MS,
+} from '../constants/groupSignatureLayout';
 
-const VISUAL_PADDING = 18;
+// [L-2] Aliases lokal — agar diff perubahan minimal dan kode existing
+// tidak perlu massive rename. Konsumer baru pakai konstanta dari import.
+const VISUAL_PADDING = SIGNATURE_VISUAL_PADDING;
 const TOTAL_PADDING = VISUAL_PADDING * 2;
+const SOCKET_THROTTLE_MS = SIGNATURE_SOCKET_THROTTLE_MS;
 
 function throttle(func, limit) {
   let inThrottle;
@@ -65,7 +72,7 @@ export function useDraggableSignatureGroup({
     () =>
       throttle((posData) => {
         if (documentId) socketService.emitSignatureUpdate({ documentId, signatureId: sig.id, ...posData });
-      }, 30),
+      }, SOCKET_THROTTLE_MS),
     [documentId, sig.id]
   );
 
@@ -84,7 +91,7 @@ export function useDraggableSignatureGroup({
             pageNumber: sig.pageNumber,
           });
         }
-      }, 30),
+      }, SOCKET_THROTTLE_MS),
     [documentId, sig.id, sig.positionX, sig.positionY, sig.pageNumber]
   );
 
@@ -135,7 +142,7 @@ export function useDraggableSignatureGroup({
           height: h,
           pageNumber: sig.pageNumber,
         });
-      }, 30),
+      }, SOCKET_THROTTLE_MS),
     [documentId, sig.id, sig.pageNumber, isOwner]
   );
 

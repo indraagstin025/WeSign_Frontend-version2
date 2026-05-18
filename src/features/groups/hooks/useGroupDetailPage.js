@@ -15,19 +15,38 @@ import {
 import { rejectDocument } from '../api/groupSignatureService';
 import { useGroupSocket } from './useGroupSocket';
 import { createLogger } from '../../../utils/logger';
+import { GROUPS_COPY_FEEDBACK_MS } from '../../../config/timeouts';
 
 // [M-6] Scoped logger.
 const log = createLogger('GroupDetailPage');
 
-const COPY_FEEDBACK_MS = 2000;
+/**
+ * @deprecated Pakai `GROUPS_COPY_FEEDBACK_MS` dari `config/timeouts.js`.
+ * Alias lokal untuk backward compat.
+ */
+const COPY_FEEDBACK_MS = GROUPS_COPY_FEEDBACK_MS;
 
 /**
  * @hook useGroupDetailPage
  * @description Orchestrator state untuk halaman detail grup.
- * Mengelola: fetching, realtime socket, modal states, dan seluruh action handler.
+ * Mengelola: fetching (group meta + paginated documents + trash list),
+ * realtime socket, modal states, dan seluruh action handler.
  *
  * Page-level component menjadi pure presentation — cukup pakai `state` & `actions`
  * yang dikembalikan oleh hook ini.
+ *
+ * Concerns yang dikelola:
+ * - Group metadata (name, members) via fetchGroup()
+ * - Document pagination dengan paginationRef untuk avoid stale closure (H-2)
+ * - Realtime updates via useGroupSocket dengan cbRefs pattern (H-3)
+ * - Modal state: upload, manage signers, delete confirm, finalize confirm,
+ *   kick member, restore document, status modal generic
+ * - Invitation link copy dengan timeout feedback (GROUPS_COPY_FEEDBACK_MS)
+ *
+ * @returns {{
+ *   state: object - All state values needed by GroupDetailPage component,
+ *   actions: object - Handler functions untuk semua user interaksi
+ * }}
  */
 export function useGroupDetailPage() {
   const { groupId } = useParams();
