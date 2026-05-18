@@ -1,5 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { v4 as uuidv4 } from 'uuid';
+import { toast } from 'react-toastify';
 import { getPackageDetails, signPackage } from '../api/packageService';
 import { getDocumentFile } from '../../documents/api/docService';
 
@@ -68,7 +70,17 @@ export const useSignPackage = (packageId) => {
       if (res.status === 'success') {
         const pkg = res.data;
         if (pkg.status?.toLowerCase() === 'completed') {
-          navigate('/dashboard/packages', { replace: true });
+          // [CR-2] Sebelumnya: silent navigate tanpa info user. Akibatnya
+          // user yang klik "Sign Package" untuk paket completed langsung
+          // di-redirect ke list tanpa pesan apapun -> confused.
+          // Sekarang: redirect ke preview page (lebih intuitif daripada list)
+          // dengan toast info supaya user paham apa yang terjadi.
+          toast.info('Paket ini sudah selesai. Mengarahkan ke pratinjau...', {
+            autoClose: 2000,
+          });
+          setTimeout(() => {
+            navigate(`/dashboard/packages/preview/${packageId}`, { replace: true });
+          }, 2000);
           return;
         }
         setPackageData(pkg);
@@ -163,7 +175,11 @@ export const useSignPackage = (packageId) => {
     const defaultWidth = 0.25;
 
     const newSig = {
-      id: Date.now(),
+      // [CR-3] Pakai uuidv4() bukan Date.now() — Date.now() resolusi 1ms,
+      // double-click cepat <1ms apart bisa generate ID sama -> collision
+      // di signaturesMap[activeDoc.id]. Multi-document workflow makin
+      // riskan kalau collision antar dokumen.
+      id: uuidv4(),
       pageNumber,
       positionX: Math.max(0, Math.min(1 - defaultWidth, clickX - (defaultWidth / 2))),
       positionY: Math.max(0, clickY - 0.05),
