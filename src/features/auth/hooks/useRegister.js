@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { registerUser } from "../api/authService";
 import { sanitizeText, sanitizeEmail, isValidEmail, isValidName, validatePasswordStrength } from "../../../utils/sanitize";
+import { AUTH_REGISTER_REDIRECT_DELAY_MS } from "../../../config/timeouts";
 
 /**
  * Hook to manage the logic of the Registration Form.
@@ -98,10 +99,11 @@ export const useRegister = () => {
         // di sessionStorage) akan diproses oleh useLogin setelah user login.
         // Konsumer key ini ada di src/config/sessionKeys.js (PENDING_GROUP_JOIN_KEY).
         // [H-1] Track timer ID untuk cleanup di unmount.
+        // [L-3] Delay konstanta dari config/timeouts.js, bukan magic number.
         redirectTimerRef.current = setTimeout(() => {
           navigate("/login");
           redirectTimerRef.current = null;
-        }, 2000);
+        }, AUTH_REGISTER_REDIRECT_DELAY_MS);
       }
     } catch (err) {
       setError(err.message || "Registrasi gagal. Silakan coba lagi.");

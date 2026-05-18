@@ -88,6 +88,19 @@ export const SOCKET_RECONNECT_JITTER = 0.5;
 export const AUTH_EXPIRED_REDIRECT_DELAY_MS = 0;
 
 /**
+ * Delay sebelum auto-redirect ke /login setelah register/reset-password sukses.
+ * User butuh waktu baca pesan "Berhasil! Mengarahkan...".
+ *
+ * - Register: 2 detik (cukup untuk lihat banner success singkat)
+ * - Reset password: 3 detik (lebih panjang karena pesan lebih spesifik dan
+ *   user perlu sadar mereka harus login ulang dengan password baru)
+ *
+ * Refs: docs/code-review-feat-auth/04-low.md L-3
+ */
+export const AUTH_REGISTER_REDIRECT_DELAY_MS = 2_000;
+export const AUTH_RESET_PASSWORD_REDIRECT_DELAY_MS = 3_000;
+
+/**
  * Throttle interval untuk socket emit (drag, resize signature).
  * 30ms = ~33 emit/detik, balance antara smoothness & bandwidth.
  */
