@@ -101,6 +101,23 @@ export const AUTH_REGISTER_REDIRECT_DELAY_MS = 2_000;
 export const AUTH_RESET_PASSWORD_REDIRECT_DELAY_MS = 3_000;
 
 /**
+ * Delay sebelum auto-redirect ke /dashboard/groups setelah join group via
+ * invitation link berhasil (atau already_member). User butuh waktu baca
+ * banner "Berhasil bergabung di grup X".
+ *
+ * Refs: docs/code-review-feat-groups/03-medium.md M-3
+ */
+export const GROUPS_JOIN_REDIRECT_DELAY_MS = 2_000;
+
+/**
+ * Durasi feedback "Tersalin" pada tombol copy invitation link sebelum
+ * auto-revert ke state default.
+ *
+ * Refs: docs/code-review-feat-groups/04-low.md L-8
+ */
+export const GROUPS_COPY_FEEDBACK_MS = 2_000;
+
+/**
  * Throttle interval untuk socket emit (drag, resize signature).
  * 30ms = ~33 emit/detik, balance antara smoothness & bandwidth.
  */
