@@ -15,6 +15,16 @@
  *   - URL hasil resolve harus valid (parseable via URL constructor)
  *   - Production mode TIDAK BOLEH point ke localhost — fail-fast saat build
  *   - Development mode boleh apa saja (tidak validate)
+ *
+ * Type info untuk IDE autocomplete (L-2):
+ *
+ * @typedef {Object} ImportMetaEnv
+ * @property {string} MODE - Vite mode ("development" | "production" | custom)
+ * @property {boolean} DEV - True di vite dev
+ * @property {boolean} PROD - True di vite build
+ * @property {string} BASE_URL - Base URL aplikasi (default "/")
+ * @property {string} [VITE_API_URL] - Override eksplisit untuk API base URL
+ * @property {string} [VITE_SOCKET_URL] - Override eksplisit untuk Socket.IO URL (jarang dipakai)
  */
 
 export const LOCAL_API_URL = "http://localhost:3000/api";
