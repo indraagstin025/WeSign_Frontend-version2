@@ -14,6 +14,7 @@ import 'react-pdf/dist/Page/TextLayer.css';
 // Komponen Group Signing
 import { useGroupSigningPage } from '../hooks/useGroupSigningPage';
 import { useSignatureAssets } from '../../signature/hooks/useSignatureAssets';
+import { useInteractionMode } from '../../signature/hooks/useInteractionMode';
 import DraggableSignatureGroup from '../components/DraggableSignatureGroup';
 import GroupSignerProgress from '../components/GroupSignerProgress';
 import RejectReasonModal from '../components/RejectReasonModal';
@@ -39,7 +40,9 @@ import { saveStatus } from '../../../services/saveStatus';
  */
 const GroupSigningPage = () => {
   const { state, actions } = useGroupSigningPage();
-  const [interactionMode, setInteractionMode] = useState('cursor');
+  // [L-1] Shared hook useInteractionMode (sebelumnya state duplikat di
+  // 3 signing pages: Document, Group, Package).
+  const { mode: interactionMode } = useInteractionMode('cursor');
   const [settingsOpen, setSettingsOpen] = useState(true);
   const [saveState, setSaveState] = useState(saveStatus.get());
   const [isParafOpen, setIsParafOpen] = useState(false);
@@ -343,7 +346,6 @@ const GroupSigningPage = () => {
           onClose={() => setSettingsOpen(false)}
           auditTrailMode={auditTrailMode}
           onAuditTrailChange={setAuditTrailMode}
-          showLockAfterSigning={true}
         />
       )}
 

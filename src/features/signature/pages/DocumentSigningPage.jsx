@@ -18,6 +18,7 @@ import 'react-pdf/dist/Page/TextLayer.css';
 // --- COMPONENTS & HOOKS ---
 import { useDocumentSigner } from '../hooks/useDocumentSigner';
 import { useSignatureAssets } from '../hooks/useSignatureAssets';
+import { useInteractionMode } from '../hooks/useInteractionMode';
 import DraggableSignature from '../components/DraggableSignature';
 import SigningSidebar from '../components/SigningSidebar';
 import SigningNavbar from '../components/SigningNavbar';
@@ -45,8 +46,10 @@ const DocumentSigningPage = () => {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   
-  // Interaction mode: cursor (place signature) vs hand (pan/scroll)
-  const [interactionMode, setInteractionMode] = useState('cursor');
+  // [L-1] Pakai shared hook useInteractionMode (sebelumnya state duplikat
+  // di 3 signing pages). Saat ini hanya read mode (interactionMode) — kalau
+  // toolbar nanti punya toggle button, tinggal destructure setMode juga.
+  const { mode: interactionMode } = useInteractionMode('cursor');
   const [settingsOpen, setSettingsOpen] = useState(true);
   const [isParafOpen, setIsParafOpen] = useState(false);
   const [isStampOpen, setIsStampOpen] = useState(false);
@@ -103,9 +106,11 @@ const DocumentSigningPage = () => {
     }
   };
 
-  const handleToggleMode = (mode) => {
-    setInteractionMode(mode);
-  };
+  // [L-8] handleToggleMode dihapus karena tidak pernah dipass ke
+  // child component (SigningNavbar tidak punya prop onToggleMode).
+  // Sebelumnya didefinisikan inline tapi dead — useInteractionMode
+  // hook tetap expose setMode kalau di kemudian hari toolbar punya
+  // toggle button (refactor untuk eksposeasi sudah ada di L-1).
 
   // [H-3] Auto-load default signature dari saved assets saat pertama kali.
   // Ref pattern untuk handler agar deps array hanya track `assets` saja

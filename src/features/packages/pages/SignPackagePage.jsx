@@ -18,6 +18,7 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 import { useTheme } from '../../../hooks/useTheme';
 import { useSignPackage } from '../hooks/useSignPackage';
 import { useSignatureAssets } from '../../signature/hooks/useSignatureAssets';
+import { useInteractionMode } from '../../signature/hooks/useInteractionMode';
 
 // Styles
 import 'react-pdf/dist/Page/AnnotationLayer.css';
@@ -48,7 +49,9 @@ const SignPackagePage = () => {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
 
-  const [interactionMode, setInteractionMode] = useState('cursor');
+  // [L-1] Shared hook useInteractionMode (sebelumnya state duplikat di
+  // 3 signing pages: Document, Group, Package).
+  const { mode: interactionMode } = useInteractionMode('cursor');
   const [settingsOpen, setSettingsOpen] = useState(true);
   const [isParafOpen, setIsParafOpen] = useState(false);
   const [isStampOpen, setIsStampOpen] = useState(false);

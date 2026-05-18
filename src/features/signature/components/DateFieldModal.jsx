@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Calendar } from 'lucide-react';
 import { renderTextToImage } from '../utils/renderToImage';
+import { DATE_FIELD_COLORS } from '../constants/signatureColors';
 
 /**
  * @component DateFieldModal
@@ -14,7 +15,7 @@ const FORMATS = [
   { id: 'medium', label: 'DD MMM YYYY', example: '17 Mei 2026' },
 ];
 
-const COLORS = ['#334155', '#e11d48', '#2563eb', '#16a34a'];
+const COLORS = DATE_FIELD_COLORS;
 
 function formatDateValue(date, formatId) {
   const d = new Date(date);
