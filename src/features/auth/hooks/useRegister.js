@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { registerUser } from "../api/authService";
 import { sanitizeText, sanitizeEmail, isValidEmail, isValidName, validatePasswordStrength } from "../../../utils/sanitize";
@@ -23,6 +23,18 @@ export const useRegister = () => {
     confirmPassword: "",
     isCompany: false,
   });
+
+  // [H-1] Track redirect timer dengan ref supaya bisa cleanup saat unmount
+  const redirectTimerRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (redirectTimerRef.current) {
+        clearTimeout(redirectTimerRef.current);
+        redirectTimerRef.current = null;
+      }
+    };
+  }, []);
 
   const handleFieldChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -85,7 +97,11 @@ export const useRegister = () => {
         // Setelah register, redirect ke login. Pending join token (kalau ada
         // di sessionStorage) akan diproses oleh useLogin setelah user login.
         // Konsumer key ini ada di src/config/sessionKeys.js (PENDING_GROUP_JOIN_KEY).
-        setTimeout(() => navigate("/login"), 2000);
+        // [H-1] Track timer ID untuk cleanup di unmount.
+        redirectTimerRef.current = setTimeout(() => {
+          navigate("/login");
+          redirectTimerRef.current = null;
+        }, 2000);
       }
     } catch (err) {
       setError(err.message || "Registrasi gagal. Silakan coba lagi.");

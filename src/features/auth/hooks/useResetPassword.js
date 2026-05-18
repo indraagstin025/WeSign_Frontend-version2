@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { resetPassword } from '../api/authService';
 import { validatePasswordStrength } from '../../../utils/sanitize';
@@ -18,6 +18,21 @@ export const useResetPassword = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  // [H-1] Track redirect timer dengan ref supaya bisa cleanup saat
+  // component unmount sebelum timer fire. Sebelumnya `setTimeout(...)`
+  // tanpa cleanup -> kalau user navigate manual sebelum 3 detik, timer
+  // tetap fire navigate('/login') ke route yang baru.
+  const redirectTimerRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (redirectTimerRef.current) {
+        clearTimeout(redirectTimerRef.current);
+        redirectTimerRef.current = null;
+      }
+    };
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -45,7 +60,11 @@ export const useResetPassword = () => {
     try {
       const result = await resetPassword(token, password);
       setSuccess(result?.message || 'Password berhasil direset. Silakan login dengan password baru.');
-      setTimeout(() => navigate('/login'), 3000);
+      // [H-1] Track timer ID untuk cleanup
+      redirectTimerRef.current = setTimeout(() => {
+        navigate('/login');
+        redirectTimerRef.current = null;
+      }, 3000);
     } catch (err) {
       setError(err.message || 'Gagal mereset password. Link mungkin sudah kadaluarsa.');
     } finally {

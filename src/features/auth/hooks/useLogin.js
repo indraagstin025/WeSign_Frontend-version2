@@ -3,10 +3,16 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { loginUser } from '../api/authService';
 import { sanitizeEmail, isValidEmail } from '../../../utils/sanitize';
 import { useUser } from '../../../context/UserContext';
+import { PENDING_GROUP_JOIN_KEY } from '../../../config/sessionKeys';
 
 /**
  * Hook to manage the logic of the Login Form.
  * Handles input sanitization, client-side validation, and navigation redirect.
+ *
+ * Redirect priority (highest to lowest):
+ * 1. Pending group join token di sessionStorage → /groups/join?token=...
+ * 2. `from` location state (origin URL sebelum di-protect-redirect ke login)
+ * 3. Default → /dashboard
  */
 export const useLogin = () => {
   const [email, setEmail] = useState('');
@@ -19,7 +25,11 @@ export const useLogin = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { refreshUser } = useUser();
-  const from = location.state?.from?.pathname || '/dashboard';
+  // [H-3] Resolve target path dengan priority:
+  // 1. pending join token (cross-flow restore)
+  // 2. location.state.from (redirect-back-after-protect)
+  // 3. default /dashboard
+  const fromPath = location.state?.from?.pathname || '/dashboard';
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -50,8 +60,19 @@ export const useLogin = () => {
         // atau ke /dashboard jika tidak ada.
         await refreshUser();
 
-        // Fallback navigate (GuestRoute biasanya yang handle redirect)
-        navigate(from, { replace: true });
+        // [H-3] Resolve redirect target dengan priority eksplisit:
+        // 1. Pending group join token (cross-flow restore) — user klik link
+        //    invite saat belum login, token disimpan di sessionStorage.
+        // 2. location.state.from — origin URL sebelum diredirect ke /login.
+        // 3. Default /dashboard.
+        // Catatan: GuestRoute biasanya yang handle redirect duluan, ini fallback
+        // untuk kasus user manual login dari /login langsung.
+        const pendingJoinToken = sessionStorage.getItem(PENDING_GROUP_JOIN_KEY);
+        if (pendingJoinToken) {
+          navigate(`/groups/join?token=${encodeURIComponent(pendingJoinToken)}`, { replace: true });
+        } else {
+          navigate(fromPath, { replace: true });
+        }
       }
     } catch (err) {
       setError(err.message || 'Login gagal. Periksa kembali email dan kata sandi Anda.');

@@ -34,21 +34,47 @@ export function sanitizeEmail(email) {
 
 /**
  * Memvalidasi format email untuk match dengan backend express-validator isEmail().
- * Menggunakan regex yang compatible dengan RFC 5322 standard (simplified).
+ *
+ * [H-2] Backend pakai 2 layer validasi:
+ *   1. express-validator `isEmail()` — RFC 5322 compliance (strict, mengikuti
+ *      validator.js library)
+ *   2. authService EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/ — basic format check
+ *
+ * Frontend match dengan EMAIL_REGEX (basic) + tambah constraint RFC 5321:
+ *   - Total length ≤ 254 chars
+ *   - Local part ≤ 64 chars
+ *   - Tidak ada consecutive dots di local part (".." invalid)
+ *   - Local part tidak boleh diawali/diakhiri dengan dot
+ *
+ * Edge case yang masih bisa lolos client tapi reject backend (mis. internal
+ * domain not exists, special unicode chars) — di-handle gracefully dengan
+ * error message dari backend response.
+ *
  * @param {string} email
  * @returns {boolean}
  */
 export function isValidEmail(email) {
-  // Regex yang match dengan express-validator isEmail() implementation
-  // Pattern: local-part@domain dengan minimal satu dot di domain
+  if (typeof email !== 'string' || !email) return false;
+
+  // Pattern dasar: local-part@domain dengan minimal satu dot di domain
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-  // Additional checks untuk keamanan backend
   if (!emailRegex.test(email)) return false;
-  if (email.length > 254) return false; // RFC 5321
 
-  const [local] = email.split("@");
-  if (local.length > 64) return false; // RFC 5321 - local part max 64 chars
+  // RFC 5321 length constraints
+  if (email.length > 254) return false;
+
+  const [local, domain] = email.split("@");
+  if (!local || local.length > 64) return false;
+  if (!domain || domain.length > 253) return false;
+
+  // Local part: tidak boleh ".." (consecutive dots) atau diawali/diakhiri dengan "."
+  if (local.startsWith('.') || local.endsWith('.')) return false;
+  if (local.includes('..')) return false;
+
+  // Domain: harus punya valid TLD (minimal 2 char) dan tidak ".." consecutive
+  if (domain.includes('..')) return false;
+  const tld = domain.split('.').pop();
+  if (!tld || tld.length < 2) return false;
 
   return true;
 }
