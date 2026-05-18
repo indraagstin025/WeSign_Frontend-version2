@@ -92,7 +92,7 @@ const LoginForm = () => {
       <button 
         type="submit" 
         disabled={state.loading}
-        className="w-full h-12 bg-primary hover:bg-primary-dark text-white rounded-full text-[15px] font-bold transition-all shadow-lg shadow-primary/20 mt-1 flex items-center justify-center gap-3 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed border-none group"
+        className="w-full h-12 bg-primary hover:bg-primary-dark text-white rounded-full text-[15px] font-bold transition-all shadow-lg shadow-primary/20 mt-1 flex items-center justify-center gap-3 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed border-none group focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/40"
       >
         {state.loading ? (
           <><Loader2 size={18} className="animate-spin" /> Memproses...</>
