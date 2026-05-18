@@ -1,11 +1,10 @@
-import React, { Suspense, lazy } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import React, { Suspense, lazy, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import ProtectedRoute from './components/Auth/ProtectedRoute';
 import GuestRoute from './components/Auth/GuestRoute';
-import NetworkStatus from './components/UI/NetworkStatus';
-import { useIdleTimeout } from './hooks/useIdleTimeout';
+import NetworkStatus from './components/ui/NetworkStatus';
 import { UserProvider } from './context/UserContext';
 import './App.css'; 
 
@@ -39,10 +38,40 @@ const PageLoader = () => (
   </div>
 );
 
+/**
+ * @component AuthExpiredHandler
+ * @description Listen event `wesign:auth-expired` dari services/api.js
+ * dan handle SPA navigation ke /login, bukan window.location.href reload.
+ *
+ * [M-5] Sebelumnya api.js handleLogout() pakai window.location.href yang
+ * cause full page reload (white flash, tear-down state). Sekarang dispatch
+ * custom event yang di-handle di sini supaya navigation smooth.
+ */
+const AuthExpiredHandler = () => {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleAuthExpired = (e) => {
+      // Skip kalau sudah di /login
+      if (window.location.pathname === '/login') return;
+      // Mark event sebagai handled supaya api.js fallback (window.location.href)
+      // tidak fire
+      e.preventDefault();
+      navigate('/login?expired=true', { replace: true });
+    };
+
+    window.addEventListener('wesign:auth-expired', handleAuthExpired);
+    return () => window.removeEventListener('wesign:auth-expired', handleAuthExpired);
+  }, [navigate]);
+
+  return null;
+};
+
 function App() {
   return (
     <BrowserRouter>
       <UserProvider>
+        <AuthExpiredHandler />
         <NetworkStatus />
         <ToastContainer
           position="top-right"

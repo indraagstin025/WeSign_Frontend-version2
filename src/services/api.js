@@ -247,8 +247,24 @@ function handleLogout() {
   localStorage.removeItem("wesign_refresh_token");
   localStorage.removeItem("wesign_csrf_token");
   localStorage.removeItem("wesign_user");
+
   // Hindari loop redirect jika sudah di login
-  if (window.location.pathname !== "/login") {
+  if (window.location.pathname === "/login") return;
+
+  // [M-5] Dispatch custom event ke App-level untuk SPA navigation.
+  // Sebelumnya pakai `window.location.href = '/login?expired=true'` yang
+  // cause full page reload (white flash, tear-down semua state). Sekarang:
+  // - App.jsx subscribe ke 'wesign:auth-expired' event dan call navigate()
+  // - Kalau tidak ada listener (mis. service dipanggil sebelum App mount),
+  //   fallback ke window.location.href untuk safety
+  const expiredEvent = new CustomEvent('wesign:auth-expired', {
+    detail: { reason: 'session-expired' },
+  });
+  const dispatched = window.dispatchEvent(expiredEvent);
+
+  // Fallback kalau event tidak di-handle (preventDefault tidak called atau
+  // tidak ada listener yang call event.handled = true)
+  if (!expiredEvent.defaultPrevented) {
     window.location.href = "/login?expired=true";
   }
 }
