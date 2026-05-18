@@ -18,6 +18,7 @@ import 'react-pdf/dist/Page/TextLayer.css';
 // --- COMPONENTS & HOOKS ---
 import { useDocumentSigner } from '../hooks/useDocumentSigner';
 import { useSignatureAssets } from '../hooks/useSignatureAssets';
+import { useInteractionMode } from '../hooks/useInteractionMode';
 import DraggableSignature from '../components/DraggableSignature';
 import SigningSidebar from '../components/SigningSidebar';
 import SigningNavbar from '../components/SigningNavbar';
@@ -45,8 +46,10 @@ const DocumentSigningPage = () => {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   
-  // Interaction mode: cursor (place signature) vs hand (pan/scroll)
-  const [interactionMode, setInteractionMode] = useState('cursor');
+  // [L-1] Pakai shared hook useInteractionMode (sebelumnya state duplikat
+  // di 3 signing pages). [L-8] handleToggleMode dari hook (yang dulu
+  // didefinisikan inline tapi tidak di-wire ke toolbar — dead).
+  const { mode: interactionMode, setMode: setInteractionMode } = useInteractionMode('cursor');
   const [settingsOpen, setSettingsOpen] = useState(true);
   const [isParafOpen, setIsParafOpen] = useState(false);
   const [isStampOpen, setIsStampOpen] = useState(false);
@@ -103,8 +106,8 @@ const DocumentSigningPage = () => {
     }
   };
 
-  const handleToggleMode = (mode) => {
-    setInteractionMode(mode);
+  const handleToggleMode = (next) => {
+    setInteractionMode(next);
   };
 
   // [H-3] Auto-load default signature dari saved assets saat pertama kali.
