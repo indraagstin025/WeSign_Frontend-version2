@@ -37,15 +37,12 @@ const GroupDocumentCard = ({
     status,
   } = useGroupDocumentCardState({ doc, isAdmin, myStatus, currentUserId });
 
-  // Status badge config
-  const STATUS_BADGE = {
-    DRAFT:     { label: 'Draft',      cls: 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400' },
-    PENDING:   { label: 'Menunggu',   cls: 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400' },
-    COMPLETED: { label: 'Selesai',    cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400' },
-    REJECTED:  { label: 'Ditolak',    cls: 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400' },
-  };
+  // [H-1] Status badge dari centralized config (constants/groupDocumentStatus.js).
+  // Sebelumnya STATUS_BADGE inline di sini, useGroupDocumentCardState dan
+  // useGroupDocumentPreviewPage masing-masing punya STATUS_CONFIG sendiri
+  // dengan label inkonsisten (mis. COMPLETED "Selesai" vs "Finalized").
   const docStatus = doc?.status?.toUpperCase();
-  const badge = STATUS_BADGE[docStatus] || STATUS_BADGE.DRAFT;
+  const badge = getGroupDocumentStatus(docStatus);
 
   // Signer avatars (max 3 + overflow)
   const signers = doc?.signerRequests || [];
