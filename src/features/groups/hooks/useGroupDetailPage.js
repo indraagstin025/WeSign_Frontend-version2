@@ -89,7 +89,8 @@ export function useGroupDetailPage() {
           throw new Error(res.message);
         }
       } catch (err) {
-        if (!silent) setError(err.message);
+        // [M-5] Fallback string non-empty untuk kasus err.message undefined/empty
+        if (!silent) setError(err.message || 'Gagal memuat detail grup. Silakan coba lagi.');
       } finally {
         if (!silent) setLoading(false);
       }
