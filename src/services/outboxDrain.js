@@ -16,13 +16,22 @@
 
 import { outbox } from './outbox';
 import { updateDraftPosition } from '../features/groups/api/groupSignatureService';
+import { createLogger } from '../utils/logger';
+
+const log = createLogger('outboxDrain');
+
+// [M-7] Concurrency limit untuk drain. Sebelumnya serial — kalau 1 entry
+// slow (mis. timeout 5s), semua entry behind block. Sekarang batch parallel
+// dengan limit 3 — tetap konservatif untuk avoid thundering herd, tapi
+// 1 slow entry tidak block 4 lain.
+const DRAIN_CONCURRENCY = 3;
 
 let isDraining = false;
 const droppedSubscribers = new Set();
 
 function emitDropped(entry) {
   droppedSubscribers.forEach((cb) => {
-    try { cb(entry); } catch (e) { console.error('[outboxDrain] dropped cb error:', e); }
+    try { cb(entry); } catch (e) { log.error('dropped cb error:', e?.message); }
   });
 }
 
@@ -42,7 +51,7 @@ function isPermanentFailure(err) {
 
 async function drainEntry(entry) {
   if (entry.type !== 'patch_position') {
-    console.warn('[outboxDrain] unknown type, dropping:', entry.type);
+    log.warn('unknown type, dropping:', entry.type);
     outbox.remove(entry.id);
     return;
   }
@@ -55,11 +64,9 @@ async function drainEntry(entry) {
       return;
     }
     // [FIX] Permanent failure (4xx kecuali 408/429) → drop SEKALI tanpa retry.
-    // Sebelumnya entry retry 5x sia-sia (mis. signature `final` yang ditolak
-    // backend) → user lihat "Antri offline" stuck puluhan detik.
     if (isPermanentFailure(err)) {
-      console.warn(
-        '[outboxDrain] permanent failure, dropping:', entry.id, entry.signatureId,
+      log.warn(
+        'permanent failure, dropping:', entry.id, entry.signatureId,
         'status=' + err.status, err?.message
       );
       outbox.remove(entry.id);
@@ -68,9 +75,7 @@ async function drainEntry(entry) {
     }
     const updated = outbox.bumpAttempt(entry.id);
     if (updated && updated.attempts >= outbox.MAX_DRAIN_ATTEMPTS) {
-      console.warn(
-        '[outboxDrain] entry exhausted, dropping:', entry.id, entry.signatureId
-      );
+      log.warn('entry exhausted, dropping:', entry.id, entry.signatureId);
       outbox.remove(entry.id);
       emitDropped(entry);
     }
@@ -78,8 +83,13 @@ async function drainEntry(entry) {
 }
 
 /**
- * Drain semua entry secara serial (hindari thundering herd ke server).
+ * Drain semua entry dengan concurrency limit (DRAIN_CONCURRENCY).
  * Aman dipanggil berkali-kali — guard isDraining mencegah overlap.
+ *
+ * [M-7] Pakai chunked batches dengan Promise.allSettled supaya:
+ * - 1 entry slow tidak block lainnya (parallel within batch)
+ * - Server tidak overwhelmed (limit 3 concurrent)
+ * - allSettled (bukan all) supaya 1 reject tidak abort batch
  */
 export async function drainOutbox() {
   if (isDraining) return;
@@ -87,12 +97,20 @@ export async function drainOutbox() {
   try {
     const entries = outbox.getAll();
     if (entries.length === 0) return;
-    console.log('[outboxDrain] draining', entries.length, 'entries');
-    for (const entry of entries) {
-      // Cek lagi apakah masih ada — bisa jadi sudah dihapus oleh proses lain
-      // (mis. user mengulang drag sehingga payload baru menggantikan entry lama).
-      if (!outbox.getAll().find((e) => e.id === entry.id)) continue;
-      await drainEntry(entry);
+
+    log.info('draining', entries.length, 'entries with concurrency', DRAIN_CONCURRENCY);
+
+    // Process in batches of DRAIN_CONCURRENCY
+    for (let i = 0; i < entries.length; i += DRAIN_CONCURRENCY) {
+      const batch = entries.slice(i, i + DRAIN_CONCURRENCY);
+      // Filter entries yang masih ada (bisa jadi sudah dihapus oleh proses
+      // lain antara getAll() awal dan batch ini diproses)
+      const stillExisting = batch.filter((entry) =>
+        outbox.getAll().find((e) => e.id === entry.id)
+      );
+      if (stillExisting.length === 0) continue;
+
+      await Promise.allSettled(stillExisting.map((entry) => drainEntry(entry)));
     }
   } finally {
     isDraining = false;
