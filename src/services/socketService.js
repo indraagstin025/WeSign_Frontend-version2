@@ -7,6 +7,12 @@
 
 import { io } from 'socket.io-client';
 import { SOCKET_URL } from '@/config/env';
+import {
+  SOCKET_RECONNECT_DELAY_MS,
+  SOCKET_RECONNECT_DELAY_MAX_MS,
+  SOCKET_CONNECT_TIMEOUT_MS,
+  SOCKET_RECONNECT_JITTER,
+} from '@/config/timeouts';
 
 let socket = null;
 
@@ -42,10 +48,10 @@ export const socketService = {
       upgrade: true,
       reconnection: true,
       reconnectionAttempts: Infinity,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 30000,
-      randomizationFactor: 0.5,
-      timeout: 20000,
+      reconnectionDelay: SOCKET_RECONNECT_DELAY_MS,
+      reconnectionDelayMax: SOCKET_RECONNECT_DELAY_MAX_MS,
+      randomizationFactor: SOCKET_RECONNECT_JITTER,
+      timeout: SOCKET_CONNECT_TIMEOUT_MS,
     });
 
     // ── Event: Connected ──────────────────────────────────────────────────────

@@ -22,6 +22,11 @@
 
 import { saveStatus } from './saveStatus';
 import { outbox } from './outbox';
+import {
+  RETRY_MAX_ATTEMPTS,
+  RETRY_BASE_DELAY_MS,
+  RETRY_MAX_DELAY_MS,
+} from '@/config/timeouts';
 
 const inflight = new Map();
 
@@ -36,9 +41,9 @@ function isRetryable(err) {
 
 export function withRetryCoalesce(key, fn, opts = {}) {
   const {
-    retries = 3,
-    baseDelay = 1000,
-    maxDelay = 4000,
+    retries = RETRY_MAX_ATTEMPTS,
+    baseDelay = RETRY_BASE_DELAY_MS,
+    maxDelay = RETRY_MAX_DELAY_MS,
     trackSaveStatus = true,
     // outbox: { type, signatureId, payload } — kalau di-set, enqueue ke outbox
     // saat terminal failure (non-Abort, retry habis). Drain otomatis saat online.

@@ -4,8 +4,9 @@
  */
 
 import { API_BASE_URL } from "@/config/env";
+import { DEFAULT_REQUEST_TIMEOUT_MS } from "@/config/timeouts";
 
-const DEFAULT_TIMEOUT = 15000; // 15 Detik (Batas wajar menunggu jaringan)
+const DEFAULT_TIMEOUT = DEFAULT_REQUEST_TIMEOUT_MS;
 
 let isRefreshing = false;
 let refreshSubscribers = [];
