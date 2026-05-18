@@ -59,6 +59,12 @@ export const useGroupSocket = ({
   useEffect(() => {
     if (!groupId || !ready) return;
 
+    // [CR-2] Reset dedup tracker saat join document/group baru. Sebelumnya
+    // alertedSignersRef adalah useRef(new Set()) yang di-init SEKALI per
+    // hook instance — kalau user navigasi document A → B, Set dari A masih
+    // ada → signer Bob yang sudah trigger alert di A akan ke-skip di B.
+    alertedSignersRef.current = new Set();
+
     socketService.connect();
     if (documentId) socketService.joinRoom(documentId);
     socketService.joinGroupRoom(groupId);
@@ -247,6 +253,9 @@ export const useGroupSocket = ({
       socketService.off('group_info_update', handleGroupInfoUpdate);
       socketService.offGroupDocumentUpdate(handleGroupDocUpdate);
       if (typeof unsubConn === 'function') unsubConn();
+      // [CR-2] Defense-in-depth: clear Set di cleanup juga, supaya next
+      // mount dimulai dengan tracker bersih (selain reset di setup).
+      alertedSignersRef.current.clear();
     };
   }, [documentId, groupId, currentUserId, ready]);
 

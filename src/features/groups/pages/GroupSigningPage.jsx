@@ -50,19 +50,8 @@ const GroupSigningPage = () => {
   // Saved signature assets (persistent — only signature type for group)
   const { assets, upload: uploadAsset, remove: removeAsset, getDefault } = useSignatureAssets();
 
-  useEffect(() => saveStatus.subscribe(setSaveState), []);
-
-  // Auto-load default signature dari saved assets
-  useEffect(() => {
-    if (!currentSignature && assets.length > 0) {
-      const defaultSig = getDefault('signature');
-      if (defaultSig) {
-        handleSaveCanvas(defaultSig.imageUrl, 'signature');
-        setActiveElement({ type: 'signature', imageUrl: defaultSig.imageUrl });
-      }
-    }
-  }, [assets]);
-
+  // [CR-1] Destructure DULU sebelum useEffect yang menggunakannya, supaya
+  // tidak melanggar no-use-before-define dan exhaustive-deps lint rules.
   const {
     documentId,
     currentUser,
@@ -121,6 +110,26 @@ const GroupSigningPage = () => {
     onDocumentLoadSuccess,
     handlePageLoadSuccess,
   } = state;
+
+  useEffect(() => saveStatus.subscribe(setSaveState), []);
+
+  // Auto-load default signature dari saved assets.
+  // Deps `[assets, currentSignature]` lengkap supaya:
+  // - Kalau user delete signature aktif (currentSignature -> null), default
+  //   signature ter-load otomatis lagi tanpa perlu manual refresh.
+  // - getDefault dan handleSaveCanvas adalah stable function refs dari hook,
+  //   tidak perlu masuk deps (mengikuti konvensi yang sama dengan
+  //   DocumentSigningPage).
+  useEffect(() => {
+    if (!currentSignature && assets.length > 0) {
+      const defaultSig = getDefault('signature');
+      if (defaultSig) {
+        handleSaveCanvas(defaultSig.imageUrl, 'signature');
+        setActiveElement({ type: 'signature', imageUrl: defaultSig.imageUrl });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assets, currentSignature]);
 
   // Handler klik PDF — hanya aktif di mode cursor
   const handlePdfClick = (e) => {
