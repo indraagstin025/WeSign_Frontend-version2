@@ -148,7 +148,7 @@ export const useGroupSigning = ({ groupId, documentId, currentUser }) => {
       if (owned.length > 0 && documentId) {
         console.log('[useGroupSigning] socket reconnect → replay', owned.length, 'positions');
         owned.forEach((sig) => {
-          socketService.emitDrag({
+          socketService.emitSignatureUpdate({
             documentId,
             signatureId: sig.id,
             positionX: sig.positionX,

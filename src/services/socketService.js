@@ -154,6 +154,37 @@ export const socketService = {
 
   // ── Emitters ──────────────────────────────────────────────────────────────
 
+  /**
+   * Emit posisi/ukuran signature ke peer di room dokumen (drag + resize).
+   *
+   * [M-1] Naming yang akurat untuk semantik. Sebelumnya hanya ada `emitDrag`
+   * yang dipakai untuk drag DAN resize event (di useDraggableSignatureGroup
+   * ada emitDragThrottled untuk drag dan emitResizeThrottled yang di
+   * dalamnya tetap memanggil socketService.emitDrag — misleading saat baca
+   * code).
+   *
+   * Backend event-nya tetap `drag_signature` untuk backward compat — server
+   * dan peer lama tidak perlu di-update. Yang berubah hanya alias di sisi
+   * client agar code lebih jelas.
+   *
+   * @param {{
+   *   documentId: string,
+   *   signatureId: string,
+   *   positionX: number,
+   *   positionY: number,
+   *   width?: number,
+   *   height?: number,
+   *   pageNumber?: number
+   * }} data
+   */
+  emitSignatureUpdate: (data) => {
+    if (socket?.connected) socket.emit('drag_signature', data);
+  },
+
+  /**
+   * @deprecated Pakai `emitSignatureUpdate` — naming lebih akurat untuk
+   * drag + resize. Method ini tetap ada untuk backward compat caller lama.
+   */
   emitDrag: (data) => {
     if (socket?.connected) socket.emit('drag_signature', data);
   },
