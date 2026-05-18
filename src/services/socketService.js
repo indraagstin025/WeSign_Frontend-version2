@@ -17,8 +17,13 @@ let currentGroupRooms = new Set();
 // Subscribers untuk perubahan status koneksi
 const connectionCallbacks = new Set();
 
-// Map untuk deduplication group listeners
-const groupListeners = new Map();
+// Map untuk dedup group listeners — pakai object reference (cb) sebagai key
+// agar dedup deterministic. Sebelumnya pakai `${prefix}_${cb}` yang mengandalkan
+// Function.toString() — tidak reliable untuk arrow function (body-dependent),
+// bound function, atau native function (semua di-stringify "function () { [native code] }").
+// Dipisah per event agar overhead lookup minimal.
+const groupDocListeners = new Map();    // cb -> wrapper
+const groupMemberListeners = new Map();
 
 export const socketService = {
   /**
@@ -111,6 +116,10 @@ export const socketService = {
     }
     currentDocumentRoom = null;
     currentGroupRooms.clear();
+    // Clear listener wrapper Map agar GC bisa bersihkan reference dan
+    // re-connect berikutnya tidak punya wrapper basi.
+    groupDocListeners.clear();
+    groupMemberListeners.clear();
   },
 
   // ── Document Room ─────────────────────────────────────────────────────────
@@ -183,43 +192,43 @@ export const socketService = {
   // Trigger refetch dari server (misal admin kick user)
   onRefetchData: (cb) => socket?.on('refetch_data', cb),
 
-  // ── Listeners: Group Room (deduplicated) ──────────────────────────────────
+  // ── Listeners: Group Room (deduplicated by cb reference) ─────────────────
 
   onGroupDocumentUpdate: (cb) => {
     if (!socket) return;
-    const key = `doc_${cb}`;
-    const existing = groupListeners.get(key);
+    // Cleanup wrapper lama untuk cb yang sama supaya re-subscribe (mis. saat
+    // useEffect re-run karena dep berubah) tidak tumpuk listener.
+    const existing = groupDocListeners.get(cb);
     if (existing) socket.off('group_document_update', existing);
     const wrapper = (data) => cb(data);
-    groupListeners.set(key, wrapper);
+    groupDocListeners.set(cb, wrapper);
     socket.on('group_document_update', wrapper);
   },
 
   offGroupDocumentUpdate: (cb) => {
     if (!socket) return;
-    const wrapper = groupListeners.get(`doc_${cb}`);
+    const wrapper = groupDocListeners.get(cb);
     if (wrapper) {
       socket.off('group_document_update', wrapper);
-      groupListeners.delete(`doc_${cb}`);
+      groupDocListeners.delete(cb);
     }
   },
 
   onGroupMemberUpdate: (cb) => {
     if (!socket) return;
-    const key = `member_${cb}`;
-    const existing = groupListeners.get(key);
+    const existing = groupMemberListeners.get(cb);
     if (existing) socket.off('group_member_update', existing);
     const wrapper = (data) => cb(data);
-    groupListeners.set(key, wrapper);
+    groupMemberListeners.set(cb, wrapper);
     socket.on('group_member_update', wrapper);
   },
 
   offGroupMemberUpdate: (cb) => {
     if (!socket) return;
-    const wrapper = groupListeners.get(`member_${cb}`);
+    const wrapper = groupMemberListeners.get(cb);
     if (wrapper) {
       socket.off('group_member_update', wrapper);
-      groupListeners.delete(`member_${cb}`);
+      groupMemberListeners.delete(cb);
     }
   },
 
