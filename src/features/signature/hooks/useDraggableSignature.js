@@ -73,19 +73,41 @@ export const useDraggableSignature = (sig, containerWidth, containerHeight, onUp
   useEffect(() => { containerHeightRef.current = containerHeight; }, [containerHeight]);
 
   // --- CLICK OUTSIDE (DESELECT) ---
+  // [M-2] Sebelumnya pakai mousedown + touchstart yang fire SEBELUM event
+  // dispatch ke child target. Konsekuensi: kalau user klik handle resize/drag,
+  // handleClickOutside fire dulu → setIsActive(false) → handle disappear
+  // sebelum drag bisa start (sometimes intermittent, depends on browser
+  // event timing).
+  //
+  // Fix: pakai `pointerdown` dengan check `composedPath()` — modern unified
+  // event API yang cover mouse + touch + pen, dan composedPath() return
+  // semua node dari target sampai root, termasuk node yang event-nya stop
+  // propagation di antara mereka. Lebih reliable daripada `contains()` saat
+  // event di-stop di tengah jalan.
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (nodeRef.current && !nodeRef.current.contains(event.target)) {
+    if (!isActive) return;
+
+    const handlePointerDown = (event) => {
+      const node = nodeRef.current;
+      if (!node) return;
+
+      // composedPath modern: lihat seluruh chain dari target ke root.
+      // Fallback ke contains() untuk old browser yang tidak support composedPath.
+      const path = typeof event.composedPath === 'function'
+        ? event.composedPath()
+        : null;
+      const isInside = path
+        ? path.includes(node)
+        : node.contains(event.target);
+
+      if (!isInside) {
         setIsActive(false);
       }
     };
-    if (isActive) {
-      document.addEventListener('mousedown', handleClickOutside);
-      document.addEventListener('touchstart', handleClickOutside);
-    }
+
+    document.addEventListener('pointerdown', handlePointerDown);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('touchstart', handleClickOutside);
+      document.removeEventListener('pointerdown', handlePointerDown);
     };
   }, [isActive]);
 
