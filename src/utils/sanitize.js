@@ -15,6 +15,7 @@ export function sanitizeText(str) {
     .replace(/[<>]/g, "") // Hapus karakter < dan > (anti-XSS)
     .replace(/javascript:/gi, "") // Hapus pola javascript: URI
     .replace(/on\w+\s*=/gi, "") // Hapus event handler (onclick=, onerror=, dll.)
+    // eslint-disable-next-line no-control-regex -- Sengaja strip control char (0x00-0x1F, 0x7F) untuk anti-XSS via NULL/CTRL injection
     .replace(/[\x00-\x1F\x7F]/g, ""); // Hapus control characters
 }
 
@@ -46,7 +47,7 @@ export function isValidEmail(email) {
   if (!emailRegex.test(email)) return false;
   if (email.length > 254) return false; // RFC 5321
 
-  const [local, domain] = email.split("@");
+  const [local] = email.split("@");
   if (local.length > 64) return false; // RFC 5321 - local part max 64 chars
 
   return true;
