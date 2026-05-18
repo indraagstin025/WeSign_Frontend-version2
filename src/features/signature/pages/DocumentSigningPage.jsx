@@ -125,9 +125,6 @@ const DocumentSigningPage = () => {
     if (defaultSig) {
       handleSaveToolElementRef.current(defaultSig.imageUrl, 'signature');
     }
-    // currentSignature di-include karena guard di atas; assets adalah
-    // trigger utama (effect fire saat user upload signature pertama kali).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assets, currentSignature]);
 
   // Wrapper handleSaveCanvas yang juga upload ke backend
