@@ -1,5 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { v4 as uuidv4 } from 'uuid';
+import { toast } from 'react-toastify';
 import { 
   getDocumentDetail, 
   getDocumentFile 
@@ -51,8 +53,13 @@ export const useDocumentSigner = (documentId) => {
       if (docResponse.status === 'success') {
         const docData = docResponse.data;
         if (docData.status?.toLowerCase() === 'completed') {
-          alert('Dokumen ini sudah ditandatangani.');
-          navigate('/dashboard/documents', { replace: true });
+          // [CR-2] Replace blocking alert + immediate navigate dengan
+          // toast info + delayed navigate. UX lebih halus, tidak block
+          // event loop, dan tidak race antara alert close + navigate.
+          toast.info('Dokumen ini sudah ditandatangani. Mengarahkan ke daftar...', {
+            autoClose: 2000,
+          });
+          setTimeout(() => navigate('/dashboard/documents', { replace: true }), 2000);
           return;
         }
         setDocument(docData);
@@ -130,9 +137,12 @@ export const useDocumentSigner = (documentId) => {
     const clickY = (e.clientY - rect.top) / rect.height;
 
     // Default 25% lebar container
-    const defaultWidth = 0.25; 
-    setSignatures([...signatures, {
-      id: Date.now(),
+    const defaultWidth = 0.25;
+    // [CR-3] Pakai uuidv4() bukan Date.now() — Date.now() resolusi 1ms,
+    // double-click cepat <1ms apart bisa generate ID sama → React key
+    // collision + removeSignature(id) filter hapus 2 entry sekaligus.
+    setSignatures(prev => [...prev, {
+      id: uuidv4(),
       pageNumber,
       positionX: Math.max(0, Math.min(1 - defaultWidth, clickX - (defaultWidth / 2))),
       positionY: Math.max(0, clickY - 0.05),
@@ -144,9 +154,15 @@ export const useDocumentSigner = (documentId) => {
     }]);
   };
 
-  const removeSignature = (id) => setSignatures(signatures.filter(s => s.id !== id));
-  const updateSignaturePosition = (id, x, y) => setSignatures(signatures.map(sig => sig.id === id ? { ...sig, positionX: x, positionY: y } : sig));
-  const updateSignatureSize = (id, width, height) => setSignatures(signatures.map(sig => sig.id === id ? { ...sig, width, height } : sig));
+  // Pakai functional update di mana-mana — race-safe (sebelumnya pakai
+  // closure `signatures` yang bisa stale kalau handler di-define dengan
+  // closure value lama).
+  const removeSignature = (id) =>
+    setSignatures(prev => prev.filter(s => s.id !== id));
+  const updateSignaturePosition = (id, x, y) =>
+    setSignatures(prev => prev.map(sig => sig.id === id ? { ...sig, positionX: x, positionY: y } : sig));
+  const updateSignatureSize = (id, width, height) =>
+    setSignatures(prev => prev.map(sig => sig.id === id ? { ...sig, width, height } : sig));
 
   // --- SUBMIT KOORDINAT KE BACKEND ---
   // State signatures[] sudah menyimpan koordinat INNER IMAGE (area gambar saja)
