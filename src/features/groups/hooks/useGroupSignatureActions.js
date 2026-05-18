@@ -10,6 +10,10 @@ import {
 } from '../api/groupSignatureService';
 import { finalizeGroupDocument } from '../api/groupService';
 import { socketService } from '../../../services/socketService';
+import { createLogger } from '../../../utils/logger';
+
+// [M-6] Scoped logger agar console output konsisten dengan service lain.
+const log = createLogger('GroupSignatureActions');
 
 /**
  * @hook useGroupSignatureActions
@@ -179,12 +183,12 @@ export const useGroupSignatureActions = ({
             height: localSnapshot.height,
           }).catch((err) => {
             if (err?.name === 'AbortError') return;
-            console.warn('[useGroupSignatureActions] post-save size sync error:', err.message);
+            log.warn('post-save size sync error:', err.message);
           });
         }
       } catch (err) {
         setSignatures((prev) => prev.filter((s) => s.id !== tempId));
-        console.error('[useGroupSignatureActions] saveDraft error:', err.message);
+        log.error('saveDraft error:', err.message);
       }
     },
     [canSign, currentSignature, myDraftExists, documentId, currentUser, setSignatures]
@@ -214,7 +218,7 @@ export const useGroupSignatureActions = ({
       // 2. Persist ke backend di background (non-blocking, dengan retry+coalesce)
       updateDraftPosition(id, { positionX: x, positionY: y }).catch((err) => {
         if (err?.name === 'AbortError') return; // coalesced, ada PATCH yang lebih baru
-        console.error('[updateSignature] background save error:', err.message);
+        log.error('updateSignature background save error:', err.message);
       });
     },
     [setSignatures, signatures, currentUser?.id]
@@ -237,7 +241,7 @@ export const useGroupSignatureActions = ({
 
       updateDraftPosition(id, { width: w, height: h }).catch((err) => {
         if (err?.name === 'AbortError') return; // coalesced, ada PATCH yang lebih baru
-        console.error('[updateSize] background save error:', err.message);
+        log.error('updateSize background save error:', err.message);
       });
     },
     [setSignatures, signatures, currentUser?.id]
@@ -271,7 +275,7 @@ export const useGroupSignatureActions = ({
       try {
         await deleteDraft(sigId);
       } catch (err) {
-        console.error('[useGroupSignatureActions] deleteDraft error:', err.message);
+        log.error('deleteDraft error:', err.message);
         fetchGroupData(); // rollback dengan refetch
       }
     },

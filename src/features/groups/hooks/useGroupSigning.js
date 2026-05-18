@@ -3,6 +3,10 @@ import { useGroupData } from './useGroupData';
 import { useGroupSocket } from './useGroupSocket';
 import { useGroupSignatureActions } from './useGroupSignatureActions';
 import { socketService } from '../../../services/socketService';
+import { createLogger } from '../../../utils/logger';
+
+// [M-6] Scoped logger.
+const log = createLogger('GroupSigning');
 
 /**
  * @hook useGroupSigning
@@ -146,7 +150,7 @@ export const useGroupSigning = ({ groupId, documentId, currentUser }) => {
         (s) => String(s.userId) === String(currentUser?.id) && s.status !== 'final'
       );
       if (owned.length > 0 && documentId) {
-        console.log('[useGroupSigning] socket reconnect → replay', owned.length, 'positions');
+        log.info('socket reconnect → replay', owned.length, 'positions');
         owned.forEach((sig) => {
           socketService.emitSignatureUpdate({
             documentId,
