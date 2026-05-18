@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AlertCircle } from 'lucide-react';
 import { pdfjs, Document, Page } from 'react-pdf';
@@ -107,15 +107,28 @@ const DocumentSigningPage = () => {
     setInteractionMode(mode);
   };
 
-  // Auto-load default signature dari saved assets saat pertama kali
+  // [H-3] Auto-load default signature dari saved assets saat pertama kali.
+  // Ref pattern untuk handler agar deps array hanya track `assets` saja
+  // (deps lengkap akan trigger effect berulang setiap handler re-create).
+  // Effect-nya idempotent: hanya load default kalau currentSignature kosong.
+  const handleSaveToolElementRef = useRef(handleSaveToolElement);
+  const getDefaultRef = useRef(getDefault);
   useEffect(() => {
-    if (!currentSignature && assets.length > 0) {
-      const defaultSig = getDefault('signature');
-      if (defaultSig) {
-        handleSaveToolElement(defaultSig.imageUrl, 'signature');
-      }
+    handleSaveToolElementRef.current = handleSaveToolElement;
+    getDefaultRef.current = getDefault;
+  }, [handleSaveToolElement, getDefault]);
+
+  useEffect(() => {
+    if (currentSignature) return;
+    if (assets.length === 0) return;
+    const defaultSig = getDefaultRef.current('signature');
+    if (defaultSig) {
+      handleSaveToolElementRef.current(defaultSig.imageUrl, 'signature');
     }
-  }, [assets]);
+    // currentSignature di-include karena guard di atas; assets adalah
+    // trigger utama (effect fire saat user upload signature pertama kali).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assets, currentSignature]);
 
   // Wrapper handleSaveCanvas yang juga upload ke backend
   const handleSaveCanvasAndUpload = (dataUrl) => {
