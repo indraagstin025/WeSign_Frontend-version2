@@ -64,7 +64,7 @@ const ForgotPasswordForm = () => {
           {/* Submit */}
           <button
             type="submit"
-            disabled={state.loading}
+            disabled={state.loading || state.cooldownSec > 0}
             className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white text-[13px] font-bold rounded-xl border-none cursor-pointer transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {state.loading ? (
@@ -72,6 +72,8 @@ const ForgotPasswordForm = () => {
                 <Loader2 size={16} className="animate-spin" />
                 Mengirim...
               </>
+            ) : state.cooldownSec > 0 ? (
+              `Kirim Ulang dalam ${state.cooldownSec}s`
             ) : (
               'Kirim Link Reset Password'
             )}
