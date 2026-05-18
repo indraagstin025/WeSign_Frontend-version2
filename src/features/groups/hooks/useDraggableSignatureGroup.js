@@ -64,7 +64,7 @@ export function useDraggableSignatureGroup({
   const emitDragThrottled = useMemo(
     () =>
       throttle((posData) => {
-        if (documentId) socketService.emitDrag({ documentId, signatureId: sig.id, ...posData });
+        if (documentId) socketService.emitSignatureUpdate({ documentId, signatureId: sig.id, ...posData });
       }, 30),
     [documentId, sig.id]
   );
@@ -74,7 +74,7 @@ export function useDraggableSignatureGroup({
     () =>
       throttle((w, h) => {
         if (documentId) {
-          socketService.emitDrag({
+          socketService.emitSignatureUpdate({
             documentId,
             signatureId: sig.id,
             positionX: sig.positionX,
@@ -97,7 +97,7 @@ export function useDraggableSignatureGroup({
       if (!isOwner || isFinal) return;
       onUpdatePosition(id, x, y);
       if (documentId) {
-        socketService.emitDrag({
+        socketService.emitSignatureUpdate({
           documentId,
           signatureId: id,
           positionX: x,
@@ -126,7 +126,7 @@ export function useDraggableSignatureGroup({
     () =>
       throttle((w, h, x, y) => {
         if (!documentId || !isOwner) return;
-        socketService.emitDrag({
+        socketService.emitSignatureUpdate({
           documentId,
           signatureId: sig.id,
           positionX: x,
@@ -151,12 +151,16 @@ export function useDraggableSignatureGroup({
 
   // Capture remote setters via ref agar useEffect socket di bawah tidak
   // re-subscribe setiap render.
+  // [M-2] Tambah deps eksplisit. Sebelumnya useEffect tanpa array → effect
+  // jalan setiap render (effectively sama dengan ref update tiap render),
+  // tapi React lint tidak bisa verifikasi correctness dan StrictMode
+  // double-invoke jadi 2x update per render.
   const setControlledPositionRef = useRef(actions.setControlledPosition);
   const setControlledSizeRef = useRef(actions.setControlledSize);
   useEffect(() => {
     setControlledPositionRef.current = actions.setControlledPosition;
     setControlledSizeRef.current = actions.setControlledSize;
-  });
+  }, [actions.setControlledPosition, actions.setControlledSize]);
 
   // ── Socket: Realtime drag dari user lain ──────────────────────────────
   useEffect(() => {

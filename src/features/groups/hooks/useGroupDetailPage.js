@@ -14,6 +14,10 @@ import {
 } from '../api/groupService';
 import { rejectDocument } from '../api/groupSignatureService';
 import { useGroupSocket } from './useGroupSocket';
+import { createLogger } from '../../../utils/logger';
+
+// [M-6] Scoped logger.
+const log = createLogger('GroupDetailPage');
 
 const COPY_FEEDBACK_MS = 2000;
 
@@ -89,7 +93,8 @@ export function useGroupDetailPage() {
           throw new Error(res.message);
         }
       } catch (err) {
-        if (!silent) setError(err.message);
+        // [M-5] Fallback string non-empty untuk kasus err.message undefined/empty
+        if (!silent) setError(err.message || 'Gagal memuat detail grup. Silakan coba lagi.');
       } finally {
         if (!silent) setLoading(false);
       }
@@ -117,7 +122,7 @@ export function useGroupDetailPage() {
           }
         }
       } catch (err) {
-        console.warn('[useGroupDetailPage] fetchDocuments error:', err.message);
+        log.warn('fetchDocuments error:', err.message);
       } finally {
         if (!silent) setDocLoading(false);
       }

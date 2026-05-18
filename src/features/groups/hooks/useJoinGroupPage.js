@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useUser } from '../../../context/UserContext';
 import { acceptInvitation } from '../api/groupService';
 import { PENDING_GROUP_JOIN_KEY } from '../../../config/sessionKeys';
+import { GROUPS_JOIN_REDIRECT_DELAY_MS } from '../../../config/timeouts';
 
 // Re-export untuk backward-compat — caller yang import { SESSION_KEY } dari sini
 // tetap bekerja (dengan deprecation warning di JSDoc).
@@ -12,7 +13,10 @@ import { PENDING_GROUP_JOIN_KEY } from '../../../config/sessionKeys';
  */
 export const SESSION_KEY = PENDING_GROUP_JOIN_KEY;
 
-const REDIRECT_DELAY_MS = 2000;
+/**
+ * @deprecated Pakai `GROUPS_JOIN_REDIRECT_DELAY_MS` dari `src/config/timeouts.js`.
+ */
+const REDIRECT_DELAY_MS = GROUPS_JOIN_REDIRECT_DELAY_MS;
 
 const isAlreadyMemberError = (err) => {
   const msg = err?.message?.toLowerCase() || '';
@@ -48,6 +52,21 @@ export function useJoinGroupPage() {
   // Guard: prevent double execution dari StrictMode/multi-render.
   const hasProcessed = useRef(false);
 
+  // [M-3] Track redirect timer agar bisa cleanup saat unmount sebelum fire.
+  // Sebelumnya `setTimeout(navigate, 2000)` tanpa cleanup → kalau user
+  // navigate manual atau component unmount sebelum 2 detik, navigate
+  // tetap akan fire ke /dashboard/groups (atau warning unmounted state).
+  const redirectTimerRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (redirectTimerRef.current) {
+        clearTimeout(redirectTimerRef.current);
+        redirectTimerRef.current = null;
+      }
+    };
+  }, []);
+
   const processJoin = useCallback(
     async (joinToken) => {
       if (hasProcessed.current) return;
@@ -61,7 +80,11 @@ export function useJoinGroupPage() {
           setGroupName(name);
           setStatus('success');
           sessionStorage.removeItem(SESSION_KEY);
-          setTimeout(() => navigate('/dashboard/groups', { replace: true }), REDIRECT_DELAY_MS);
+          // [M-3] Track timer ID untuk cleanup di unmount.
+          redirectTimerRef.current = setTimeout(() => {
+            navigate('/dashboard/groups', { replace: true });
+            redirectTimerRef.current = null;
+          }, REDIRECT_DELAY_MS);
         } else {
           throw new Error(res.message || 'Gagal bergabung ke grup.');
         }
@@ -70,7 +93,11 @@ export function useJoinGroupPage() {
 
         if (isAlreadyMemberError(err)) {
           setStatus('already_member');
-          setTimeout(() => navigate('/dashboard/groups', { replace: true }), REDIRECT_DELAY_MS);
+          // [M-3] Track timer ID untuk cleanup di unmount.
+          redirectTimerRef.current = setTimeout(() => {
+            navigate('/dashboard/groups', { replace: true });
+            redirectTimerRef.current = null;
+          }, REDIRECT_DELAY_MS);
         } else {
           setErrorMsg(err.message || 'Link undangan tidak valid atau sudah kedaluwarsa.');
           setStatus('error');
