@@ -24,10 +24,24 @@ const COPY_FEEDBACK_MS = 2000;
 /**
  * @hook useGroupDetailPage
  * @description Orchestrator state untuk halaman detail grup.
- * Mengelola: fetching, realtime socket, modal states, dan seluruh action handler.
+ * Mengelola: fetching (group meta + paginated documents + trash list),
+ * realtime socket, modal states, dan seluruh action handler.
  *
  * Page-level component menjadi pure presentation — cukup pakai `state` & `actions`
  * yang dikembalikan oleh hook ini.
+ *
+ * Concerns yang dikelola:
+ * - Group metadata (name, members) via fetchGroup()
+ * - Document pagination dengan paginationRef untuk avoid stale closure (H-2)
+ * - Realtime updates via useGroupSocket dengan cbRefs pattern (H-3)
+ * - Modal state: upload, manage signers, delete confirm, finalize confirm,
+ *   kick member, restore document, status modal generic
+ * - Invitation link copy dengan timeout feedback (GROUPS_COPY_FEEDBACK_MS)
+ *
+ * @returns {{
+ *   state: object - All state values needed by GroupDetailPage component,
+ *   actions: object - Handler functions untuk semua user interaksi
+ * }}
  */
 export function useGroupDetailPage() {
   const { groupId } = useParams();

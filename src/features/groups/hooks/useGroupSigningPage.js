@@ -12,9 +12,21 @@ import {
 /**
  * @hook useGroupSigningPage
  * @description Orchestrator state untuk halaman penandatanganan dokumen grup.
- * Membungkus `useGroupSigning` + concerns level-page (theme, navigasi, sheet,
- * canvas-click handler, derivasi UI seperti finalize text & filter signature
- * milik user).
+ * Membungkus `useGroupSigning` + concerns level-page:
+ * - Theme toggle (light/dark)
+ * - Mobile bottom-sheet open state
+ * - Canvas click handler untuk drop signature dengan default size
+ *   (`DEFAULT_SIGNATURE_WIDTH`, `DEFAULT_SIGNATURE_HEIGHT`)
+ * - Derivasi UI: finalize text label, filter signature milik user,
+ *   submit/finalize disable state
+ * - Outbox drain integration (auto-replay HTTP mutation saat reconnect)
+ *
+ * Layered architecture:
+ * - useGroupData    → fetch state grup + dokumen
+ * - useGroupSocket  → koneksi socket + listeners realtime
+ * - useGroupSignatureActions → CRUD signature (add/update/delete/sign/finalize)
+ * - useGroupSigning → orchestrator yang menyatukan 3 di atas
+ * - useGroupSigningPage → wrapper level-page (this hook)
  */
 export function useGroupSigningPage() {
   const { groupId, documentId } = useParams();

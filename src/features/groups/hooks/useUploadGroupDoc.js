@@ -17,6 +17,25 @@ const inferErrorType = (err) => {
  * @description Mengelola seluruh state & handler untuk modal upload dokumen grup.
  * Komponen UI tinggal merender state dan memanggil action.
  *
+ * ## [L-6] Kontrak `selectedSigners` & `willBeDraft`
+ *
+ * State `selectedSigners: string[]` menentukan flow status dokumen baru
+ * setelah upload sukses:
+ *
+ * - `selectedSigners.length === 0` (`willBeDraft: true`) → status `DRAFT`
+ *   - Backend tidak buat signerRequests
+ *   - Dokumen hanya bisa di-edit/finalize oleh admin via Manage Signers
+ *   - Cocok untuk: upload duluan, tentukan signer kemudian
+ *
+ * - `selectedSigners.length > 0` (`willBeDraft: false`) → status `PENDING`
+ *   - Backend buat 1 SignerRequest per userId di array
+ *   - Email notification dispatch ke setiap signer
+ *   - Dokumen langsung masuk fase signing
+ *
+ * Backend payload: kalau `willBeDraft: true`, frontend SKIP append
+ * `signerUserIds` ke FormData (lihat handleUpload). Backend infer DRAFT
+ * dari ketiadaan field ini.
+ *
  * @param {object} args
  * @param {number|string} args.groupId
  * @param {Array} [args.members=[]]

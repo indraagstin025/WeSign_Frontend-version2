@@ -5,6 +5,22 @@ import { updateDocumentSigners } from '../api/groupService';
  * @hook useManageSigners
  * @description State & action untuk modal kelola penandatangan dokumen grup.
  *
+ * ## [L-6] Kontrak `selectedSigners` & `willBeDraft`
+ *
+ * Sama dengan useUploadGroupDoc, tapi untuk update existing document:
+ *
+ * - `selectedSigners.length === 0` (`willBeDraft: true`) → status `DRAFT`
+ *   - Backend hapus semua signerRequests existing (kalau ada)
+ *   - Dokumen kembali ke fase draft, signing dihentikan
+ * - `selectedSigners.length > 0` (`willBeDraft: false`) → status `PENDING`
+ *   - Backend sync signerRequests ke array baru:
+ *     - userId yang baru di-add → dibuat SignerRequest baru + email notif
+ *     - userId yang dihapus dari list → SignerRequest dihapus
+ *     - userId yang sudah ada → tidak diubah
+ *
+ * Catatan: signer yang sudah `SIGNED` dokumennya tidak bisa di-remove
+ * (backend reject 400). UI di-hint via `actions.isUserSigned(userId)`.
+ *
  * @param {object} args
  * @param {boolean} args.isOpen
  * @param {object} args.doc - Dokumen yang dikelola.

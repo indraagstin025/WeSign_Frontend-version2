@@ -17,6 +17,29 @@ const CARD_THEMES = [
  * @hook useGroupsPage
  * @description State + actions untuk halaman daftar grup.
  * Mengelola: fetch, realtime socket subscription, create form, dan navigasi.
+ *
+ * @returns {{
+ *   state: {
+ *     groups: Array,
+ *     loading: boolean,
+ *     error: string|null,
+ *     isCreating: boolean,
+ *     newGroupName: string,
+ *     showCreateForm: boolean,
+ *     statusModal: { isOpen: boolean, type: string, title: string, message: string },
+ *     currentUser: object,
+ *     groupNameMax: number
+ *   },
+ *   actions: {
+ *     setNewGroupName: (value: string) => void,
+ *     setShowCreateForm: (value: boolean) => void,
+ *     setStatusModal: (value: object) => void,
+ *     handleCreateGroup: (e: import('react').FormEvent) => Promise<void>,
+ *     handleOpenGroup: (groupId: string) => void,
+ *     fetchGroups: (silent?: boolean) => Promise<void>,
+ *     getCardTheme: (index: number) => { banner: string, tint: string }
+ *   }
+ * }}
  */
 export function useGroupsPage() {
   const navigate = useNavigate();
