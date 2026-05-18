@@ -83,7 +83,30 @@ export const useLogin = () => {
         }
       }
     } catch (err) {
-      setError(err.message || 'Login gagal. Periksa kembali email dan kata sandi Anda.');
+      // [M-5] Map backend error code ke pesan user-facing yang spesifik.
+      // Backend lempar AuthError dengan code: INVALID_CREDENTIALS,
+      // EMAIL_NOT_VERIFIED, USER_NOT_FOUND, dll. apiFetch sudah
+      // attach `err.code` dari response body (di getFriendlyErrorMessage)
+      // tapi kita tetap fallback ke generic message kalau code tidak
+      // dikenal supaya UX tetap baik untuk error baru di backend.
+      const code = err?.code;
+      const status = err?.status;
+
+      if (code === 'INVALID_CREDENTIALS') {
+        setError('Email atau kata sandi salah. Periksa kembali dan coba lagi.');
+      } else if (code === 'EMAIL_NOT_VERIFIED') {
+        setError('Email Anda belum diverifikasi. Cek inbox untuk link verifikasi.');
+      } else if (code === 'USER_NOT_FOUND') {
+        // Defensive — backend biasanya pakai INVALID_CREDENTIALS untuk
+        // anti-enumeration, tapi handle USER_NOT_FOUND just in case.
+        setError('Akun dengan email tersebut tidak ditemukan.');
+      } else if (status === 429) {
+        setError('Terlalu banyak percobaan login. Tunggu beberapa menit lalu coba lagi.');
+      } else if (status === 503 || code === 'NETWORK_ERROR') {
+        setError('Server sedang sibuk atau tidak stabil. Silakan coba beberapa saat lagi.');
+      } else {
+        setError(err.message || 'Login gagal. Periksa kembali email dan kata sandi Anda.');
+      }
     } finally {
       setLoading(false);
     }
