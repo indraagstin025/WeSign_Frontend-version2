@@ -5,19 +5,21 @@ import { X, Settings } from 'lucide-react';
  * @component DocumentSettingsPanel
  * @description Panel kanan — Pengaturan Dokumen (Audit Trail + Keamanan).
  * Muncul saat user klik tombol "Pengaturan Dokumen".
+ *
+ * [L-3] Lock-after-signing props dihapus karena backend belum support
+ * fitur ini (verified: no `lockAfterSigning` field di backend payload).
+ * `encryptPdf` dan `qrVerification` props juga static default — backend
+ * sekarang selalu enkripsi + QR (default true), jadi onChange tidak
+ * berefek apapun. Tetap di UI sebagai display (status indicator) tapi
+ * dengan disabled state agar user tidak salah paham bisa toggle.
  */
-const DocumentSettingsPanel = ({ 
-  isOpen, 
-  onClose, 
-  auditTrailMode, 
+const DocumentSettingsPanel = ({
+  isOpen,
+  onClose,
+  auditTrailMode,
   onAuditTrailChange,
   encryptPdf = true,
   qrVerification = true,
-  lockAfterSigning = false,
-  onEncryptChange,
-  onQrChange,
-  onLockChange,
-  showLockAfterSigning = false,
 }) => {
   if (!isOpen) return null;
 
@@ -101,46 +103,31 @@ const DocumentSettingsPanel = ({
           <p className="text-[10px] font-bold text-zinc-900 dark:text-white uppercase tracking-wider">Pengaturan Keamanan</p>
 
           <div className="space-y-2.5">
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input 
-                type="checkbox" 
-                checked={encryptPdf} 
-                onChange={(e) => onEncryptChange?.(e.target.checked)}
+            <label className="flex items-start gap-3 cursor-not-allowed opacity-80">
+              <input
+                type="checkbox"
+                checked={encryptPdf}
+                disabled
                 className="mt-0.5 w-4 h-4 accent-emerald-500 rounded"
               />
               <div>
                 <p className="text-[11px] font-semibold text-zinc-800 dark:text-zinc-200">Enkripsi PDF</p>
-                <p className="text-[9px] text-zinc-400 dark:text-zinc-500">Melindungi dokumen dengan enkripsi.</p>
+                <p className="text-[9px] text-zinc-400 dark:text-zinc-500">Selalu aktif. Dokumen di-enkripsi otomatis.</p>
               </div>
             </label>
 
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input 
-                type="checkbox" 
-                checked={qrVerification} 
-                onChange={(e) => onQrChange?.(e.target.checked)}
+            <label className="flex items-start gap-3 cursor-not-allowed opacity-80">
+              <input
+                type="checkbox"
+                checked={qrVerification}
+                disabled
                 className="mt-0.5 w-4 h-4 accent-emerald-500 rounded"
               />
               <div>
                 <p className="text-[11px] font-semibold text-zinc-800 dark:text-zinc-200">QR Verification</p>
-                <p className="text-[9px] text-zinc-400 dark:text-zinc-500">Tambahkan QR untuk verifikasi dokumen.</p>
+                <p className="text-[9px] text-zinc-400 dark:text-zinc-500">Selalu aktif. QR ditambahkan otomatis ke dokumen final.</p>
               </div>
             </label>
-
-            {showLockAfterSigning && (
-              <label className="flex items-start gap-3 cursor-pointer">
-                <input 
-                  type="checkbox" 
-                  checked={lockAfterSigning} 
-                  onChange={(e) => onLockChange?.(e.target.checked)}
-                  className="mt-0.5 w-4 h-4 accent-emerald-500 rounded"
-                />
-                <div>
-                  <p className="text-[11px] font-semibold text-zinc-800 dark:text-zinc-200">Lock after signing</p>
-                  <p className="text-[9px] text-zinc-400 dark:text-zinc-500">Kunci dokumen setelah semua pihak menandatangani.</p>
-                </div>
-              </label>
-            )}
           </div>
         </div>
 

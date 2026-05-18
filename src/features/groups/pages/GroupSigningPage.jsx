@@ -346,7 +346,6 @@ const GroupSigningPage = () => {
           onClose={() => setSettingsOpen(false)}
           auditTrailMode={auditTrailMode}
           onAuditTrailChange={setAuditTrailMode}
-          showLockAfterSigning={true}
         />
       )}
 
