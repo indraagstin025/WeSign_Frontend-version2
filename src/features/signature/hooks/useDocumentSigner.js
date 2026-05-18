@@ -11,6 +11,10 @@ import {
   DEFAULT_SIGNATURE_WIDTH,
   DEFAULT_SIGNATURE_HEIGHT,
 } from '../constants/signatureLayout';
+import { createLogger } from '../../../utils/logger';
+
+// [L-4] Scoped logger untuk useSignatureDraft (private hook di file ini).
+const log = createLogger('SignatureDraft');
 
 export const useDocumentSigner = (documentId) => {
   const navigate = useNavigate();
@@ -266,7 +270,7 @@ const useSignatureDraft = (documentId, signatures, setSignatures, currentSignatu
       if (current) setCurrentSignature(current);
     } catch (err) {
       // Format draft berubah / corrupted → drop & ignore
-      console.warn('[useSignatureDraft] failed parse draft, dropping:', err.message);
+      log.warn('failed parse draft, dropping:', err.message);
       try { localStorage.removeItem(key); } catch { /* noop */ }
     }
   }, [documentId, setSignatures, setCurrentSignature]);
@@ -291,7 +295,7 @@ const useSignatureDraft = (documentId, signatures, setSignatures, currentSignatu
         );
         try { localStorage.removeItem(key); } catch { /* noop */ }
       } else {
-        console.warn('[useSignatureDraft] failed save draft:', err.message);
+        log.warn('failed save draft:', err.message);
       }
     }
   }, [documentId, signatures, currentSignature]);
