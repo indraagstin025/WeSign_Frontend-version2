@@ -1,14 +1,24 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { FileText, Clock, CheckCircle2, XCircle, TrendingUp, TrendingDown } from 'lucide-react';
+import { FileText, Clock, CheckCircle2, FileEdit, TrendingUp, TrendingDown } from 'lucide-react';
 import { AreaChart, Area, ResponsiveContainer } from 'recharts';
 
 const StatCards = ({ counts, itemVariants }) => {
+  // Mapping ke backend response shape: { waiting, process, completed }
+  // - waiting: dokumen draft (belum di-assign ke siapa pun)
+  // - process: dokumen pending signature (sedang berjalan)
+  // - completed: dokumen sudah selesai ditandatangani
+  // - total: agregasi waiting + process + completed
+  const waiting = counts?.waiting ?? 0;
+  const process = counts?.process ?? 0;
+  const completed = counts?.completed ?? 0;
+  const total = waiting + process + completed;
+
   const stats = [
     {
-      label: 'Total Documents',
-      value: counts?.total ?? 128,
-      trend: '+12% from last month',
+      label: 'Total Dokumen',
+      value: total,
+      trend: 'Total seluruh dokumen Anda',
       isUp: true,
       iconBg: 'bg-emerald-50',
       iconColor: 'text-emerald-600',
@@ -17,9 +27,20 @@ const StatCards = ({ counts, itemVariants }) => {
       data: [30, 40, 35, 50, 40, 55, 45, 60],
     },
     {
-      label: 'Pending Signatures',
-      value: counts?.pending ?? 24,
-      trend: '+8% from last month',
+      label: 'Draft',
+      value: waiting,
+      trend: 'Dokumen belum di-assign',
+      isUp: true,
+      iconBg: 'bg-zinc-50',
+      iconColor: 'text-zinc-500',
+      icon: <FileEdit size={22} />,
+      lineColor: '#71717a',
+      data: [20, 22, 18, 25, 22, 20, 18, 15],
+    },
+    {
+      label: 'Sedang Berjalan',
+      value: process,
+      trend: 'Menunggu tanda tangan',
       isUp: true,
       iconBg: 'bg-amber-50',
       iconColor: 'text-amber-500',
@@ -28,26 +49,15 @@ const StatCards = ({ counts, itemVariants }) => {
       data: [20, 25, 22, 30, 25, 35, 30, 40],
     },
     {
-      label: 'Completed',
-      value: counts?.completed ?? 89,
-      trend: '+15% from last month',
+      label: 'Selesai',
+      value: completed,
+      trend: 'Sudah ditandatangani',
       isUp: true,
       iconBg: 'bg-emerald-50',
       iconColor: 'text-emerald-600',
       icon: <CheckCircle2 size={22} />,
       lineColor: '#10b981',
       data: [40, 50, 45, 60, 50, 70, 60, 80],
-    },
-    {
-      label: 'Rejected',
-      value: counts?.rejected ?? 15,
-      trend: '-5% from last month',
-      isUp: false,
-      iconBg: 'bg-rose-50',
-      iconColor: 'text-rose-500',
-      icon: <XCircle size={22} />,
-      lineColor: '#ef4444',
-      data: [18, 15, 20, 14, 18, 12, 16, 15],
     },
   ];
 
