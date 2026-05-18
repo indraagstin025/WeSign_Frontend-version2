@@ -1,6 +1,11 @@
 import path from "path"
+import { fileURLToPath } from "url"
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+
+// [L-9] ESM module di Vite tidak punya __dirname global. Compute dari
+// import.meta.url supaya path.resolve di alias bekerja dengan benar.
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 // https://vite.dev/config/
 export default defineConfig({
