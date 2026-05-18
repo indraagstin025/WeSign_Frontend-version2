@@ -39,7 +39,12 @@ function setCsrfToken(token) {
  * Wrapper fetch yang menangani JSON, token, timeout, CSRF, dan error jaringan.
  */
 export async function apiFetch(endpoint, options = {}) {
-  const token = localStorage.getItem("wesign_token");
+  // [H-1] Token resolution priority:
+  //   1. options._tokenOverride — di-pass dari retry handler setelah refresh
+  //      sukses. Mencegah race antara localStorage.setItem dan retry yang
+  //      baca dari localStorage di micro-task berikutnya.
+  //   2. localStorage 'wesign_token' — token aktif normal
+  const token = options._tokenOverride || localStorage.getItem("wesign_token");
   const csrfToken = getCsrfToken();
 
   // 1. Setup AbortController untuk handling Timeout
@@ -106,10 +111,20 @@ export async function apiFetch(endpoint, options = {}) {
       // ✅ PENTING: Daftarkan subscriber DULU sebelum memulai refresh
       // Ini mencegah race condition dimana onTokenRefreshed() dipanggil
       // sebelum subscriber terdaftar (menyebabkan Promise tidak pernah resolve)
+      //
+      // [H-1] Pass newToken langsung ke retry via _tokenOverride supaya
+      // tidak ada micro-task race antara localStorage.setItem dan retry
+      // yang baca dari localStorage. Sebelumnya kalau retry kick in
+      // sebelum localStorage flush ke disk (rare tapi possible), retry
+      // pakai token lama -> 401 lagi -> infinite loop risk.
       const retryPromise = new Promise((resolve) => {
         subscribeTokenRefresh((newToken) => {
           console.log("[apiFetch] Retrying request after token refresh...");
-          resolve(apiFetch(endpoint, { ...options, _retry: true }));
+          resolve(apiFetch(endpoint, {
+            ...options,
+            _retry: true,
+            _tokenOverride: newToken,
+          }));
         });
       });
 
