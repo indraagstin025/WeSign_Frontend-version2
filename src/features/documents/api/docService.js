@@ -158,30 +158,11 @@ export async function restoreMyDocument(documentId) {
   return apiFetch(`/documents/trash/${documentId}/restore`, { method: 'POST' });
 }
 
-/**
- * Mengambil daftar dokumen di trash (soft-deleted).
- * @param {object} params - { page, limit }
- * @returns {Promise<object>} Data dokumen terhapus + metadata paginasi
- */
-export async function getTrashDocuments({ page = 1, limit = 10 } = {}) {
-  const query = new URLSearchParams({ page: page.toString(), limit: limit.toString() }).toString();
-  return apiFetch(`/admin/trash?${query}`, { method: 'GET' });
-}
-
-/**
- * Restore dokumen dari trash.
- * @param {string} documentId
- * @returns {Promise<object>} Dokumen yang di-restore
- */
-export async function restoreDocument(documentId) {
-  return apiFetch(`/admin/trash/${documentId}/restore`, { method: 'POST' });
-}
-
-/**
- * Hapus dokumen secara permanen (hard delete).
- * @param {string} documentId
- * @returns {Promise<object>} Konfirmasi
- */
-export async function permanentDeleteDocument(documentId) {
-  return apiFetch(`/admin/trash/${documentId}/permanent`, { method: 'DELETE' });
-}
+// NOTE: Admin endpoints (`/admin/trash/*`) sudah dihapus dari user feature
+// karena pollution arsitektural — admin functionality tidak boleh ada di
+// user-facing feature. Kalau perlu admin trash management di masa depan,
+// pindahkan ke `src/features/admin/api/adminService.js` (belum ada).
+//
+// Endpoint backend tetap di-protect oleh `requireAdmin` middleware.
+//
+// Refs: docs/code-review-feat-documents/01-critical.md (CR-2)
