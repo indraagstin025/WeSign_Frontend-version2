@@ -1,7 +1,8 @@
 import React from 'react';
-import { Mail, Lock, Eye, EyeOff, User, Building2, UserPlus, Loader2, CheckCircle, ArrowRight } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, User, Building2, UserPlus, Loader2, CheckCircle, ArrowRight, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useRegister } from '../hooks/useRegister';
+import { useCapsLockDetect } from '../hooks/useCapsLockDetect';
 
 /**
  * @component RegisterForm
@@ -10,6 +11,7 @@ import { useRegister } from '../hooks/useRegister';
  */
 const RegisterForm = () => {
   const { state, actions } = useRegister();
+  const { capsLockOn, handleKeyEvent } = useCapsLockDetect();
 
   return (
     <form onSubmit={actions.handleRegister} className="flex flex-col gap-3">
@@ -109,6 +111,8 @@ const RegisterForm = () => {
               placeholder="••••••••"
               value={state.formData.password}
               onChange={actions.handleFieldChange}
+              onKeyUp={handleKeyEvent}
+              onKeyDown={handleKeyEvent}
               required
               disabled={state.loading}
               autoComplete="new-password"
@@ -140,6 +144,8 @@ const RegisterForm = () => {
               placeholder="••••••••"
               value={state.formData.confirmPassword}
               onChange={actions.handleFieldChange}
+              onKeyUp={handleKeyEvent}
+              onKeyDown={handleKeyEvent}
               required
               disabled={state.loading}
               autoComplete="new-password"
@@ -158,6 +164,18 @@ const RegisterForm = () => {
           </div>
         </div>
       </div>
+
+      {/* [L-7] Caps Lock warning — tampil saat user ketik di password atau
+          confirmPassword dan Caps Lock aktif. */}
+      {capsLockOn && (
+        <p
+          role="alert"
+          aria-live="polite"
+          className="flex items-center gap-1.5 ml-1 text-[11px] font-medium text-amber-600 dark:text-amber-400"
+        >
+          <AlertTriangle size={12} /> Caps Lock aktif
+        </p>
+      )}
 
       {/* Password Strength Indicator - Minimalist */}
       {state.formData.password && (

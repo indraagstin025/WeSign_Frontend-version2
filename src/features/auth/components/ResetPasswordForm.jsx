@@ -1,10 +1,12 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Lock, Eye, EyeOff, Loader2, CheckCircle2, AlertCircle, ArrowLeft, ShieldAlert } from 'lucide-react';
+import { Lock, Eye, EyeOff, Loader2, CheckCircle2, AlertCircle, ArrowLeft, ShieldAlert, AlertTriangle } from 'lucide-react';
 import { useResetPassword } from '../hooks/useResetPassword';
+import { useCapsLockDetect } from '../hooks/useCapsLockDetect';
 
 const ResetPasswordForm = () => {
   const { state, actions } = useResetPassword();
+  const { capsLockOn, handleKeyEvent } = useCapsLockDetect();
 
   // No token in URL
   if (!state.token) {
@@ -71,6 +73,8 @@ const ResetPasswordForm = () => {
             placeholder="Minimal 8 karakter"
             value={state.password}
             onChange={(e) => actions.setPassword(e.target.value)}
+            onKeyUp={handleKeyEvent}
+            onKeyDown={handleKeyEvent}
             className="w-full pl-10 pr-12 py-3 text-[13px] bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-zinc-900 dark:text-white transition-all"
             required
             autoFocus
@@ -119,6 +123,8 @@ const ResetPasswordForm = () => {
             placeholder="Ulangi password baru"
             value={state.confirmPassword}
             onChange={(e) => actions.setConfirmPassword(e.target.value)}
+            onKeyUp={handleKeyEvent}
+            onKeyDown={handleKeyEvent}
             className="w-full pl-10 pr-4 py-3 text-[13px] bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-zinc-900 dark:text-white transition-all"
             required
             autoComplete="new-password"
@@ -128,6 +134,18 @@ const ResetPasswordForm = () => {
           <p className="text-[10px] text-rose-500 mt-1">Password tidak cocok</p>
         )}
       </div>
+
+      {/* [L-7] Caps Lock warning — tampil saat user ketik di password
+          atau confirmPassword dan Caps Lock aktif. */}
+      {capsLockOn && (
+        <p
+          role="alert"
+          aria-live="polite"
+          className="flex items-center gap-1.5 text-[11px] font-medium text-amber-600 dark:text-amber-400"
+        >
+          <AlertTriangle size={12} /> Caps Lock aktif
+        </p>
+      )}
 
       {/* Submit */}
       <button

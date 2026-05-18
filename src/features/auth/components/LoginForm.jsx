@@ -1,7 +1,8 @@
 import React from 'react';
-import { Mail, Lock, Eye, EyeOff, KeyRound, Loader2, ArrowRight } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, KeyRound, Loader2, ArrowRight, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useLogin } from '../hooks/useLogin';
+import { useCapsLockDetect } from '../hooks/useCapsLockDetect';
 
 /**
  * @component LoginForm
@@ -10,6 +11,7 @@ import { useLogin } from '../hooks/useLogin';
  */
 const LoginForm = () => {
   const { state, actions } = useLogin();
+  const { capsLockOn, handleKeyEvent } = useCapsLockDetect();
 
   return (
     <form onSubmit={actions.handleLogin} className="flex flex-col gap-3">
@@ -57,6 +59,8 @@ const LoginForm = () => {
             placeholder="••••••••"
             value={state.password}
             onChange={(e) => actions.setPassword(e.target.value)}
+            onKeyUp={handleKeyEvent}
+            onKeyDown={handleKeyEvent}
             required
             disabled={state.loading}
             autoComplete="current-password"
@@ -72,9 +76,18 @@ const LoginForm = () => {
             {state.showPassword ? <EyeOff size={18} strokeWidth={1.5} /> : <Eye size={18} strokeWidth={1.5} />}
           </button>
         </div>
+        {/* [L-7] Caps Lock warning — hanya tampil saat focus di password
+            input dan Caps Lock aktif. role=alert agar screen reader announce. */}
+        {capsLockOn && (
+          <p
+            role="alert"
+            aria-live="polite"
+            className="flex items-center gap-1.5 mt-1 ml-1 text-[11px] font-medium text-amber-600 dark:text-amber-400"
+          >
+            <AlertTriangle size={12} /> Caps Lock aktif
+          </p>
+        )}
       </div>
-
-      {/* Remember Me Checkbox */}
       <div className="flex items-center ml-1 cursor-pointer group">
         <input 
           type="checkbox" 
