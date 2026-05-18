@@ -7,6 +7,10 @@ import {
   getDocumentFile 
 } from '../../documents/api/docService';
 import { addPersonalSignature } from '../api/signatureService';
+import {
+  DEFAULT_SIGNATURE_WIDTH,
+  DEFAULT_SIGNATURE_HEIGHT,
+} from '../constants/signatureLayout';
 
 export const useDocumentSigner = (documentId) => {
   const navigate = useNavigate();
@@ -136,18 +140,17 @@ export const useDocumentSigner = (documentId) => {
     const clickX = (e.clientX - rect.left) / rect.width;
     const clickY = (e.clientY - rect.top) / rect.height;
 
-    // Default 25% lebar container
-    const defaultWidth = 0.25;
+    // [M-6] Default size dari constants/signatureLayout.js
     // [CR-3] Pakai uuidv4() bukan Date.now() — Date.now() resolusi 1ms,
     // double-click cepat <1ms apart bisa generate ID sama → React key
     // collision + removeSignature(id) filter hapus 2 entry sekaligus.
     setSignatures(prev => [...prev, {
       id: uuidv4(),
       pageNumber,
-      positionX: Math.max(0, Math.min(1 - defaultWidth, clickX - (defaultWidth / 2))),
+      positionX: Math.max(0, Math.min(1 - DEFAULT_SIGNATURE_WIDTH, clickX - (DEFAULT_SIGNATURE_WIDTH / 2))),
       positionY: Math.max(0, clickY - 0.05),
-      width: defaultWidth,
-      height: 0.1,
+      width: DEFAULT_SIGNATURE_WIDTH,
+      height: DEFAULT_SIGNATURE_HEIGHT,
       signatureImageUrl: currentSignature,
       method: activeElement?.type || 'canvas',
       metadata: activeElement?.metadata || null,
