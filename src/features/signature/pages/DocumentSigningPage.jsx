@@ -47,9 +47,9 @@ const DocumentSigningPage = () => {
   const { theme, toggleTheme } = useTheme();
   
   // [L-1] Pakai shared hook useInteractionMode (sebelumnya state duplikat
-  // di 3 signing pages). [L-8] handleToggleMode dari hook (yang dulu
-  // didefinisikan inline tapi tidak di-wire ke toolbar — dead).
-  const { mode: interactionMode, setMode: setInteractionMode } = useInteractionMode('cursor');
+  // di 3 signing pages). Saat ini hanya read mode (interactionMode) — kalau
+  // toolbar nanti punya toggle button, tinggal destructure setMode juga.
+  const { mode: interactionMode } = useInteractionMode('cursor');
   const [settingsOpen, setSettingsOpen] = useState(true);
   const [isParafOpen, setIsParafOpen] = useState(false);
   const [isStampOpen, setIsStampOpen] = useState(false);
@@ -106,9 +106,11 @@ const DocumentSigningPage = () => {
     }
   };
 
-  const handleToggleMode = (next) => {
-    setInteractionMode(next);
-  };
+  // [L-8] handleToggleMode dihapus karena tidak pernah dipass ke
+  // child component (SigningNavbar tidak punya prop onToggleMode).
+  // Sebelumnya didefinisikan inline tapi dead — useInteractionMode
+  // hook tetap expose setMode kalau di kemudian hari toolbar punya
+  // toggle button (refactor untuk eksposeasi sudah ada di L-1).
 
   // [H-3] Auto-load default signature dari saved assets saat pertama kali.
   // Ref pattern untuk handler agar deps array hanya track `assets` saja

@@ -89,7 +89,10 @@ const SigningSidebar = ({
                 </p>
                 <p className="text-[8px] text-zinc-400 dark:text-zinc-500">Dibuat: {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
               </div>
-              <button className="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 bg-transparent border-none cursor-pointer rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+              <button
+                className="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 bg-transparent border-none cursor-pointer rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                aria-label="Opsi tanda tangan"
+              >
                 <MoreVertical size={12} />
               </button>
             </div>
@@ -182,10 +185,11 @@ const SigningSidebar = ({
                   <span className="flex-1 text-[10px] font-semibold text-zinc-700 dark:text-zinc-200">
                     Halaman {sig.pageNumber}
                   </span>
-                  <button 
-                    onClick={() => onRemoveSignature(sig.id)} 
+                  <button
+                    onClick={() => onRemoveSignature(sig.id)}
                     className="p-1 text-zinc-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-md border-none bg-transparent cursor-pointer transition-colors opacity-0 group-hover:opacity-100"
                     title="Hapus"
+                    aria-label={`Hapus tanda tangan halaman ${sig.pageNumber}`}
                   >
                     <Trash2 size={11} />
                   </button>

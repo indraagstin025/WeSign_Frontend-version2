@@ -16,6 +16,28 @@ import { createLogger } from '../../../utils/logger';
 // [L-4] Scoped logger untuk useSignatureDraft (private hook di file ini).
 const log = createLogger('SignatureDraft');
 
+/**
+ * @hook useDocumentSigner
+ * @description Orchestrator state untuk halaman penandatanganan personal
+ * (DocumentSigningPage). Mengelola:
+ * - Document fetch + PDF URL via getDocumentDetail/getDocumentFile
+ * - PDF render state (numPages, pageNumber, dimensions, isReady)
+ * - Signature placement state (signatures array, currentSignature aktif,
+ *   activeElement = tool yang sedang aktif)
+ * - Tool element saving (signature/paraf/stamp/text/date) ke savedAssets
+ * - Submit flow + status modal
+ * - Audit trail mode
+ * - Auto-save draft ke localStorage via internal `useSignatureDraft`
+ *
+ * Edge cases yang di-handle:
+ * - [CR-2] Document already signed → toast.info + delayed navigate
+ * - [CR-3] Signature ID pakai uuidv4() bukan Date.now() (collision risk)
+ * - [H-2] localStorage quota exceeded → toast warning + clear draft
+ * - [M-6] Default size konstanta dari signatureLayout.js
+ *
+ * @param {string} documentId
+ * @returns {object} state + actions untuk DocumentSigningPage component
+ */
 export const useDocumentSigner = (documentId) => {
   const navigate = useNavigate();
   const containerRef = useRef(null);
