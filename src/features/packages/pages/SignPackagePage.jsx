@@ -35,7 +35,7 @@ import StampModal from '../../signature/components/StampModal';
 import TextAnnotationModal from '../../signature/components/TextAnnotationModal';
 import DateFieldModal from '../../signature/components/DateFieldModal';
 import PackageDocSidebar from '../components/PackageDocSidebar';
-import StatusModal from '../../../components/UI/StatusModal';
+import StatusModal from '../../../components/ui/StatusModal';
 import MobilePackageBottomSheet from '../components/MobilePackageBottomSheet';
 
 /**

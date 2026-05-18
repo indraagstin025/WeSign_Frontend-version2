@@ -5,7 +5,7 @@ import {
   AlertCircle, Loader2, CheckCircle2,
   Users, PenLine, RefreshCw, ShieldCheck, ClipboardList,
 } from 'lucide-react';
-import StatusModal from '../../../components/UI/StatusModal';
+import StatusModal from '../../../components/ui/StatusModal';
 import { useGroupDocumentPreviewPage } from '../hooks/useGroupDocumentPreviewPage';
 
 /**

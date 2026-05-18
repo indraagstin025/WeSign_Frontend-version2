@@ -3,7 +3,7 @@ import {
   Users, Plus, Crown, Loader2,
   ChevronRight, RefreshCw, Layers,
 } from 'lucide-react';
-import StatusModal from '../../../components/UI/StatusModal';
+import StatusModal from '../../../components/ui/StatusModal';
 import { useGroupsPage } from '../hooks/useGroupsPage';
 
 /**

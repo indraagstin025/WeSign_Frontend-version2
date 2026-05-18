@@ -5,7 +5,7 @@ import PackageTable from '../components/PackageTable';
 import CreatePackageModal from '../components/CreatePackageModal';
 import PackageInfoModal from '../components/PackageInfoModal';
 import EditPackageModal from '../components/EditPackageModal';
-import ConfirmModal from '../../../components/UI/ConfirmModal';
+import ConfirmModal from '../../../components/ui/ConfirmModal';
 
 const STATUS_TABS = [
   { label: 'Semua', value: '' },
