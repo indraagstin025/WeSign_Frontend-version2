@@ -221,26 +221,86 @@ export const useDocumentSigner = (documentId) => {
 };
 
 const STORAGE_KEY_PREFIX = 'wesign_draft_sig_';
+
+/**
+ * @hook useSignatureDraft
+ * @description Persist + restore draft signature (state lokal) ke/dari
+ * localStorage. Otomatis clear setelah submit final sukses.
+ *
+ * [H-2] Safety guarantees:
+ * 1. **Read path** — JSON.parse di-wrap try/catch. Kalau localStorage
+ *    di-tamper atau format berubah antar versi, draft di-skip (tidak
+ *    crash). Toast warning ke user opsional supaya tidak surprise.
+ * 2. **Write path** — setItem di-wrap try/catch. QuotaExceededError fire
+ *    saat localStorage penuh (~5-10MB tergantung browser). Signature
+ *    base64 PNG bisa 1-3MB → mudah lewat quota kalau user save banyak
+ *    draft di banyak dokumen tanpa pernah submit. Strategy:
+ *    - Catch error → toast warning ke user
+ *    - HAPUS draft current (bukan crash) supaya UI tetap jalan
+ *    - User bisa lanjut tanpa autosave (akan kehilangan draft kalau
+ *      reload, tapi itu lebih baik daripada UI freeze)
+ * 3. **Cleanup** — `clearDraft` removeItem juga di-wrap (defense in depth,
+ *    sebenarnya removeItem tidak throw).
+ */
 const useSignatureDraft = (documentId, signatures, setSignatures, currentSignature, setCurrentSignature) => {
   const isInitialMount = useRef(true);
+
   useEffect(() => {
     if (!documentId) return;
-    const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}${documentId}`);
-    if (saved) {
+    const key = `${STORAGE_KEY_PREFIX}${documentId}`;
+    let saved;
+    try {
+      saved = localStorage.getItem(key);
+    } catch {
+      // localStorage di-disable (mis. private mode Safari di iOS lama)
+      return;
+    }
+    if (!saved) return;
+
+    try {
       const { sigs, current } = JSON.parse(saved);
       if (sigs) setSignatures(sigs);
       if (current) setCurrentSignature(current);
+    } catch (err) {
+      // Format draft berubah / corrupted → drop & ignore
+      console.warn('[useSignatureDraft] failed parse draft, dropping:', err.message);
+      try { localStorage.removeItem(key); } catch { /* noop */ }
     }
   }, [documentId, setSignatures, setCurrentSignature]);
 
   useEffect(() => {
     if (isInitialMount.current) { isInitialMount.current = false; return; }
-    if (documentId) {
+    if (!documentId) return;
+    const key = `${STORAGE_KEY_PREFIX}${documentId}`;
+    try {
       const data = JSON.stringify({ sigs: signatures, current: currentSignature });
-      localStorage.setItem(`${STORAGE_KEY_PREFIX}${documentId}`, data);
+      localStorage.setItem(key, data);
+    } catch (err) {
+      // QuotaExceededError atau localStorage disabled.
+      // Strategy: hapus draft current supaya UI tetap jalan + user di-warn.
+      // Tanpa hapus, error akan fire setiap state change → toast spam.
+      const isQuota = err?.name === 'QuotaExceededError' ||
+        err?.code === 22 || err?.code === 1014; // Firefox
+      if (isQuota) {
+        toast.warning(
+          'Draft tanda tangan tidak bisa disimpan otomatis (storage penuh). ' +
+          'Lanjutkan signing — pastikan submit sebelum tutup tab.'
+        );
+        try { localStorage.removeItem(key); } catch { /* noop */ }
+      } else {
+        console.warn('[useSignatureDraft] failed save draft:', err.message);
+      }
     }
   }, [documentId, signatures, currentSignature]);
 
-  const clearDraft = useCallback(() => localStorage.removeItem(`${STORAGE_KEY_PREFIX}${documentId}`), [documentId]);
+  const clearDraft = useCallback(() => {
+    if (!documentId) return;
+    try {
+      localStorage.removeItem(`${STORAGE_KEY_PREFIX}${documentId}`);
+    } catch {
+      /* noop */
+    }
+  }, [documentId]);
+
   return { clearDraft };
 };
