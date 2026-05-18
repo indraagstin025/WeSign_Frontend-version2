@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useGroupDocumentCardState } from '../hooks/useGroupDocumentCardState';
 import { getGroupDocumentStatus } from '../constants/groupDocumentStatus';
+import { timeAgo } from '../../../utils/timeAgo';
 import RejectReasonModal from './RejectReasonModal';
 
 /**
@@ -60,18 +61,6 @@ const GroupDocumentCard = ({
 
   // Uploader name
   const uploaderName = doc?.owner?.name || 'Unknown';
-
-  // Time ago (simple)
-  const timeAgo = (dateStr) => {
-    if (!dateStr) return '';
-    const diff = Date.now() - new Date(dateStr).getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 60) return `${mins} menit lalu`;
-    const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return `${hrs} jam lalu`;
-    const days = Math.floor(hrs / 24);
-    return `${days} hari lalu`;
-  };
 
   // Left accent color by status
   const accentColor = {
