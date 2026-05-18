@@ -5,6 +5,8 @@ import {
   ShieldCheck, XCircle,
 } from 'lucide-react';
 import { useGroupDocumentCardState } from '../hooks/useGroupDocumentCardState';
+import { getGroupDocumentStatus } from '../constants/groupDocumentStatus';
+import RejectReasonModal from './RejectReasonModal';
 
 /**
  * @component GroupDocumentCard
@@ -25,6 +27,8 @@ const GroupDocumentCard = ({
   onReject,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
+  // [H-4] State untuk RejectReasonModal — replace blocking window.prompt.
+  const [rejectOpen, setRejectOpen] = useState(false);
   const {
     signedCount,
     totalSigners,
@@ -34,18 +38,17 @@ const GroupDocumentCard = ({
     canDownload,
     canManageSigners,
     canDelete,
-    status,
+    // Note: `status` di-supply oleh hook tapi tidak dipakai di sini lagi
+    // — pakai `badge` dari getGroupDocumentStatus yang sudah include
+    // semua status keys (DRAFT/PENDING/PROCESSING/SIGNED/COMPLETED/REJECTED).
   } = useGroupDocumentCardState({ doc, isAdmin, myStatus, currentUserId });
 
-  // Status badge config
-  const STATUS_BADGE = {
-    DRAFT:     { label: 'Draft',      cls: 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400' },
-    PENDING:   { label: 'Menunggu',   cls: 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400' },
-    COMPLETED: { label: 'Selesai',    cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400' },
-    REJECTED:  { label: 'Ditolak',    cls: 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400' },
-  };
+  // [H-1] Status badge dari centralized config (constants/groupDocumentStatus.js).
+  // Sebelumnya STATUS_BADGE inline di sini, useGroupDocumentCardState dan
+  // useGroupDocumentPreviewPage masing-masing punya STATUS_CONFIG sendiri
+  // dengan label inkonsisten (mis. COMPLETED "Selesai" vs "Finalized").
   const docStatus = doc?.status?.toUpperCase();
-  const badge = STATUS_BADGE[docStatus] || STATUS_BADGE.DRAFT;
+  const badge = getGroupDocumentStatus(docStatus);
 
   // Signer avatars (max 3 + overflow)
   const signers = doc?.signerRequests || [];
@@ -223,8 +226,9 @@ const GroupDocumentCard = ({
                   <button
                     onClick={() => {
                       setMenuOpen(false);
-                      const reason = window.prompt('Alasan penolakan (opsional):');
-                      if (reason !== null) onReject(doc.id, reason || null);
+                      // [H-4] Buka modal RejectReasonModal alih-alih
+                      // window.prompt yang blocking dan tidak match design.
+                      setRejectOpen(true);
                     }}
                     className="w-full flex items-center gap-2 px-4 py-2.5 text-[12px] font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 bg-transparent border-none cursor-pointer text-left"
                   >
@@ -246,6 +250,19 @@ const GroupDocumentCard = ({
           )}
         </div>
       </div>
+
+      {/* [H-4] Reject reason modal — replace window.prompt */}
+      <RejectReasonModal
+        isOpen={rejectOpen}
+        onClose={() => setRejectOpen(false)}
+        onSubmit={(reason) => {
+          setRejectOpen(false);
+          // Convert empty string -> null untuk konsistensi dengan kontrak lama
+          // (prompt cancel = null, submit empty = "" yang juga di-coerce ke null)
+          onReject(doc.id, reason || null);
+        }}
+        documentTitle={doc?.title}
+      />
     </div>
   );
 };

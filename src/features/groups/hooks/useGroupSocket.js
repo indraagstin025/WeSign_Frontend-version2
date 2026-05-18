@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { toast } from 'react-toastify';
 import { socketService } from '../../../services/socketService';
 import { drainOutbox } from '../../../services/outboxDrain';
@@ -56,6 +56,23 @@ export const useGroupSocket = ({
   // window dedup expire saat user lambat menutup alert.
   const alertedSignersRef = useRef(new Set());
 
+  // [H-3] Ref untuk callback agar socket handler selalu pakai versi terbaru.
+  //
+  // Sebelumnya callback (onRefresh, onRefreshSigning, onKicked) di-closure
+  // di useEffect dengan deps `[documentId, groupId, currentUserId, ready]`
+  // saja. Setiap parent component re-render, callback baru tidak masuk —
+  // socket handler tetap pakai versi pertama. Dampak: kalau parent state
+  // berubah (mis. baru di-fetch fresh data), socket-triggered refresh akan
+  // pakai callback yang masih reference ke state lama → stale data.
+  //
+  // Solusi: simpan callback di ref, update di useEffect tanpa deps trick.
+  // Handler tinggal panggil `cbRefs.current.onRefresh?.(...)` — selalu
+  // versi terbaru tanpa perlu re-bind socket listener.
+  const cbRefs = useRef({ onRefresh, onRefreshSigning, onKicked });
+  useEffect(() => {
+    cbRefs.current = { onRefresh, onRefreshSigning, onKicked };
+  }, [onRefresh, onRefreshSigning, onKicked]);
+
   useEffect(() => {
     if (!groupId || !ready) return;
 
@@ -79,9 +96,10 @@ export const useGroupSocket = ({
       setSocketStatus(status);
       if (status.connected && !wasConnected) {
         // Reconnect terdeteksi → reconcile state via silent refetch.
-        // onRefresh menerima param `silent` (true = tanpa loading spinner).
-        if (typeof onRefresh === 'function') onRefresh(true);
-        if (typeof onRefreshSigning === 'function') onRefreshSigning(true);
+        // [H-3] Pakai cbRefs.current agar selalu versi callback terbaru
+        // (lihat dokumentasi cbRefs di atas).
+        cbRefs.current.onRefresh?.(true);
+        cbRefs.current.onRefreshSigning?.(true);
         // Tier 2: drain outbox (mutation HTTP yang gagal saat offline)
         drainOutbox();
       }
@@ -179,7 +197,8 @@ export const useGroupSocket = ({
         case 'removed_document':
         case 'signer_update':
           // Silent refresh — tidak ada loading spinner
-          onRefresh?.(true);
+          // [H-3] cbRefs.current pakai callback terbaru.
+          cbRefs.current.onRefresh?.(true);
           break;
 
         case 'finalized':
@@ -191,12 +210,12 @@ export const useGroupSocket = ({
             message: 'Admin telah menyelesaikan dokumen. PDF final sudah tersedia.',
             onConfirm: null,
           });
-          onRefreshSigning?.();
-          onRefresh?.(true);
+          cbRefs.current.onRefreshSigning?.();
+          cbRefs.current.onRefresh?.(true);
           break;
 
         default:
-          onRefresh?.(true);
+          cbRefs.current.onRefresh?.(true);
       }
     };
 
@@ -208,7 +227,8 @@ export const useGroupSocket = ({
 
       switch (data.action) {
         case 'new_member':
-          onRefresh?.(true);
+          // [H-3] cbRefs.current pakai callback terbaru.
+          cbRefs.current.onRefresh?.(true);
           break;
 
         case 'kicked':
@@ -218,16 +238,16 @@ export const useGroupSocket = ({
               title: 'Anda Dikeluarkan',
               message: 'Admin telah mengeluarkan Anda dari grup ini.',
               onConfirm: () => {
-                if (onKicked) onKicked();
+                cbRefs.current.onKicked?.();
               },
             });
           } else {
-            onRefresh?.(true);
+            cbRefs.current.onRefresh?.(true);
           }
           break;
 
         default:
-          onRefresh?.(true);
+          cbRefs.current.onRefresh?.(true);
       }
     };
 
@@ -235,7 +255,8 @@ export const useGroupSocket = ({
 
     // ── Group Info Update ─────────────────────────────────────────────────
     const handleGroupInfoUpdate = () => {
-      onRefresh?.();
+      // [H-3] cbRefs.current pakai callback terbaru.
+      cbRefs.current.onRefresh?.();
     };
 
     socketService.on('group_info_update', handleGroupInfoUpdate);

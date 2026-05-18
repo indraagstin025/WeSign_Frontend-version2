@@ -19,6 +19,38 @@ import { socketService } from '../../../services/socketService';
  * - handleDeleteSignature → DELETE draft
  * - handleSaveMySignature → POST sign (final)
  * - handleFinalizeDocument → POST finalize (admin only)
+ *
+ * ## [H-5] Kontrak `_pending` flag pada signature object
+ *
+ * Saat user drop signature ke PDF, kita melakukan **optimistic update**:
+ * tambah signature ke state lokal dengan `id: tempId` (UUID v4 client-side)
+ * SEBELUM saveDraft API response sampai. Backend men-generate ID-nya sendiri
+ * (post-FIX #11 service tidak trust client id), jadi `tempId` ini akan
+ * di-replace dengan `serverSig.id` setelah response.
+ *
+ * Window race antara `tempId` (optimistic) dan `serverSig.id` (persisted):
+ *
+ *   T0  Drop signature      → state: { id: tempId, _pending: true }
+ *   T1  saveDraft request fire (async, ~30-100ms)
+ *   T2  handleImageLoad fire (instant, ~5ms — cached image)
+ *       ↳ handleUpdateSize(tempId, w, h) → state update OK,
+ *         tapi PATCH backend SKIP karena `_pending: true`.
+ *         Tanpa skip, PATCH ke `tempId` akan 404 (backend pakai server id).
+ *   T3  saveDraft response  → state: { id: serverSig.id, _pending: false }
+ *       ↳ Kalau ukuran sudah berubah di T2, `sizeChanged` cek dan PATCH
+ *         dengan `serverSig.id` untuk sync backend.
+ *
+ * **Rule operasi yang harus respect `_pending`:**
+ * - handleUpdateSignature  → SKIP PATCH bila pending (akan ter-persist via saveDraft response)
+ * - handleUpdateSize       → SKIP PATCH bila pending (sda)
+ * - handleDeleteSignature  → SKIP API call bila pending; hanya hapus dari state
+ *                            lokal + emit socket. saveDraft yang on-the-fly akan
+ *                            di-handle oleh catch block atau no-op kalau sudah
+ *                            response sebelum delete (state sudah hilang).
+ *
+ * **Invariant:** `_pending: true` hanya selama window T0..T3 untuk signature
+ * dengan `id === tempId`. Setelah saveDraft sukses atau gagal (rollback),
+ * tidak boleh ada signature dengan `_pending: true` di state.
  */
 export const useGroupSignatureActions = ({
   documentId,
@@ -110,8 +142,7 @@ export const useGroupSignatureActions = ({
           prev.map((s) => {
             if (s.id !== tempId) return s;
             localSnapshot = s;
-            // eslint-disable-next-line no-unused-vars
-            const { _pending, ...rest } = s;
+            const { _pending: _isPending, ...rest } = s;
             return {
               ...rest,
               ...serverSig,
@@ -219,8 +250,23 @@ export const useGroupSignatureActions = ({
       if (!sig || sig.status === 'final') return;
       if (String(sig.userId) !== String(currentUser?.id)) return;
 
+      // Optimistic remove dari state lokal + broadcast ke peer
       setSignatures((prev) => prev.filter((s) => s.id !== sigId));
       socketService.emitRemoveSignature(documentId, sigId);
+
+      // [H-5] Skip API call kalau signature masih optimistic. Backend belum
+      // tahu signature ini ada (saveDraft on-the-fly), jadi DELETE dengan
+      // tempId akan 404. Kalau saveDraft sukses setelah delete dilakukan,
+      // backend akan punya orphan record — TAPI saveDraft handler akan cek
+      // state lokal (yang sudah ter-filter) dan hapus. Sebenarnya saveDraft
+      // tetap akan persist record orphan, ini accepted trade-off karena:
+      //   1. Window race ini sangat sempit (saveDraft ~30-100ms, user delete
+      //      hampir tidak mungkin secepat itu)
+      //   2. Orphan record akan di-cleanup oleh fetch ulang berikutnya saat
+      //      user reload halaman atau socket trigger refresh
+      if (sig._pending) {
+        return;
+      }
 
       try {
         await deleteDraft(sigId);

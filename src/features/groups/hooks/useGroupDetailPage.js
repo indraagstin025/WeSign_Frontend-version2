@@ -43,9 +43,20 @@ export function useGroupDetailPage() {
   const [docSortBy, setDocSortBy] = useState('newest');
   const [docLoading, setDocLoading] = useState(false);
 
-  // Ref untuk menyimpan current pagination values — menghindari stale closure
+  // [H-2] Ref untuk menyimpan current pagination values — menghindari stale
+  // closure saat fetchDocuments dipanggil dari socket handler / event yang
+  // di-bind dengan deps stale.
+  //
+  // Sebelumnya `paginationRef.current = { page, search, sortBy }` dipanggil
+  // langsung saat render — itu mutate selama render phase, melanggar React
+  // rules of hooks (sebenarnya tidak fatal tapi side-effect-during-render).
+  // Sekarang sync via useEffect: refs di-update SETELAH commit phase, dan
+  // value tetap mengikuti state terbaru sebelum effect mana pun yang
+  // bergantung ke fetchDocuments di-trigger.
   const paginationRef = useRef({ page: 1, search: '', sortBy: 'newest' });
-  paginationRef.current = { page: docPage, search: docSearch, sortBy: docSortBy };
+  useEffect(() => {
+    paginationRef.current = { page: docPage, search: docSearch, sortBy: docSortBy };
+  }, [docPage, docSearch, docSortBy]);
 
   // ── Modal & action states ─────────────────────────────────────────────────
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);

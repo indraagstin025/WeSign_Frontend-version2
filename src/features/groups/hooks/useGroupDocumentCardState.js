@@ -1,11 +1,5 @@
 import { useMemo } from 'react';
-
-const STATUS_CONFIG = {
-  DRAFT:      { label: 'Draft',    cls: 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400' },
-  PENDING:    { label: 'Menunggu', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-500' },
-  COMPLETED:  { label: 'Selesai',  cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-500' },
-  PROCESSING: { label: 'Diproses', cls: 'bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-500' },
-};
+import { getGroupDocumentStatus } from '../constants/groupDocumentStatus';
 
 /**
  * @hook useGroupDocumentCardState
@@ -39,7 +33,8 @@ export function useGroupDocumentCardState({ doc, isAdmin = false, myStatus, curr
     const canDownload = isCompleted;
     const canManageSigners = isAdmin && !isCompleted;
     const canDelete = isAdmin || isUploader;
-    const status = STATUS_CONFIG[docStatus] || STATUS_CONFIG.PENDING;
+    // [H-1] Pakai centralized status config dari constants/groupDocumentStatus.js
+    const status = getGroupDocumentStatus(docStatus);
 
     return {
       docStatus,

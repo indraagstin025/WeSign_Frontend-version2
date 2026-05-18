@@ -1,17 +1,11 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Clock, CheckCircle2, Lock } from 'lucide-react';
 import { useUser } from '../../../context/UserContext';
 import { getGroupDetail } from '../api/groupService';
 import { getDocumentFile } from '../../documents/api/docService';
 import { apiFetch } from '../../../services/api';
 import { useGroupSocket } from './useGroupSocket';
-
-const STATUS_CONFIG = {
-  PENDING:   { label: 'Menunggu',       color: 'text-amber-600',   bg: 'bg-amber-500/10',   icon: Clock },
-  SIGNED:    { label: 'Ditandatangani', color: 'text-emerald-600', bg: 'bg-emerald-500/10', icon: CheckCircle2 },
-  COMPLETED: { label: 'Finalized',      color: 'text-blue-600',    bg: 'bg-blue-500/10',    icon: Lock },
-};
+import { getGroupDocumentStatus } from '../constants/groupDocumentStatus';
 
 const FINAL_STATUSES = new Set(['COMPLETED', 'completed', 'final', 'FINAL']);
 
@@ -142,7 +136,9 @@ export function useGroupDocumentPreviewPage() {
       String(groupData.adminId) === String(currentUser.id);
 
     const docStatusKey = isFinal ? 'COMPLETED' : (doc?.status?.toUpperCase() || 'PENDING');
-    const docStatusCfg = STATUS_CONFIG[docStatusKey] || STATUS_CONFIG.PENDING;
+    // [H-1] Pakai centralized status config (label COMPLETED diubah dari
+    // "Finalized" ke "Selesai" untuk konsistensi dengan badge di card).
+    const docStatusCfg = getGroupDocumentStatus(docStatusKey);
 
     const signUrl = `/dashboard/groups/${groupId}/documents/${documentId}/sign`;
 
