@@ -57,6 +57,7 @@ const ForgotPasswordForm = () => {
                 className="w-full pl-10 pr-4 py-3 text-[13px] bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-zinc-900 dark:text-white transition-all"
                 required
                 autoFocus
+                autoComplete="email"
               />
             </div>
           </div>
@@ -65,7 +66,7 @@ const ForgotPasswordForm = () => {
           <button
             type="submit"
             disabled={state.loading || state.cooldownSec > 0}
-            className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white text-[13px] font-bold rounded-xl border-none cursor-pointer transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white text-[13px] font-bold rounded-xl border-none cursor-pointer transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-500/40"
           >
             {state.loading ? (
               <>

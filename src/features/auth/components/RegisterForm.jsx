@@ -1,7 +1,8 @@
 import React from 'react';
-import { Mail, Lock, Eye, EyeOff, User, Building2, UserPlus, Loader2, CheckCircle, ArrowRight } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, User, Building2, UserPlus, Loader2, CheckCircle, ArrowRight, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useRegister } from '../hooks/useRegister';
+import { useCapsLockDetect } from '../hooks/useCapsLockDetect';
 
 /**
  * @component RegisterForm
@@ -10,6 +11,7 @@ import { useRegister } from '../hooks/useRegister';
  */
 const RegisterForm = () => {
   const { state, actions } = useRegister();
+  const { capsLockOn, handleKeyEvent } = useCapsLockDetect();
 
   return (
     <form onSubmit={actions.handleRegister} className="flex flex-col gap-3">
@@ -66,6 +68,7 @@ const RegisterForm = () => {
               onChange={actions.handleFieldChange}
               required
               disabled={state.loading}
+              autoComplete={state.formData.isCompany ? "organization" : "name"}
               className="w-full pl-10 pr-4 py-2.5 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all text-zinc-900 dark:text-white placeholder-zinc-400 text-[13px] font-medium"
             />
           </div>
@@ -86,6 +89,7 @@ const RegisterForm = () => {
               onChange={actions.handleFieldChange}
               required
               disabled={state.loading}
+              autoComplete="email"
               className="w-full pl-10 pr-4 py-2.5 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all text-zinc-900 dark:text-white placeholder-zinc-400 text-[13px] font-medium"
             />
           </div>
@@ -107,15 +111,20 @@ const RegisterForm = () => {
               placeholder="••••••••"
               value={state.formData.password}
               onChange={actions.handleFieldChange}
+              onKeyUp={handleKeyEvent}
+              onKeyDown={handleKeyEvent}
               required
               disabled={state.loading}
+              autoComplete="new-password"
               className="w-full pl-10 pr-10 py-2.5 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all text-zinc-900 dark:text-white tracking-widest placeholder:tracking-normal placeholder-zinc-400 text-[13px] disabled:opacity-50 font-medium"
             />
-            <button 
+            <button
               type="button"
               onClick={actions.togglePasswordVisibility}
               className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-zinc-400 hover:text-primary transition-colors cursor-pointer bg-transparent border-none"
               tabIndex="-1"
+              aria-label={state.showPassword ? "Sembunyikan sandi" : "Tampilkan sandi"}
+              aria-pressed={state.showPassword}
             >
               {state.showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
@@ -135,21 +144,38 @@ const RegisterForm = () => {
               placeholder="••••••••"
               value={state.formData.confirmPassword}
               onChange={actions.handleFieldChange}
+              onKeyUp={handleKeyEvent}
+              onKeyDown={handleKeyEvent}
               required
               disabled={state.loading}
+              autoComplete="new-password"
               className="w-full pl-10 pr-10 py-2.5 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all text-zinc-900 dark:text-white tracking-widest placeholder:tracking-normal placeholder-zinc-400 text-[13px] disabled:opacity-50 font-medium"
             />
-            <button 
+            <button
               type="button"
               onClick={actions.toggleConfirmVisibility}
               className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-zinc-400 hover:text-primary transition-colors cursor-pointer bg-transparent border-none"
               tabIndex="-1"
+              aria-label={state.showConfirm ? "Sembunyikan konfirmasi sandi" : "Tampilkan konfirmasi sandi"}
+              aria-pressed={state.showConfirm}
             >
               {state.showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
           </div>
         </div>
       </div>
+
+      {/* [L-7] Caps Lock warning — tampil saat user ketik di password atau
+          confirmPassword dan Caps Lock aktif. */}
+      {capsLockOn && (
+        <p
+          role="alert"
+          aria-live="polite"
+          className="flex items-center gap-1.5 ml-1 text-[11px] font-medium text-amber-600 dark:text-amber-400"
+        >
+          <AlertTriangle size={12} /> Caps Lock aktif
+        </p>
+      )}
 
       {/* Password Strength Indicator - Minimalist */}
       {state.formData.password && (
@@ -179,7 +205,7 @@ const RegisterForm = () => {
       <button 
         type="submit" 
         disabled={state.loading || (state.formData.password.length > 0 && !state.isPasswordValid)}
-        className="w-full h-12 bg-primary hover:bg-primary-dark text-white rounded-full text-[15px] font-bold transition-all shadow-lg shadow-primary/20 mt-1 flex items-center justify-center gap-3 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed border-none group"
+        className="w-full h-12 bg-primary hover:bg-primary-dark text-white rounded-full text-[15px] font-bold transition-all shadow-lg shadow-primary/20 mt-1 flex items-center justify-center gap-3 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed border-none group focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/40"
       >
         {state.loading ? (
           <><Loader2 size={18} className="animate-spin" /> Memproses...</>

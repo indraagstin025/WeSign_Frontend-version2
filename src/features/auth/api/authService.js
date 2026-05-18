@@ -5,6 +5,11 @@
  */
 
 import { apiFetch } from "../../../services/api";
+import { createLogger } from "../../../utils/logger";
+
+// [L-5] Scoped logger agar console output konsisten dengan service lain.
+// Sebelumnya pakai console.warn/error langsung tanpa prefix.
+const log = createLogger("AuthService");
 
 /**
  * Registrasi akun baru.
@@ -78,7 +83,7 @@ export async function getCsrfToken() {
       return response.data.csrfToken;
     }
   } catch (err) {
-    console.warn("Failed to fetch CSRF token:", err.message);
+    log.warn("Failed to fetch CSRF token:", err.message);
   }
   return null;
 }
@@ -99,7 +104,7 @@ export async function logoutUser() {
 
     return data;
   } catch (err) {
-    console.error("Gagal logout di server:", err.message);
+    log.error("Gagal logout di server:", err.message);
   } finally {
     // Hapus hanya data autentikasi, bukan SEMUA localStorage
     localStorage.removeItem("wesign_token");

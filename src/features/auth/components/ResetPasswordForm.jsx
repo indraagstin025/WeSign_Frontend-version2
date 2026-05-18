@@ -1,10 +1,12 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Lock, Eye, EyeOff, Loader2, CheckCircle2, AlertCircle, ArrowLeft, ShieldAlert } from 'lucide-react';
+import { Lock, Eye, EyeOff, Loader2, CheckCircle2, AlertCircle, ArrowLeft, ShieldAlert, AlertTriangle } from 'lucide-react';
 import { useResetPassword } from '../hooks/useResetPassword';
+import { useCapsLockDetect } from '../hooks/useCapsLockDetect';
 
 const ResetPasswordForm = () => {
   const { state, actions } = useResetPassword();
+  const { capsLockOn, handleKeyEvent } = useCapsLockDetect();
 
   // No token in URL
   if (!state.token) {
@@ -71,14 +73,19 @@ const ResetPasswordForm = () => {
             placeholder="Minimal 8 karakter"
             value={state.password}
             onChange={(e) => actions.setPassword(e.target.value)}
+            onKeyUp={handleKeyEvent}
+            onKeyDown={handleKeyEvent}
             className="w-full pl-10 pr-12 py-3 text-[13px] bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-zinc-900 dark:text-white transition-all"
             required
             autoFocus
+            autoComplete="new-password"
           />
           <button
             type="button"
             onClick={actions.togglePasswordVisibility}
             className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 bg-transparent border-none cursor-pointer"
+            aria-label={state.showPassword ? "Sembunyikan sandi" : "Tampilkan sandi"}
+            aria-pressed={state.showPassword}
           >
             {state.showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
           </button>
@@ -116,8 +123,11 @@ const ResetPasswordForm = () => {
             placeholder="Ulangi password baru"
             value={state.confirmPassword}
             onChange={(e) => actions.setConfirmPassword(e.target.value)}
+            onKeyUp={handleKeyEvent}
+            onKeyDown={handleKeyEvent}
             className="w-full pl-10 pr-4 py-3 text-[13px] bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-zinc-900 dark:text-white transition-all"
             required
+            autoComplete="new-password"
           />
         </div>
         {state.confirmPassword && state.password !== state.confirmPassword && (
@@ -125,11 +135,23 @@ const ResetPasswordForm = () => {
         )}
       </div>
 
+      {/* [L-7] Caps Lock warning — tampil saat user ketik di password
+          atau confirmPassword dan Caps Lock aktif. */}
+      {capsLockOn && (
+        <p
+          role="alert"
+          aria-live="polite"
+          className="flex items-center gap-1.5 text-[11px] font-medium text-amber-600 dark:text-amber-400"
+        >
+          <AlertTriangle size={12} /> Caps Lock aktif
+        </p>
+      )}
+
       {/* Submit */}
       <button
         type="submit"
         disabled={state.loading || !state.isPasswordValid || state.password !== state.confirmPassword}
-        className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white text-[13px] font-bold rounded-xl border-none cursor-pointer transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white text-[13px] font-bold rounded-xl border-none cursor-pointer transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-500/40"
       >
         {state.loading ? (
           <>
