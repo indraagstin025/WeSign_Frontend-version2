@@ -4,7 +4,23 @@
  * Semua render menggunakan devicePixelRatio untuk hasil tajam di layar retina.
  */
 
-const DPR = Math.max(window.devicePixelRatio || 1, 3); // Minimal 3x untuk ketajaman tinggi
+/**
+ * [M-3] Cap DPR ke 2 (cukup untuk retina display 2x dan 3x).
+ *
+ * Sebelumnya `Math.max(devicePixelRatio || 1, 3)` — minimal 3x.
+ * Issue: di Mac retina dengan DPR=3, ini render canvas 3x×3x = 9x area
+ * dari size logical. Memory cost untuk PNG 1000×400 jadi:
+ *   - logical: 1000×400 = 400K pixel × 4 bytes = 1.6 MB raw
+ *   - 3x DPR:  3000×1200 = 3.6M pixel × 4 bytes = 14.4 MB raw (9x bloat)
+ *   - 2x DPR:  2000×800 = 1.6M pixel × 4 bytes = 6.4 MB raw (4x bloat)
+ *
+ * Visual difference 2x vs 3x di layar 3x: minimal (sub-pixel rendering
+ * sudah cukup tajam). Tradeoff: 9x memory tidak worth it.
+ *
+ * Floor 1.5x agar layar non-retina (DPR=1) tetap dapat oversampling
+ * sedikit untuk anti-aliasing yang lebih halus.
+ */
+const DPR = Math.min(Math.max(window.devicePixelRatio || 1, 1.5), 2);
 
 /**
  * Render inisial/paraf ke canvas → base64
