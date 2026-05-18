@@ -38,6 +38,18 @@ function setCsrfToken(token) {
 
 /**
  * Wrapper fetch yang menangani JSON, token, timeout, CSRF, dan error jaringan.
+ *
+ * @param {string} endpoint - API endpoint relative ke API_BASE_URL (e.g., '/auth/login')
+ * @param {object} [options={}] - Fetch options + WeSign-specific options
+ * @param {string} [options.method='GET'] - HTTP method
+ * @param {object|FormData} [options.body] - Request body (auto-serialize JSON)
+ * @param {object} [options.headers] - Additional headers (Authorization & CSRF auto-handled)
+ * @param {number} [options.timeout=DEFAULT_TIMEOUT] - Custom timeout dalam ms
+ * @param {AbortSignal} [options.signal] - External abort signal (untuk cancel/coalesce)
+ * @param {string} [options._tokenOverride] - Internal: token override (dipakai oleh retry handler setelah refresh)
+ * @param {boolean} [options._retry] - Internal: marker bahwa ini adalah retry attempt
+ * @returns {Promise<object>} Parsed JSON response dari backend
+ * @throws {Error} Network error, timeout, atau backend error (dengan friendly message)
  */
 export async function apiFetch(endpoint, options = {}) {
   // [H-1] Token resolution priority:
