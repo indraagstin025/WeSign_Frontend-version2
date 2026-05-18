@@ -62,13 +62,10 @@ const GroupDocumentCard = ({
   // Uploader name
   const uploaderName = doc?.owner?.name || 'Unknown';
 
-  // Left accent color by status
-  const accentColor = {
-    DRAFT: 'bg-zinc-300 dark:bg-zinc-600',
-    PENDING: 'bg-amber-400',
-    COMPLETED: 'bg-emerald-500',
-    REJECTED: 'bg-rose-500',
-  }[docStatus] || 'bg-zinc-300';
+  // [L-3] Left accent bar pakai field `accent` dari getGroupDocumentStatus.
+  // Sebelumnya inline map dengan 4 status keys saja (DRAFT/PENDING/COMPLETED/REJECTED),
+  // sekarang centralized dengan 6 status keys.
+  const accentColor = badge.accent;
 
   return (
     <div className="relative flex items-center gap-4 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-white/5 rounded-2xl px-5 py-4 hover:shadow-md hover:border-zinc-200 dark:hover:border-white/10 transition-all duration-200 group">
