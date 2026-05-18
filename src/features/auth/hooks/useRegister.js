@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { registerUser } from "../api/authService";
 import { sanitizeText, sanitizeEmail, isValidEmail, isValidName, validatePasswordStrength } from "../../../utils/sanitize";
-import { SESSION_KEY } from '../../groups/pages/JoinGroupPage';
 
 /**
  * Hook to manage the logic of the Registration Form.
@@ -83,16 +82,10 @@ export const useRegister = () => {
 
       if (result?.success) {
         setSuccess(result.message || "Registrasi berhasil! Mengarahkan ke halaman login...");
-        // Setelah register, cek pending join token
-        const pendingToken = sessionStorage.getItem(SESSION_KEY);
-        setTimeout(() => {
-          if (pendingToken) {
-            // Token masih ada di sessionStorage, login akan memprosesnya
-            navigate("/login");
-          } else {
-            navigate("/login");
-          }
-        }, 2000);
+        // Setelah register, redirect ke login. Pending join token (kalau ada
+        // di sessionStorage) akan diproses oleh useLogin setelah user login.
+        // Konsumer key ini ada di src/config/sessionKeys.js (PENDING_GROUP_JOIN_KEY).
+        setTimeout(() => navigate("/login"), 2000);
       }
     } catch (err) {
       setError(err.message || "Registrasi gagal. Silakan coba lagi.");

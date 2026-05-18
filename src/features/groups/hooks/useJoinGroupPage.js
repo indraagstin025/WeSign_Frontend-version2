@@ -2,8 +2,15 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useUser } from '../../../context/UserContext';
 import { acceptInvitation } from '../api/groupService';
+import { PENDING_GROUP_JOIN_KEY } from '../../../config/sessionKeys';
 
-export const SESSION_KEY = 'wesign_pending_join_token';
+// Re-export untuk backward-compat — caller yang import { SESSION_KEY } dari sini
+// tetap bekerja (dengan deprecation warning di JSDoc).
+/**
+ * @deprecated Pakai `PENDING_GROUP_JOIN_KEY` dari `src/config/sessionKeys.js`.
+ * SESSION_KEY tetap ada untuk backward compat.
+ */
+export const SESSION_KEY = PENDING_GROUP_JOIN_KEY;
 
 const REDIRECT_DELAY_MS = 2000;
 
