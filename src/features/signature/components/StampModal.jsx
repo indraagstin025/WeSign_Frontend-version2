@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { renderStampToImage } from '../utils/renderToImage';
+import { STAMP_COLORS } from '../constants/signatureColors';
 
 /**
  * @component StampModal
@@ -16,7 +17,7 @@ const STAMPS = [
   { id: 'paid', label: 'PAID' },
 ];
 
-const COLORS = ['#16a34a', '#e11d48', '#2563eb', '#334155', '#7c3aed', '#d97706'];
+const COLORS = STAMP_COLORS;
 
 const StampModal = ({ isOpen, onClose, onSave }) => {
   const [selectedStamp, setSelectedStamp] = useState('approved');

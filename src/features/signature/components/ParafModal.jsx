@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { renderInitialsToImage } from '../utils/renderToImage';
+import { PARAF_COLORS } from '../constants/signatureColors';
 
 /**
  * @component ParafModal
@@ -14,7 +15,7 @@ const STYLES = [
   { id: 'script', label: 'ia', className: 'text-3xl italic font-light' },
 ];
 
-const COLORS = ['#334155', '#e11d48', '#2563eb', '#16a34a', '#7c3aed'];
+const COLORS = PARAF_COLORS;
 
 const ParafModal = ({ isOpen, onClose, onSave, initials = 'IA' }) => {
   const [selectedStyle, setSelectedStyle] = useState('bold');
