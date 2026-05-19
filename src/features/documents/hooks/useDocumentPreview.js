@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import { getDocumentFile, getDocumentDetail } from '../api/docService';
 import { apiFetch } from '../../../services/api';
+import { createLogger } from '../../../utils/logger';
+
+const log = createLogger('DocumentPreview');
 
 /**
  * Hook for managing the logic of Document Preview.
@@ -74,7 +78,9 @@ export const useDocumentPreview = () => {
         window.location.assign(response.data.url);
       }
     } catch (err) {
-      alert('Gagal mengunduh dokumen.');
+      // [H-1] Replace alert dengan toast.error
+      log.error('Download document failed:', err.message);
+      toast.error(err?.message || 'Gagal mengunduh dokumen.');
     }
   };
 
