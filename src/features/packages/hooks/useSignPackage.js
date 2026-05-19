@@ -5,6 +5,13 @@ import { toast } from 'react-toastify';
 import { getPackageDetails, signPackage } from '../api/packageService';
 import { getDocumentFile } from '../../documents/api/docService';
 import { createLogger } from '../../../utils/logger';
+import {
+  SIGNATURE_DEFAULT_WIDTH_RATIO,
+  SIGNATURE_DEFAULT_HEIGHT_RATIO,
+  PDF_MAX_RENDER_WIDTH_PX,
+  PDF_MIN_RENDER_WIDTH_PX,
+  REDIRECT_AFTER_TOAST_MS,
+} from '../constants/layout';
 
 const logger = createLogger('PackageDraft');
 
@@ -93,11 +100,11 @@ export const useSignPackage = (packageId) => {
           // Sekarang: redirect ke preview page (lebih intuitif daripada list)
           // dengan toast info supaya user paham apa yang terjadi.
           toast.info('Paket ini sudah selesai. Mengarahkan ke pratinjau...', {
-            autoClose: 2000,
+            autoClose: REDIRECT_AFTER_TOAST_MS,
           });
           setTimeout(() => {
             navigate(`/dashboard/packages/preview/${packageId}`, { replace: true });
-          }, 2000);
+          }, REDIRECT_AFTER_TOAST_MS);
           return;
         }
         setPackageData(pkg);
@@ -154,7 +161,7 @@ export const useSignPackage = (packageId) => {
     const targetWidth = el.clientWidth;
     if (targetWidth > 0) {
       const availableWidth = targetWidth - paddingX;
-      setContainerWidth(Math.floor(Math.max(100, Math.min(availableWidth, 800))));
+      setContainerWidth(Math.floor(Math.max(PDF_MIN_RENDER_WIDTH_PX, Math.min(availableWidth, PDF_MAX_RENDER_WIDTH_PX))));
       setIsReady(true);
     }
   }, []);
@@ -192,9 +199,6 @@ export const useSignPackage = (packageId) => {
     const clickX = (e.clientX - rect.left) / rect.width;
     const clickY = (e.clientY - rect.top) / rect.height;
 
-    // Default 25% lebar container — sama dengan personal signing
-    const defaultWidth = 0.25;
-
     const newSig = {
       // [CR-3] Pakai uuidv4() bukan Date.now() — Date.now() resolusi 1ms,
       // double-click cepat <1ms apart bisa generate ID sama -> collision
@@ -202,10 +206,10 @@ export const useSignPackage = (packageId) => {
       // riskan kalau collision antar dokumen.
       id: uuidv4(),
       pageNumber,
-      positionX: Math.max(0, Math.min(1 - defaultWidth, clickX - (defaultWidth / 2))),
+      positionX: Math.max(0, Math.min(1 - SIGNATURE_DEFAULT_WIDTH_RATIO, clickX - (SIGNATURE_DEFAULT_WIDTH_RATIO / 2))),
       positionY: Math.max(0, clickY - 0.05),
-      width: defaultWidth,
-      height: 0.1, // Placeholder, di-update otomatis oleh handleImageLoad di DraggableSignature
+      width: SIGNATURE_DEFAULT_WIDTH_RATIO,
+      height: SIGNATURE_DEFAULT_HEIGHT_RATIO, // Placeholder, di-update otomatis oleh handleImageLoad di DraggableSignature
       signatureImageUrl: currentSignature,
       method: currentMethod || 'canvas'
     };

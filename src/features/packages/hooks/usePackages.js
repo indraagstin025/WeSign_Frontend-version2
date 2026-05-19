@@ -7,6 +7,7 @@ import {
   getMyTrashPackages,
   restoreMyPackage,
 } from '../api/packageService';
+import { SEARCH_DEBOUNCE_MS } from '../constants/layout';
 
 const PAGE_SIZE = 5;
 
@@ -24,8 +25,21 @@ export const usePackages = () => {
   // ── Filter state ─────────────────────────────────────────────────────────
   // status: '', 'draft', 'completed', 'trash'
   const [status, setStatus] = useState('');
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState('');           // input value (immediate)
+  const [debouncedSearch, setDebouncedSearch] = useState(''); // dipakai untuk fetch
   const [currentPage, setCurrentPage] = useState(1);
+
+  // [M-2] Debounce search 400ms supaya tidak fire fetch tiap keystroke.
+  // User type 'invoice' (7 karakter) sebelumnya = 7 fetch berturut-turut
+  // -> ke backend + ke status counts (3x lagi per fetch). Sekarang cuma
+  // 1 fetch setelah user berhenti ketik 400ms.
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      setDebouncedSearch(search);
+      setCurrentPage(1); // reset page saat search berubah
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(handle);
+  }, [search]);
 
   // ── Modal state ──────────────────────────────────────────────────────────
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -49,7 +63,7 @@ export const usePackages = () => {
           page,
           limit: PAGE_SIZE,
           status: status || '',
-          search: search || '',
+          search: debouncedSearch || '',
         });
       }
 
@@ -78,7 +92,7 @@ export const usePackages = () => {
     } finally {
       setLoading(false);
     }
-  }, [status, search]);
+  }, [status, debouncedSearch]);
 
   // Fetch trash count secara terpisah (untuk badge di tab "Terhapus")
   const fetchTrashCount = useCallback(async () => {
@@ -111,7 +125,7 @@ export const usePackages = () => {
   useEffect(() => {
     fetchPackages(currentPage);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, search, currentPage]);
+  }, [status, debouncedSearch, currentPage]);
 
   useEffect(() => {
     fetchTrashCount();
@@ -125,8 +139,10 @@ export const usePackages = () => {
   };
 
   const handleSetSearch = (val) => {
+    // [M-2] Tidak reset page di sini — debounce effect yang akan reset
+    // setelah user berhenti ketik. Kalau di-reset di sini, list akan
+    // flicker dan loading state aneh.
     setSearch(val);
-    setCurrentPage(1);
   };
 
   const goToPage = (page) => {
