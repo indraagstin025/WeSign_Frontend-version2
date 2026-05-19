@@ -151,6 +151,11 @@ export const useDraggableSignature = (sig, containerWidth, containerHeight, onUp
     if (img && img.complete && img.naturalWidth > 0) {
       handleImageLoad({ target: img });
     }
+    // [Lint fix] handleImageLoad re-creates per render (closure atas
+    // sigRef/containerWidthRef), tapi efeknya tidak invariant — fungsi
+    // self-guard via isReadyRef. Re-run effect tiap dimensi container
+    // berubah (containerWidth/containerHeight) sudah cukup.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [containerWidth, containerHeight]);
 
   // --- RESIZE LOGIC ---
@@ -238,8 +243,15 @@ export const useDraggableSignature = (sig, containerWidth, containerHeight, onUp
     return () => cleanups.forEach(fn => fn());
   }, [isActive, onUpdatePosition, onUpdateSize, onResizeMove]);
 
+  // [Lint fix] `isResizingRef.current` di state object akan trigger
+  // react-hooks/refs rule (akses ref selama "render" hook).
+  // Solusi: expose `isResizingRef` saja (ref object, bukan .current),
+  // consumer bisa baca `.current` di handler/effect kalau perlu.
+  // Saat ini consumer DraggableSignature tidak pakai `isResizing` value
+  // di JSX, jadi ini safe untuk di-remove dari return shape.
+
   return {
-    state: { nodeRef, handleNWRef, handleNERef, handleSWRef, handleSERef, isActive, isDragging, isResizing: isResizingRef.current, localSize, controlledPosition: dragPos, isReady },
+    state: { nodeRef, handleNWRef, handleNERef, handleSWRef, handleSERef, isActive, isDragging, localSize, controlledPosition: dragPos, isReady },
     actions: {
       setIsActive, setIsDragging, handleImageLoad,
       // Setter untuk update posisi/size dari sumber eksternal (mis. event socket

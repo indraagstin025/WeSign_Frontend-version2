@@ -19,6 +19,15 @@ const SignatureCanvas = ({ isOpen, onClose, onSave, savedAssets = [], onDeleteAs
   const { state, actions } = useSignatureModal(isOpen, onSave, onClose);
   const { canvasState, activeTab } = state;
 
+  // [Lint fix] Destructure canvasState top-level supaya lint
+  // react-hooks/refs tidak salah deteksi `canvasState.isEmpty` /
+  // `canvasState.canvasRef` sebagai akses ref selama render.
+  const {
+    canvasRef: drawCanvasRef,
+    isEmpty: isCanvasEmpty,
+    color: canvasColor,
+  } = canvasState;
+
   if (!isOpen) return null;
 
   const fonts = [
@@ -163,7 +172,7 @@ const SignatureCanvas = ({ isOpen, onClose, onSave, savedAssets = [], onDeleteAs
                     <button 
                       key={color}
                       onClick={() => actions.canvasActions.setColor(color)}
-                      className={`w-7 h-7 rounded-full border-2 transition-all cursor-pointer ${canvasState.color === color ? 'border-zinc-400 dark:border-white ring-2 ring-zinc-400/20' : 'border-transparent hover:scale-110'}`}
+                      className={`w-7 h-7 rounded-full border-2 transition-all cursor-pointer ${canvasColor === color ? 'border-zinc-400 dark:border-white ring-2 ring-zinc-400/20' : 'border-transparent hover:scale-110'}`}
                       style={{ backgroundColor: color }}
                     />
                   ))}
@@ -177,11 +186,11 @@ const SignatureCanvas = ({ isOpen, onClose, onSave, savedAssets = [], onDeleteAs
                 <div className="flex-1 flex flex-col gap-4 min-h-[240px] sm:min-h-0">
                   <div className="relative flex-1 bg-white rounded-2xl border border-zinc-100 dark:border-zinc-700 overflow-hidden" style={{ touchAction: 'none' }}>
                     <canvas 
-                      ref={canvasState.canvasRef}
+                      ref={drawCanvasRef}
                       {...actions.canvasActions.mouseHandlers}
                       className="w-full h-full cursor-crosshair bg-white"
                     />
-                    {canvasState.isEmpty && (
+                    {isCanvasEmpty && (
                       <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-zinc-400 dark:text-zinc-600 font-medium select-none">
                         Gunakan kursor atau jari Anda untuk menggambar
                       </div>
@@ -194,7 +203,7 @@ const SignatureCanvas = ({ isOpen, onClose, onSave, savedAssets = [], onDeleteAs
                         <button 
                           key={color}
                           onClick={() => actions.canvasActions.setColor(color)}
-                          className={`w-6 h-6 rounded-full border-2 transition-all cursor-pointer ${canvasState.color === color ? 'border-zinc-400 dark:border-white ring-2 ring-zinc-400/20' : 'border-transparent hover:scale-110'}`}
+                          className={`w-6 h-6 rounded-full border-2 transition-all cursor-pointer ${canvasColor === color ? 'border-zinc-400 dark:border-white ring-2 ring-zinc-400/20' : 'border-transparent hover:scale-110'}`}
                           style={{ backgroundColor: color }}
                         />
                       ))}

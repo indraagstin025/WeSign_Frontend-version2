@@ -9,8 +9,6 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url,
 ).toString();
 
-import { useTheme } from '../../../hooks/useTheme';
-
 // Import CSS react-pdf
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
@@ -44,7 +42,6 @@ import DateFieldModal from '../components/DateFieldModal';
 const DocumentSigningPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { theme, toggleTheme } = useTheme();
   
   // [L-1] Pakai shared hook useInteractionMode (sebelumnya state duplikat
   // di 3 signing pages). Saat ini hanya read mode (interactionMode) — kalau
