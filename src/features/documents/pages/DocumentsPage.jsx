@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { FileText, RefreshCcw, Plus, Search, SlidersHorizontal, RotateCcw, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { FileText, RefreshCcw, Plus, Search, RotateCcw, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useDocuments } from '../hooks/useDocuments';
 import { useDocumentTypes } from '../hooks/useDocumentTypes';
 import DocumentTable from '../components/DocumentTable';
@@ -25,10 +25,37 @@ const DocumentsPage = () => {
   const documentTypes = useDocumentTypes();
   const [typeFilter, setTypeFilter] = useState('');
 
+  // [M-6] Debounced search input — sync ke filters.search (yang trigger
+  // API fetch) hanya 400ms setelah user berhenti ketik. Sebelumnya tiap
+  // keystroke fire API call → spam request + flicker UI.
+  const [searchInput, setSearchInput] = useState(filters.search);
+  useEffect(() => {
+    const id = setTimeout(() => {
+      if (searchInput !== filters.search) {
+        filters.setSearch(searchInput);
+        filters.setPage(1);
+      }
+    }, 400);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchInput]);
+
+  // [M-4] Sort logic — sebelumnya select hanya UI tanpa logic. Apply
+  // client-side ke filteredDocuments setelah filter type. Catatan: server
+  // sudah default sort by createdAt desc (Terbaru), jadi 'Terbaru' = noop.
   const filteredDocuments = useMemo(() => {
-    if (!typeFilter) return documents;
-    return documents.filter((d) => d.type === typeFilter);
-  }, [documents, typeFilter]);
+    let result = documents;
+    if (typeFilter) {
+      result = result.filter((d) => d.type === typeFilter);
+    }
+    if (sortBy === 'Terlama') {
+      result = [...result].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    } else if (sortBy === 'A-Z') {
+      result = [...result].sort((a, b) => (a.title || '').localeCompare(b.title || '', 'id'));
+    }
+    // 'Terbaru' = pakai server default order (sudah desc)
+    return result;
+  }, [documents, typeFilter, sortBy]);
 
   const countByStatus = (status) => {
     if (status === 'trash') return trashCount;
@@ -76,8 +103,8 @@ const DocumentsPage = () => {
             <input
               type="text"
               placeholder="Cari dokumen..."
-              value={filters.search}
-              onChange={(e) => { filters.setSearch(e.target.value); filters.setPage(1); }}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               className="w-full pl-8 pr-3 py-2 text-[12px] bg-zinc-50 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-zinc-700 dark:text-zinc-200 transition-all"
             />
           </div>
@@ -112,12 +139,12 @@ const DocumentsPage = () => {
             <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
           </div>
 
-          <button className="flex items-center gap-1.5 px-3 py-2 text-[12px] text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-200 bg-zinc-50 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 rounded-lg cursor-pointer transition-all bg-transparent">
-            <SlidersHorizontal size={13} /> Filter Lainnya
-          </button>
+          {/* [M-5] Hapus button "Filter Lainnya" yang tidak punya onClick
+              handler — placeholder dead UI. Reactivate kalau panel filter
+              advanced sudah didesain. */}
 
           <button
-            onClick={() => { filters.setSearch(''); filters.setStatus(''); filters.setPage(1); setTypeFilter(''); }}
+            onClick={() => { setSearchInput(''); filters.setSearch(''); filters.setStatus(''); filters.setPage(1); setTypeFilter(''); }}
             className="flex items-center gap-1.5 px-3 py-2 text-[12px] text-emerald-600 hover:text-emerald-700 bg-transparent border-none cursor-pointer transition-all ml-auto"
           >
             <RotateCcw size={12} /> Reset
