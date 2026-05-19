@@ -4,13 +4,7 @@ import {
   Trash2, PenTool, FileEdit, History, RotateCcw,
 } from 'lucide-react';
 import { useDocumentTable } from '../hooks/useDocumentTable';
-
-const STATUS_BADGE = {
-  draft:     { label: 'Draft',   cls: 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400' },
-  pending:   { label: 'Proses',  cls: 'bg-amber-50 text-amber-600 border border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20' },
-  completed: { label: 'Selesai', cls: 'bg-emerald-50 text-emerald-600 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20' },
-  archived:  { label: 'Arsip',   cls: 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400' },
-};
+import { getDocumentStatus } from '../constants/documentStatus';
 
 const DocumentTable = ({ documents, onAction, modals = {}, isTrashMode = false }) => {
   const { state, helpers } = useDocumentTable(onAction);
@@ -51,7 +45,7 @@ const DocumentTable = ({ documents, onAction, modals = {}, isTrashMode = false }
 
         {/* Rows */}
         {documents.map((doc, index) => {
-          const badge = STATUS_BADGE[doc.status?.toLowerCase()] || STATUS_BADGE.draft;
+          const badge = getDocumentStatus(doc.status);
           return (
             <div
               key={doc.id}
@@ -115,7 +109,7 @@ const DocumentTable = ({ documents, onAction, modals = {}, isTrashMode = false }
       {/* ── MOBILE LIST ───────────────────────────────────────────── */}
       <div className="lg:hidden divide-y divide-zinc-50 dark:divide-zinc-800">
         {documents.map((doc) => {
-          const badge = STATUS_BADGE[doc.status?.toLowerCase()] || STATUS_BADGE.draft;
+          const badge = getDocumentStatus(doc.status);
           return (
             <div
               key={doc.id}
