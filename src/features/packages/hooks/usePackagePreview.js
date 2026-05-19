@@ -150,6 +150,7 @@ export const usePackagePreview = (packageId) => {
     setPageNumber,
     setNumPages,
     loadError,
+    setLoadError,
     containerRef,
     containerWidth,
     isReady,

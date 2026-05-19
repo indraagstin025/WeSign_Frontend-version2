@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import { 
   AlertCircle,
   ChevronRight,
-  ChevronLeft,
   X,
   FileText,
   Download,
@@ -19,7 +19,6 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url,
 ).toString();
 
-import { useTheme } from '../../../hooks/useTheme';
 import { usePackagePreview } from '../hooks/usePackagePreview';
 import { getDocumentFile } from '../../documents/api/docService';
 
@@ -39,7 +38,6 @@ import MobilePackageBottomSheet from '../components/MobilePackageBottomSheet';
 const PackagePreviewPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { theme, toggleTheme } = useTheme();
   
   // Rendering State (Anti-Glitch)
   const [isRendering, setIsRendering] = useState(false);
@@ -61,6 +59,7 @@ const PackagePreviewPage = () => {
     setPageNumber,
     setNumPages,
     loadError,
+    setLoadError,
     containerRef,
     containerWidth,
     isReady,
@@ -68,24 +67,30 @@ const PackagePreviewPage = () => {
 
     // Actions
     nextDocument,
-    prevDocument,
     goToDocument,
     toggleAuditTrail
   } = usePackagePreview(id);
 
   // Logic for buttons
   const isLastDoc = currentIndex === documents.length - 1;
-  const isFirstDoc = currentIndex === 0;
 
   const handleDownload = async () => {
     if (!activeDoc?.docVersion?.document?.id) return;
     try {
       const response = await getDocumentFile(activeDoc.docVersion.document.id, 'download');
-      if (response.success && response.url) {
-        window.location.assign(response.url);
+      // [H-5] Sebelumnya cek `response.success` — typo. apiFetch return
+      // shape `{ status: 'success', data: { url } }`, jadi `response.success`
+      // selalu undefined → block tidak pernah eksekusi → user klik tombol
+      // unduh tapi tidak terjadi apa-apa (silent fail).
+      if (response?.status === 'success' && response.data?.url) {
+        window.location.assign(response.data.url);
+      } else {
+        throw new Error('Tidak menemukan URL unduhan dari server.');
       }
     } catch (err) {
-      alert('Gagal mengunduh dokumen.');
+      // [H-4] Sebelumnya pakai alert() — block UI thread. Pakai toast.error
+      // konsisten dengan pattern di seluruh aplikasi.
+      toast.error(err?.message || 'Gagal mengunduh dokumen.');
     }
   };
 
