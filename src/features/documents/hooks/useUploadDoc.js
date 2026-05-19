@@ -32,47 +32,62 @@ export const useUploadDoc = (onSuccess, onClose) => {
   const [success, setSuccess] = useState(false);
 
   /**
-   * Internal helper for local PDF validation
+   * Internal helper for local PDF validation.
+   *
+   * [H-3] Pakai File.arrayBuffer() native Promise API alih-alih FileReader.
+   * Sebelumnya `FileReader.onload` callback-based — handler validation
+   * jalan sinkron di main thread saat callback fire. Untuk file PDF
+   * besar (mendekati 10 MB cap), parsing data ke Uint8Array + pdfjs
+   * getDocument() bisa block UI 200-500ms (jank).
+   *
+   * `file.arrayBuffer()` modern (Chrome 76+, Firefox 69+, Safari 14+)
+   * native return Promise — browser bisa schedule read di background
+   * thread. Plus pdfjs sudah handle worker offload internal saat
+   * `disableWorker: false`, jadi parsing PDF tidak block main thread.
    */
   const validatePdfLocally = async (selectedFile) => {
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        const data = new Uint8Array(e.target.result);
-        try {
-          const loadingTask = pdfjs.getDocument({ 
-            data,
-            disableWorker: false,
-            password: '', 
-            disableAutoFetch: true 
-          });
+    let data;
+    try {
+      const buffer = await selectedFile.arrayBuffer();
+      data = new Uint8Array(buffer);
+    } catch {
+      return { valid: false, error: 'Gagal membaca file dari penyimpanan lokal.' };
+    }
 
-          const pdf = await loadingTask.promise;
-          const page = await pdf.getPage(1);
-          const textContent = await page.getTextContent();
-          const hasText = textContent.items.length > 0;
-          
-          resolve({ valid: true, hasText });
-        } catch (err) {
-          if (err.name === 'PasswordException' || err.name === 'PasswordResponseException' || err.message?.toLowerCase().includes('password')) {
-            resolve({ 
-              valid: false, 
-              error: 'File PDF terproteksi password. Silakan hapus proteksi sebelum mengunggah.' 
-            });
-          } else if (err.message?.includes('worker')) {
-            // Fallback for environment issues
-            resolve({ valid: true, skipLocal: true });
-          } else {
-            resolve({ 
-              valid: false, 
-              error: 'Konten PDF tidak terbaca atau rusak secara struktur.' 
-            });
-          }
-        }
+    try {
+      const loadingTask = pdfjs.getDocument({
+        data,
+        disableWorker: false,
+        password: '',
+        disableAutoFetch: true,
+      });
+
+      const pdf = await loadingTask.promise;
+      const page = await pdf.getPage(1);
+      const textContent = await page.getTextContent();
+      const hasText = textContent.items.length > 0;
+
+      return { valid: true, hasText };
+    } catch (err) {
+      if (
+        err.name === 'PasswordException' ||
+        err.name === 'PasswordResponseException' ||
+        err.message?.toLowerCase().includes('password')
+      ) {
+        return {
+          valid: false,
+          error: 'File PDF terproteksi password. Silakan hapus proteksi sebelum mengunggah.',
+        };
+      }
+      if (err.message?.includes('worker')) {
+        // Fallback for environment issues
+        return { valid: true, skipLocal: true };
+      }
+      return {
+        valid: false,
+        error: 'Konten PDF tidak terbaca atau rusak secara struktur.',
       };
-      reader.onerror = () => resolve({ valid: false, error: 'Gagal membaca file dari penyimpanan lokal.' });
-      reader.readAsArrayBuffer(selectedFile);
-    });
+    }
   };
 
   /**

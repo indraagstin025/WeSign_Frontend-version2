@@ -29,14 +29,36 @@ export const useDocuments = () => {
   const [statusCounts, setStatusCounts] = useState({ all: 0, draft: 0, pending: 0, completed: 0 });
   
   // --- STATE FILTER ─────────────────────────────────────────────────────
-  // Initial value diambil dari URL `?status=` agar bisa deep-link ke tab tertentu
-  // (misal: dari toast group document delete → /dashboard/documents?status=trash).
+  // [H-4] Status sync 2-way dengan URL `?status=`:
+  //
+  // Sebelumnya: `useState(() => searchParams.get('status'))` lazy init —
+  // hanya sync URL → state SEKALI saat mount. Setelah itu state-only,
+  // perubahan URL eksternal (mis. user click link, browser back/forward,
+  // toast deeplink) tidak ter-react ke state.
+  //
+  // Fix: useState dengan default kosong, lalu useEffect read URL → state
+  // setiap kali searchParams berubah. Sync state → URL juga via useEffect
+  // terpisah supaya tidak race (URL → state useEffect bisa fire setelah
+  // state → URL useEffect saat user toggle filter, tapi guard "kalau
+  // sama, skip" mencegah infinite loop).
   const [status, setStatus] = useState(() => searchParams.get('status') || '');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
 
-  // Sync state -> URL agar bisa share/bookmark, dan agar back-button konsisten.
+  // [H-4] URL → state: ikuti perubahan URL eksternal.
   useEffect(() => {
+    const urlStatus = searchParams.get('status') || '';
+    if (urlStatus !== status) {
+      setStatus(urlStatus);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  // [H-4] state → URL: replace agar tidak menambah history entry per filter
+  // change. Guard "kalau sama, skip" untuk hindari loop dengan effect di atas.
+  useEffect(() => {
+    const urlStatus = searchParams.get('status') || '';
+    if (urlStatus === status) return;
     const params = new URLSearchParams(searchParams);
     if (status) params.set('status', status);
     else params.delete('status');

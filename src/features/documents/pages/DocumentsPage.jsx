@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { FileText, RefreshCcw, Plus, Search, SlidersHorizontal, RotateCcw, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useDocuments } from '../hooks/useDocuments';
+import { useDocumentTypes } from '../hooks/useDocumentTypes';
 import DocumentTable from '../components/DocumentTable';
 import DocumentModals from '../components/DocumentModals';
 
@@ -15,6 +16,19 @@ const STATUS_TABS = [
 const DocumentsPage = () => {
   const { documents, loading, error, meta, trashCount, statusCounts, filters, modals, actions } = useDocuments();
   const [sortBy, setSortBy] = useState('Terbaru');
+  // [H-5] Filter type pakai daftar dari useDocumentTypes (single source of
+  // truth dengan whitelist USER_ALLOWED_DOCUMENT_TYPES di backend).
+  // Sebelumnya hardcode 4 opsi inline yang bisa drift dari backend.
+  // Filter ini client-side (backend belum support `type` query param di
+  // GET /documents). Kalau nanti backend support, tinggal pindah ke
+  // useDocuments hook.
+  const documentTypes = useDocumentTypes();
+  const [typeFilter, setTypeFilter] = useState('');
+
+  const filteredDocuments = useMemo(() => {
+    if (!typeFilter) return documents;
+    return documents.filter((d) => d.type === typeFilter);
+  }, [documents, typeFilter]);
 
   const countByStatus = (status) => {
     if (status === 'trash') return trashCount;
@@ -83,12 +97,17 @@ const DocumentsPage = () => {
           </div>
 
           <div className="relative">
-            <select className="appearance-none pl-3 pr-8 py-2 text-[12px] bg-zinc-50 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 text-zinc-600 dark:text-zinc-300 cursor-pointer">
-              <option>Tipe</option>
-              <option>General</option>
-              <option>Contract</option>
-              <option>Invoice</option>
-              <option>Certificate</option>
+            {/* [H-5] Tipe options dari useDocumentTypes (sebelumnya hardcode) */}
+            <select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+              disabled={documentTypes.loading}
+              className="appearance-none pl-3 pr-8 py-2 text-[12px] bg-zinc-50 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 text-zinc-600 dark:text-zinc-300 cursor-pointer disabled:opacity-60"
+            >
+              <option value="">Tipe</option>
+              {documentTypes.types.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
             </select>
             <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
           </div>
@@ -98,7 +117,7 @@ const DocumentsPage = () => {
           </button>
 
           <button
-            onClick={() => { filters.setSearch(''); filters.setStatus(''); filters.setPage(1); }}
+            onClick={() => { filters.setSearch(''); filters.setStatus(''); filters.setPage(1); setTypeFilter(''); }}
             className="flex items-center gap-1.5 px-3 py-2 text-[12px] text-emerald-600 hover:text-emerald-700 bg-transparent border-none cursor-pointer transition-all ml-auto"
           >
             <RotateCcw size={12} /> Reset
@@ -166,8 +185,8 @@ const DocumentsPage = () => {
                 Muat Ulang
               </button>
             </div>
-          ) : documents.length > 0 ? (
-            <DocumentTable documents={documents} onAction={actions.handleAction} modals={modals} isTrashMode={filters.status === 'trash'} />
+          ) : filteredDocuments.length > 0 ? (
+            <DocumentTable documents={filteredDocuments} onAction={actions.handleAction} modals={modals} isTrashMode={filters.status === 'trash'} />
           ) : (
             <div className="flex flex-col items-center justify-center py-20 gap-5 text-center">
               <div className="w-16 h-16 bg-zinc-50 dark:bg-zinc-800 rounded-2xl flex items-center justify-center border-2 border-dashed border-zinc-200 dark:border-zinc-700">

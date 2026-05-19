@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import { getDocumentFile, getDocumentDetail } from '../api/docService';
 import { apiFetch } from '../../../services/api';
+import { createLogger } from '../../../utils/logger';
+
+const log = createLogger('DocumentPreview');
 
 /**
  * Hook for managing the logic of Document Preview.
@@ -74,7 +78,28 @@ export const useDocumentPreview = () => {
         window.location.assign(response.data.url);
       }
     } catch (err) {
-      alert('Gagal mengunduh dokumen.');
+      // [H-1] Replace alert dengan toast.error
+      log.error('Download document failed:', err.message);
+      toast.error(err?.message || 'Gagal mengunduh dokumen.');
+    }
+  };
+
+  /**
+   * [H-2] Toggle audit trail mode reactive via React Router navigate
+   * (bukan `window.location.reload()`) supaya tidak full-page reload —
+   * useEffect di atas sudah re-trigger saat `isAuditTrailMode` berubah
+   * via deps `[id, isAuditTrailMode]`.
+   *
+   * Pakai `replace: true` agar tidak menambah entry history (toggle
+   * back-and-forward jadi confusing kalau push).
+   */
+  const toggleAuditTrail = () => {
+    if (isAuditTrailMode) {
+      // Hapus query param ?mode=audit-trail
+      navigate(location.pathname, { replace: true });
+    } else {
+      // Tambah query param ?mode=audit-trail
+      navigate(`${location.pathname}?mode=audit-trail`, { replace: true });
     }
   };
 
@@ -95,13 +120,14 @@ export const useDocumentPreview = () => {
       url,
       loading,
       error,
-      isAuditTrailMode
+      isAuditTrailMode,
     },
     actions: {
       handleDownload,
       handleBack,
+      toggleAuditTrail,
       openInNewTab: () => window.open(url, '_blank'),
-      reload: () => window.location.reload()
+      reload: () => window.location.reload(),
     }
   };
 };
