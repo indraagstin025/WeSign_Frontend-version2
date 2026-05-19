@@ -27,7 +27,11 @@ const DocumentModals = ({ modals, actions }) => {
         onDownload={(docId) => actions.handleAction('download', { id: docId })}
       />
 
-      <EditDocModal 
+      <EditDocModal
+        // [Bonus #2] key=document.id agar component re-mount saat user
+        // buka edit untuk dokumen lain. Tidak butuh useEffect sync di
+        // hook (yang flagged oleh react-hooks/set-state-in-effect).
+        key={modals.edit.data?.id || 'edit-doc-modal'}
         isOpen={!!modals.edit.data}
         onClose={() => modals.edit.setOpen(null)}
         document={modals.edit.data}
