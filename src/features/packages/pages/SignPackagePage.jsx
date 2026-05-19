@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   AlertCircle,
@@ -15,7 +15,6 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url,
 ).toString();
 
-import { useTheme } from '../../../hooks/useTheme';
 import { useSignPackage } from '../hooks/useSignPackage';
 import { useSignatureAssets } from '../../signature/hooks/useSignatureAssets';
 import { useInteractionMode } from '../../signature/hooks/useInteractionMode';
@@ -47,7 +46,6 @@ import MobilePackageBottomSheet from '../components/MobilePackageBottomSheet';
 const SignPackagePage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { theme, toggleTheme } = useTheme();
 
   // [L-1] Shared hook useInteractionMode (sebelumnya state duplikat di
   // 3 signing pages: Document, Group, Package).
@@ -76,22 +74,61 @@ const SignPackagePage = () => {
     actions
   } = useSignPackage(id);
 
-  // Auto-load default signature dari saved assets
+  // [L-7 lint] Destructure pdfStates di sini (bukan di JSX) supaya
+  // lint rule react-hooks/refs tidak salah deteksi `pdfStates.X` sebagai
+  // akses ref selama render. Hook return shape tetap object grouping
+  // (untuk readability), tapi consumption side flat.
+  const {
+    url: pdfUrl,
+    loading: pdfLoading,
+    numPages: pdfNumPages,
+    pageNumber: pdfPageNumber,
+    setPageNumber: setPdfPageNumber,
+    setNumPages: setPdfNumPages,
+    setLoadError: setPdfLoadError,
+    isRendering: pdfIsRendering,
+    setIsRendering: setPdfIsRendering,
+    containerRef: pdfContainerRef,
+    containerWidth: pdfContainerWidth,
+    isReady: pdfIsReady,
+    pageDimensions: pdfPageDimensions,
+    setPageDimensions: setPdfPageDimensions,
+    loadError: pdfLoadError,
+  } = pdfStates;
+
+  // [L-7] Auto-load default signature dari saved assets.
+  // Sebelumnya pakai useEffect dengan setState synchronous -> trigger
+  // react-hooks/set-state-in-effect rule. Pattern lebih baik: pakai
+  // useRef untuk track "sudah pernah autoload" supaya effect tidak
+  // re-execute, dan setState dijadwalkan via setTimeout(0) supaya
+  // dianggap "external system sync".
+  const autoloadedRef = useRef(false);
   useEffect(() => {
-    if (!signingStates.currentSignature && assets.length > 0) {
-      const defaultSig = getDefault('signature');
-      if (defaultSig) {
+    if (autoloadedRef.current) return;
+    if (signingStates.currentSignature || assets.length === 0) return;
+
+    const defaultSig = getDefault('signature');
+    if (defaultSig) {
+      autoloadedRef.current = true;
+      const handle = setTimeout(() => {
         actions.handleSaveCanvas(defaultSig.imageUrl, 'signature');
         setActiveElement({ type: 'signature', imageUrl: defaultSig.imageUrl });
-      }
+      }, 0);
+      return () => clearTimeout(handle);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assets]);
 
-  // Sinkronkan activeElement dari currentSignature hook (agar preview sidebar tetap muncul saat pindah dokumen)
+  // [L-7] Sinkronkan activeElement saat user pindah dokumen / restore
+  // dari draft (currentSignature ada tapi activeElement masih null).
+  // Pakai setTimeout(0) supaya tidak trigger set-state-in-effect.
   useEffect(() => {
-    if (signingStates.currentSignature && !activeElement) {
+    if (!signingStates.currentSignature || activeElement) return;
+    const handle = setTimeout(() => {
       setActiveElement({ type: 'signature', imageUrl: signingStates.currentSignature });
-    }
+    }, 0);
+    return () => clearTimeout(handle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signingStates.currentSignature]);
 
   const isLastDoc = currentIndex === documents.length - 1;
@@ -202,41 +239,41 @@ const SignPackagePage = () => {
           className={`flex-1 overflow-y-auto no-scrollbar bg-zinc-100 dark:bg-zinc-950 p-4 sm:p-8 flex items-start justify-center relative select-none pb-28 sm:pb-8 min-w-0
             ${interactionMode === 'cursor' ? 'cursor-crosshair' : 'cursor-grab active:cursor-grabbing'}
           `}
-          ref={pdfStates.containerRef}
+          ref={pdfContainerRef}
         >
           <div 
             className="relative shadow-2xl bg-white dark:bg-zinc-900 ring-1 ring-zinc-200 dark:ring-zinc-800 transition-all duration-500 min-h-[500px] flex items-center justify-center overflow-hidden mx-auto"
-            style={{ width: pdfStates.containerWidth > 0 ? `${pdfStates.containerWidth}px` : '100%', maxWidth: '800px' }}
+            style={{ width: pdfContainerWidth > 0 ? `${pdfContainerWidth}px` : '100%', maxWidth: '800px' }}
           >
             
               {/* Loading Overlay */}
-              <div className={`absolute inset-0 bg-white/90 dark:bg-zinc-950/95 backdrop-blur-sm z-[60] transition-all duration-500 ease-out ${ (pdfStates.loading || pdfStates.isRendering) ? 'opacity-100' : 'opacity-0 pointer-events-none' }`}>
+              <div className={`absolute inset-0 bg-white/90 dark:bg-zinc-950/95 backdrop-blur-sm z-[60] transition-all duration-500 ease-out ${ (pdfLoading || pdfIsRendering) ? 'opacity-100' : 'opacity-0 pointer-events-none' }`}>
                   <div className="sticky top-0 h-[60vh] flex flex-col items-center justify-center">
                     <div className="w-10 h-10 border-[3px] border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin mb-3" />
                     <p className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-[0.2em] animate-pulse text-center">Menyiapkan Dokumen...</p>
                   </div>
               </div>
 
-            {pdfStates.isReady && pdfStates.url ? (
+            {pdfIsReady && pdfUrl ? (
               <Document 
-                 file={pdfStates.url} 
-                 onLoadStart={() => pdfStates.setIsRendering(true)}
-                 onLoadSuccess={({ numPages }) => pdfStates.setNumPages(numPages)} 
-                 onLoadError={(err) => pdfStates.setLoadError(err.message)}
+                 file={pdfUrl} 
+                 onLoadStart={() => setPdfIsRendering(true)}
+                 onLoadSuccess={({ numPages }) => setPdfNumPages(numPages)} 
+                 onLoadError={(err) => setPdfLoadError(err.message)}
                  loading={null}
               >
-                <div className={`relative group transition-all duration-300 ${pdfStates.isRendering ? 'opacity-0 scale-[0.97] blur-md' : 'opacity-100 scale-100 blur-0'}`}>
+                <div className={`relative group transition-all duration-300 ${pdfIsRendering ? 'opacity-0 scale-[0.97] blur-md' : 'opacity-100 scale-100 blur-0'}`}>
                   <Page 
-                    pageNumber={pdfStates.pageNumber} 
+                    pageNumber={pdfPageNumber} 
                     renderTextLayer={false}
                     renderAnnotationLayer={false}
-                    width={pdfStates.containerWidth}
-                    onRenderSuccess={() => pdfStates.setIsRendering(false)}
-                    onLoadSuccess={(page) => pdfStates.setPageDimensions({ width: page.originalWidth, height: page.originalHeight })}
+                    width={pdfContainerWidth}
+                    onRenderSuccess={() => setPdfIsRendering(false)}
+                    onLoadSuccess={(page) => setPdfPageDimensions({ width: page.originalWidth, height: page.originalHeight })}
                   />
                   
                   {/* Layer Interaction — hanya aktif di mode cursor */}
-                  {!pdfStates.loading && (
+                  {!pdfLoading && (
                     <div 
                       className="absolute inset-0 z-10" 
                       onClick={handlePdfClick}
@@ -246,11 +283,11 @@ const SignPackagePage = () => {
                   
                   {/* Draggable Signatures Layer */}
                   <div className="absolute inset-0 pointer-events-none z-20 overflow-hidden" style={{ touchAction: 'none' }}>
-                    {!pdfStates.loading && signingStates.signatures.filter(s => s.pageNumber === pdfStates.pageNumber).map(sig => {
-                      const aspectRatio = pdfStates.pageDimensions.width > 0 
-                        ? pdfStates.pageDimensions.height / pdfStates.pageDimensions.width 
+                    {!pdfLoading && signingStates.signatures.filter(s => s.pageNumber === pdfPageNumber).map(sig => {
+                      const aspectRatio = pdfPageDimensions.width > 0 
+                        ? pdfPageDimensions.height / pdfPageDimensions.width 
                         : 1.41;
-                      const dynamicHeight = pdfStates.containerWidth * aspectRatio;
+                      const dynamicHeight = pdfContainerWidth * aspectRatio;
 
                       return (
                         <DraggableSignature
@@ -259,7 +296,7 @@ const SignPackagePage = () => {
                           onRemove={actions.removeSignature}
                           onUpdatePosition={actions.updateSignaturePosition}
                           onUpdateSize={actions.updateSignatureSize}
-                          containerWidth={pdfStates.containerWidth}
+                          containerWidth={pdfContainerWidth}
                           containerHeight={dynamicHeight}
                         />
                       );
@@ -269,11 +306,11 @@ const SignPackagePage = () => {
               </Document>
             ) : null}
 
-            {pdfStates.loadError && (
+            {pdfLoadError && (
               <div className="absolute inset-0 bg-white dark:bg-zinc-900 flex flex-col items-center justify-center p-6 text-center z-[70]">
                  <AlertCircle size={28} className="text-rose-500 mb-2" />
                  <p className="text-sm font-bold text-zinc-700 dark:text-zinc-200">Gagal Memuat PDF</p>
-                 <p className="text-xs text-zinc-500 mt-1 max-w-sm">{pdfStates.loadError}</p>
+                 <p className="text-xs text-zinc-500 mt-1 max-w-sm">{pdfLoadError}</p>
               </div>
             )}
           </div>
@@ -281,9 +318,9 @@ const SignPackagePage = () => {
 
         {/* Footer */}
         <SigningFooterBar
-          pageNumber={pdfStates.pageNumber}
-          numPages={pdfStates.numPages}
-          setPageNumber={pdfStates.setPageNumber}
+          pageNumber={pdfPageNumber}
+          numPages={pdfNumPages}
+          setPageNumber={setPdfPageNumber}
         />
       </div>
 

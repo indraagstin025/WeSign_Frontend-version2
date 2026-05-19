@@ -247,6 +247,7 @@ const PackagesPage = () => {
               <button
                 onClick={() => goToPage(currentPage - 1)}
                 disabled={currentPage === 1}
+                aria-label="Halaman sebelumnya"
                 className="w-7 h-7 rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-400 hover:text-zinc-700 flex items-center justify-center bg-white dark:bg-zinc-900 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-all"
               >
                 <ChevronLeft size={13} />
@@ -273,6 +274,7 @@ const PackagesPage = () => {
               <button
                 onClick={() => goToPage(currentPage + 1)}
                 disabled={currentPage === totalPages}
+                aria-label="Halaman berikutnya"
                 className="w-7 h-7 rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-400 hover:text-zinc-700 flex items-center justify-center bg-white dark:bg-zinc-900 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-all"
               >
                 <ChevronRight size={13} />

@@ -3,8 +3,14 @@ import { toast } from 'react-toastify';
 import { getPackageDetails, updatePackage } from '../api/packageService';
 
 /**
- * Hook for managing the logic of the Package Info Modal.
- * Handles fetching details, editing, and deletion state.
+ * @hook usePackageInfo
+ * @description Hook untuk mengelola logika modal info paket — fetch detail,
+ * edit metadata (title + label), dan state delete confirmation.
+ *
+ * @param {boolean} isOpen - Status modal terbuka
+ * @param {object|null} pkg - Paket yang sedang ditampilkan
+ * @param {() => void} onRefresh - Callback refresh list paket di parent
+ * @param {() => void} onClose - Callback tutup modal
  */
 export const usePackageInfo = (isOpen, pkg, onRefresh, onClose) => {
   const [details, setDetails] = useState(null);
