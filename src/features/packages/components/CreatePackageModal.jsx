@@ -22,7 +22,6 @@ const CreatePackageModal = ({ isOpen, onClose, onSuccess }) => {
     setCategory,
     loading,
     error,
-    setError,
     success,
     processNewFiles,
     removeFile,

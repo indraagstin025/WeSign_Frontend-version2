@@ -112,6 +112,7 @@ const PackageTable = ({ packages, onAction, isTrashMode = false }) => {
               <div className="flex justify-end">
                 <button
                   onClick={(e) => handleOpenMenu(e, pkg.id)}
+                  aria-label={`Aksi paket ${pkg.title || 'tanpa judul'}`}
                   className="p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 bg-transparent border-none cursor-pointer text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-all"
                 >
                   <MoreVertical size={16} />

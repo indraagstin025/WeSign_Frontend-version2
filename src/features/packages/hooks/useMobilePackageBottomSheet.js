@@ -2,14 +2,18 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { SHEET_DRAG_CLOSE_THRESHOLD_PX } from '../constants/layout';
 
 /**
- * Hook to manage the logic of the Mobile Package Bottom Sheet.
- * Handles gestures (swipe-to-close), tab management, and visual animations.
+ * @hook useMobilePackageBottomSheet
+ * @description Hook untuk mengelola logika Mobile Package Bottom Sheet —
+ * gesture (swipe-to-close), tab management, dan animasi visual.
  *
  * [M-3] Race condition saat user drag: setIsAnimating(false) di onMouseDown
  * lalu setIsAnimating(true) di onMouseUp dipanggil dalam frame yang sama
  * kalau user click cepat -> React batch -> animasi flicker (kadang nyala,
  * kadang tidak). Solusi: pakai ref untuk "isAnimating" supaya update
  * sinkron tanpa render extra, lalu derive state buat sheetStyle.
+ *
+ * @param {boolean} isOpen
+ * @param {() => void} onClose
  */
 export const useMobilePackageBottomSheet = (isOpen, onClose) => {
   const dragRef = useRef({ startY: 0, currentTranslate: 0, isDragging: false });
