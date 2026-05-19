@@ -61,7 +61,6 @@ const GroupSigningPage = () => {
   const {
     documentId,
     currentUser,
-    theme,
     isSheetOpen,
     mySignatures,
     mySignatureCount,

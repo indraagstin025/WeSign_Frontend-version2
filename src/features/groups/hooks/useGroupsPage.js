@@ -78,6 +78,12 @@ export function useGroupsPage() {
   }, [fetchGroups]);
 
   // ── Realtime socket subscription ──────────────────────────────────────────
+  // [Lint fix] Sebelumnya pakai `groups.length` sebagai dep — kalau jumlah
+  // grup tetap tapi salah satu group diganti (mis. user di-kick dari A lalu
+  // join B), socket subscription tidak re-bind ke room yang benar.
+  // Pakai stringified IDs sebagai stable dep supaya subscription re-bind
+  // saat composition berubah.
+  const groupIdsKey = groups.map((g) => g.id).join(',');
   useEffect(() => {
     if (!currentUser || groups.length === 0) return;
     socketService.connect();
@@ -95,7 +101,8 @@ export function useGroupsPage() {
       socketService.off('group_document_update', silentRefresh);
       socketService.off('group_info_update', silentRefresh);
     };
-  }, [currentUser, groups.length, fetchGroups]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser, groupIdsKey, fetchGroups]);
 
   // ── Actions ───────────────────────────────────────────────────────────────
   const handleCreateGroup = async (e) => {

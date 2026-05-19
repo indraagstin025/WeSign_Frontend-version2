@@ -9,7 +9,6 @@ import { useGroupSignerProgressData } from '../hooks/useGroupSignerProgressData'
  */
 const GroupSignerProgress = ({
   groupData,
-  signatures,
   totalSigners,
   pendingSigners,
   documentId,

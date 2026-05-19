@@ -8,7 +8,7 @@ import { useUploadGroupDoc } from '../hooks/useUploadGroupDoc';
  */
 const UploadGroupDocModal = ({ isOpen, onClose, groupId, members = [], onSuccess }) => {
   const { state, actions } = useUploadGroupDoc({ groupId, members, isOpen, onSuccess, onClose });
-  const { title, file, selectedSigners, isUploading, error, isDraggingFile, willBeDraft, fileInputRef, titleMaxLength } = state;
+  const { title, file, isUploading, error, isDraggingFile, fileInputRef, titleMaxLength } = state;
 
   if (!isOpen) return null;
 
