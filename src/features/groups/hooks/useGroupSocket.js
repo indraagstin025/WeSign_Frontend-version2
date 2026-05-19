@@ -278,6 +278,14 @@ export const useGroupSocket = ({
       // mount dimulai dengan tracker bersih (selain reset di setup).
       alertedSignersRef.current.clear();
     };
+    // [Lint] State setters (setSignatures, setPendingSigners, setReadyToFinalize,
+    // setDocumentStatus, setStatusModal) adalah hasil dari useState di parent
+    // komponen — mereka guaranteed stable identity oleh React (tidak berubah
+    // antar render). Memasukkan ke deps array akan trigger re-bind socket
+    // listener yang tidak perlu (mahal — disconnect/reconnect). Effect ini
+    // intentionally hanya re-bind saat documentId/groupId/currentUserId/ready
+    // berubah.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [documentId, groupId, currentUserId, ready]);
 
   return { activeUsers, socketStatus };

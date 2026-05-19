@@ -135,7 +135,10 @@ export function useGroupSigningPage() {
         category: ['canvas', 'signature', 'initial', 'date'].includes(currentMethod) ? 'signing' : 'annotation',
       });
     },
-    [canSign, currentSignature, mySignatures.length, pageNumber, handleAddSignature, setIsCanvasOpen, setStatusModal]
+    // [Lint fix] tambah `currentMethod` ke deps — sebelumnya inferred dependency
+    // tidak match dengan source dependencies dan trigger
+    // react-hooks/preserve-manual-memoization rule.
+    [canSign, currentSignature, mySignatures.length, pageNumber, currentMethod, handleAddSignature, setIsCanvasOpen, setStatusModal]
   );
 
   // ── Navigation ────────────────────────────────────────────────────────────
