@@ -19,26 +19,43 @@ const DraggableSignature = ({
     onUpdateSize
   );
 
+  // [Lint fix] Destructure state di top-level supaya lint rule
+  // react-hooks/refs tidak salah deteksi `state.X` sebagai akses ref
+  // selama render. Hook return shape tetap object grouping (untuk
+  // readability), tapi consumption side flat.
+  const {
+    nodeRef,
+    handleNWRef,
+    handleNERef,
+    handleSWRef,
+    handleSERef,
+    isActive,
+    isDragging,
+    localSize,
+    controlledPosition,
+    isReady,
+  } = state;
+
   const handleBase = "absolute w-3 h-3 bg-[#3b82f6] border-2 border-white rounded-full z-[60] pointer-events-auto shadow-sm active:scale-125 transition-all";
   
   // Sekarang visual sepenuhnya bergantung pada isActive (klik)
-  const isVisible = state.isActive || state.isDragging;
+  const isVisible = isActive || isDragging;
 
   const handleVisibleClass = isVisible 
     ? "opacity-100 scale-100" 
     : "opacity-0 scale-75 transition-all"; // Hapus group-hover
 
-  let outerBorderClass = state.isActive 
+  let outerBorderClass = isActive 
     ? "border border-blue-500 bg-white/40 shadow-sm z-50 p-4" 
     : "border border-transparent z-20 p-4"; // Hapus hover:border-blue
 
   return (
     <Draggable
-      nodeRef={state.nodeRef}
+      nodeRef={nodeRef}
       bounds="parent"
       position={{ 
-        x: Math.round(state.controlledPosition.x), 
-        y: Math.round(state.controlledPosition.y) 
+        x: Math.round(controlledPosition.x), 
+        y: Math.round(controlledPosition.y) 
       }}
       cancel=".resize-handle, .delete-btn"
       onStart={actions.onDragStart}
@@ -46,16 +63,16 @@ const DraggableSignature = ({
       onStop={actions.onDragStop}
     >
       <div 
-        ref={state.nodeRef}
+        ref={nodeRef}
         // Hanya trigger isActive saat klik
         onMouseDown={(e) => { e.stopPropagation(); actions.setIsActive(true); }}
         onTouchStart={(e) => { e.stopPropagation(); actions.setIsActive(true); }}
         onClick={(e) => { e.stopPropagation(); actions.setIsActive(true); }}
         // HAPUS onMouseEnter & onMouseLeave di sini
-        className={`absolute group cursor-grab active:cursor-grabbing pointer-events-auto flex flex-col items-center justify-center transition-opacity duration-300 box-border ${state.isReady ? 'opacity-100' : 'opacity-0'} ${outerBorderClass}`}
+        className={`absolute group cursor-grab active:cursor-grabbing pointer-events-auto flex flex-col items-center justify-center transition-opacity duration-300 box-border ${isReady ? 'opacity-100' : 'opacity-0'} ${outerBorderClass}`}
         style={{
-          width: state.localSize.width,
-          height: state.localSize.height,
+          width: localSize.width,
+          height: localSize.height,
           left: 0,
           top: 0,
           touchAction: 'none',
@@ -72,12 +89,12 @@ const DraggableSignature = ({
         </div>
 
         {/* Handles & Inner Image (Tetap Sama) */}
-        <div ref={state.handleNWRef} className={`resize-handle ${handleBase} ${handleVisibleClass} -top-1.5 -left-1.5 cursor-nwse-resize`} style={{ touchAction: 'none' }} />
-        <div ref={state.handleNERef} className={`resize-handle ${handleBase} ${handleVisibleClass} -top-1.5 -right-1.5 cursor-nesw-resize`} style={{ touchAction: 'none' }} />
-        <div ref={state.handleSWRef} className={`resize-handle ${handleBase} ${handleVisibleClass} -bottom-1.5 -left-1.5 cursor-nesw-resize`} style={{ touchAction: 'none' }} />
-        <div ref={state.handleSERef} className={`resize-handle ${handleBase} ${handleVisibleClass} -bottom-1.5 -right-1.5 cursor-nwse-resize`} style={{ touchAction: 'none' }} />
+        <div ref={handleNWRef} className={`resize-handle ${handleBase} ${handleVisibleClass} -top-1.5 -left-1.5 cursor-nwse-resize`} style={{ touchAction: 'none' }} />
+        <div ref={handleNERef} className={`resize-handle ${handleBase} ${handleVisibleClass} -top-1.5 -right-1.5 cursor-nesw-resize`} style={{ touchAction: 'none' }} />
+        <div ref={handleSWRef} className={`resize-handle ${handleBase} ${handleVisibleClass} -bottom-1.5 -left-1.5 cursor-nesw-resize`} style={{ touchAction: 'none' }} />
+        <div ref={handleSERef} className={`resize-handle ${handleBase} ${handleVisibleClass} -bottom-1.5 -right-1.5 cursor-nwse-resize`} style={{ touchAction: 'none' }} />
 
-        <div className={`w-full h-full flex items-center justify-center transition-all duration-200 rounded-none box-border ${state.isActive ? "bg-white/50 border border-[#f87171]" : "border border-[#f87171]/40"}`}>
+        <div className={`w-full h-full flex items-center justify-center transition-all duration-200 rounded-none box-border ${isActive ? "bg-white/50 border border-[#f87171]" : "border border-[#f87171]/40"}`}>
           <img 
             src={sig.signatureImageUrl} 
             alt="Signature" 

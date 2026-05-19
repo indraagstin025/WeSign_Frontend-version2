@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import { useSignatureCanvas } from './useSignatureCanvas';
 
@@ -64,7 +64,6 @@ export const useSignatureModal = (isOpen, onSave, onClose) => {
   const [initials, setInitials] = useState('');
   const [typedName, setTypedName] = useState('');
   const [selectedFont, setSelectedFont] = useState('font-dancing');
-  const typeCanvasRef = useRef(null);
   const [uploadedImage, setUploadedImage] = useState(null);
 
   const { state: canvasState, actions: canvasActions } = useSignatureCanvas(
