@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, FileEdit, Save, AlertCircle, Tag } from 'lucide-react';
+import { X, FileEdit, Save, AlertCircle, Tag, Loader2 } from 'lucide-react';
 import { useEditDoc } from '../hooks/useEditDoc';
 import { useDocumentTypes } from '../hooks/useDocumentTypes';
 
@@ -118,9 +118,5 @@ const EditDocModal = ({
     </div>
   );
 };
-
-const Loader2 = ({ size, className }) => (
-  <div className={`w-${size/4} h-${size/4} border-2 border-white/20 border-t-white rounded-full animate-spin ${className}`} style={{ width: size, height: size }} />
-);
 
 export default EditDocModal;

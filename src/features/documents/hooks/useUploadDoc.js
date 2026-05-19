@@ -1,25 +1,25 @@
 import { useState } from 'react';
-import { uploadDocument } from '../api/docService';
 import { pdfjs } from 'react-pdf';
+import { uploadDocument } from '../api/docService';
+import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from '../constants/uploadLimits';
+import { createLogger } from '../../../utils/logger';
 
-// Global worker configuration for pdfjs (Vite Compatible)
+// Konfigurasi worker pdfjs (kompatibel dengan Vite).
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.min.mjs',
   import.meta.url,
 ).toString();
 
-/**
- * Batas ukuran upload sisi klien (defensive UX cap).
- * Backend punya `MAX_FILE_SIZE` 1 GB, tapi frontend sengaja menahan di 10 MB
- * untuk menghemat bandwidth pemakai & menolak file besar lebih cepat.
- * Ubah dua konstanta ini bersamaan agar pesan error tetap konsisten.
- */
-const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
-const MAX_UPLOAD_LABEL = '10 MB';
+// [L-7] Scoped logger agar console output konsisten dengan service lain.
+const log = createLogger('UploadDoc');
 
 /**
- * Hook for managing the logic of Document Uploading.
- * Centralizes PDF validation, progress tracking, and API integration.
+ * @hook useUploadDoc
+ * @description Hook untuk mengelola form upload dokumen PDF.
+ * Centralize: validasi PDF lokal, progress tracking, dan integrasi API.
+ *
+ * @param {() => void} onSuccess - Callback saat upload sukses
+ * @param {() => void} onClose - Callback saat modal ditutup
  */
 export const useUploadDoc = (onSuccess, onClose) => {
   const [file, setFile] = useState(null);
@@ -32,18 +32,17 @@ export const useUploadDoc = (onSuccess, onClose) => {
   const [success, setSuccess] = useState(false);
 
   /**
-   * Internal helper for local PDF validation.
+   * Validasi PDF lokal sebelum upload.
    *
    * [H-3] Pakai File.arrayBuffer() native Promise API alih-alih FileReader.
-   * Sebelumnya `FileReader.onload` callback-based — handler validation
+   * Sebelumnya FileReader.onload callback-based — handler validation
    * jalan sinkron di main thread saat callback fire. Untuk file PDF
-   * besar (mendekati 10 MB cap), parsing data ke Uint8Array + pdfjs
-   * getDocument() bisa block UI 200-500ms (jank).
+   * besar (mendekati cap), parsing ke Uint8Array + pdfjs.getDocument()
+   * bisa block UI 200-500ms (jank).
    *
-   * `file.arrayBuffer()` modern (Chrome 76+, Firefox 69+, Safari 14+)
-   * native return Promise — browser bisa schedule read di background
-   * thread. Plus pdfjs sudah handle worker offload internal saat
-   * `disableWorker: false`, jadi parsing PDF tidak block main thread.
+   * file.arrayBuffer() modern (Chrome 76+, Firefox 69+, Safari 14+) native
+   * return Promise. Browser bisa schedule read di background thread. pdfjs
+   * juga sudah handle worker offload saat disableWorker:false.
    */
   const validatePdfLocally = async (selectedFile) => {
     let data;
@@ -80,7 +79,7 @@ export const useUploadDoc = (onSuccess, onClose) => {
         };
       }
       if (err.message?.includes('worker')) {
-        // Fallback for environment issues
+        // Fallback untuk masalah environment (mis. worker tidak load)
         return { valid: true, skipLocal: true };
       }
       return {
@@ -91,13 +90,13 @@ export const useUploadDoc = (onSuccess, onClose) => {
   };
 
   /**
-   * Main file processing logic
+   * Logic utama untuk proses file yang dipilih user.
    */
   const processSelectedFile = async (selectedFile) => {
     setError(null);
     setFile(null);
 
-    // 1. Basic format & size check
+    // 1. Cek format & ukuran file dasar
     if (selectedFile.type !== 'application/pdf' && !selectedFile.name.toLowerCase().endsWith('.pdf')) {
       setError('Hanya diperbolehkan dokumen PDF.');
       return;
@@ -111,7 +110,7 @@ export const useUploadDoc = (onSuccess, onClose) => {
       return;
     }
 
-    // 2. Local PDF Content Validation
+    // 2. Validasi konten PDF lokal
     setValidating(true);
     try {
       const validation = await validatePdfLocally(selectedFile);
@@ -124,12 +123,15 @@ export const useUploadDoc = (onSuccess, onClose) => {
         return;
       }
 
-      // 3. Success -> Prepare for next step
+      // 3. Sukses → siapkan untuk submit
       setFile(selectedFile);
       if (!title) {
-        setTitle(selectedFile.name.replace(/\.[^/.]+$/, ""));
+        setTitle(selectedFile.name.replace(/\.[^/.]+$/, ''));
       }
     } catch (err) {
+      // [Bonus #3] Sebelumnya `err` di-catch tapi tidak dipakai (lint
+      // no-unused-vars). Sekarang log untuk debugging dengan prefix scope.
+      log.error('PDF validation unexpected error:', err?.message || err);
       setError('Gagal memvalidasi konten PDF.');
     } finally {
       setValidating(false);
@@ -137,7 +139,7 @@ export const useUploadDoc = (onSuccess, onClose) => {
   };
 
   /**
-   * Submission handler
+   * Handler submit form upload.
    */
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
@@ -154,9 +156,9 @@ export const useUploadDoc = (onSuccess, onClose) => {
 
     try {
       const response = await uploadDocument(formData, {
-        onProgress: (percent) => setUploadProgress(percent)
+        onProgress: (percent) => setUploadProgress(percent),
       });
-      
+
       if (response.status === 'success') {
         setSuccess(true);
         setTimeout(() => {
@@ -165,7 +167,7 @@ export const useUploadDoc = (onSuccess, onClose) => {
         }, 1500);
       }
     } catch (err) {
-      console.error('Upload error:', err);
+      log.error('Upload error:', err.message);
       setError(err.message || 'Gagal mengunggah dokumen. Silakan periksa koneksi Anda.');
       setUploadProgress(0);
     } finally {
@@ -174,7 +176,7 @@ export const useUploadDoc = (onSuccess, onClose) => {
   };
 
   /**
-   * Reset and close
+   * Reset state dan tutup modal.
    */
   const handleClose = () => {
     if (loading || validating) return;
@@ -195,7 +197,7 @@ export const useUploadDoc = (onSuccess, onClose) => {
       validating,
       uploadProgress,
       error,
-      success
+      success,
     },
     actions: {
       setTitle,
@@ -215,7 +217,7 @@ export const useUploadDoc = (onSuccess, onClose) => {
         e.stopPropagation();
         const droppedFile = e.dataTransfer.files[0];
         if (droppedFile) processSelectedFile(droppedFile);
-      }
-    }
+      },
+    },
   };
 };

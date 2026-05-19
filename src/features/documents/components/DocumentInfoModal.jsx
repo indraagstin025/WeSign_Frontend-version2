@@ -12,7 +12,7 @@ import {
 import { useDocumentInfo } from '../hooks/useDocumentInfo';
 
 const DocumentInfoModal = ({ isOpen, onClose, document, onViewFile, onDownload }) => {
-  const { helpers } = useDocumentInfo(document);
+  const { helpers } = useDocumentInfo();
 
   if (!isOpen || !document) return null;
 
@@ -27,13 +27,18 @@ const DocumentInfoModal = ({ isOpen, onClose, document, onViewFile, onDownload }
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 drop-shadow-2xl animate-in fade-in duration-300">
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 drop-shadow-2xl animate-in fade-in duration-300"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="document-info-title"
+    >
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-zinc-900/60 dark:bg-black/80 backdrop-blur-sm" onClick={onClose} />
-      
+      <div className="absolute inset-0 bg-zinc-900/60 dark:bg-black/80 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
+
       {/* Modal Content */}
       <div className="relative w-full max-w-3xl bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl overflow-hidden border border-zinc-200 dark:border-zinc-800 animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh]">
-        
+
         {/* Header */}
         <div className="px-6 py-5 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between bg-zinc-50/50 dark:bg-zinc-900/50 shrink-0">
           <div className="flex items-center gap-3">
@@ -41,13 +46,14 @@ const DocumentInfoModal = ({ isOpen, onClose, document, onViewFile, onDownload }
               <Info size={20} />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-zinc-900 dark:text-white font-heading tracking-tight">Informasi Dokumen</h3>
+              <h3 id="document-info-title" className="text-lg font-bold text-zinc-900 dark:text-white font-heading tracking-tight">Informasi Dokumen</h3>
               <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate max-w-[200px] sm:max-w-md">{document.title}</p>
             </div>
           </div>
-          <button 
-            onClick={onClose} 
+          <button
+            onClick={onClose}
             className="p-2 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-400 dark:text-zinc-500 transition-colors cursor-pointer border-none bg-transparent"
+            aria-label="Tutup informasi dokumen"
           >
             <X size={20} />
           </button>
@@ -81,11 +87,11 @@ const DocumentInfoModal = ({ isOpen, onClose, document, onViewFile, onDownload }
             
             {document.signerRequests && document.signerRequests.length > 0 ? (
               <div className="overflow-hidden rounded-2xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50/30 dark:bg-zinc-800/20">
-                <table className="w-full text-left text-xs sm:text-sm border-collapse">
+                <table className="w-full text-left text-xs sm:text-sm border-collapse" aria-label="Daftar penanda tangan dokumen">
                   <thead className="bg-zinc-50 dark:bg-zinc-800/50">
                     <tr>
-                      <th className="px-4 py-3 font-bold text-zinc-500 dark:text-zinc-400">Nama / Email</th>
-                      <th className="px-4 py-3 font-bold text-zinc-500 dark:text-zinc-400">Status</th>
+                      <th scope="col" className="px-4 py-3 font-bold text-zinc-500 dark:text-zinc-400">Nama / Email</th>
+                      <th scope="col" className="px-4 py-3 font-bold text-zinc-500 dark:text-zinc-400">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/50">
@@ -134,10 +140,11 @@ const DocumentInfoModal = ({ isOpen, onClose, document, onViewFile, onDownload }
                       <div className="text-xs font-bold text-zinc-400 w-6">v{document.versions.length - idx}</div>
                       <div className="text-xs text-zinc-600 dark:text-zinc-400">{helpers.formatDate(v.createdAt)}</div>
                     </div>
-                    <button 
+                    <button
                       onClick={() => onDownload(document.id, v.id)}
                       className="p-1.5 text-primary hover:bg-primary/10 rounded-lg transition-colors border-none bg-transparent cursor-pointer"
                       title="Unduh Versi Ini"
+                      aria-label={`Unduh versi ${document.versions.length - idx}`}
                     >
                       <Download size={14} />
                     </button>

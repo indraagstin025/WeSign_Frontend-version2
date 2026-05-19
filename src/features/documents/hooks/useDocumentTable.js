@@ -1,24 +1,35 @@
-import { useState, useEffect, useRef } from 'react';
-import {
-  getStatusLabel as centralGetStatusLabel,
-  getStatusStyles as centralGetStatusStyles,
-} from '../constants/documentStatus';
+import { useState, useEffect } from 'react';
+import { getStatusLabel as centralGetStatusLabel } from '../constants/documentStatus';
 
 /**
- * Hook for managing the logic of Document Table.
- * Handles dropdown states and display helpers.
+ * @hook useDocumentTable
+ * @description State + helper untuk DocumentTable — kelola dropdown menu
+ * action dan handler proxy ke parent.
  *
- * [M-2] Status helper di-delegate ke constants/documentStatus.js
- * (single source of truth dengan DocumentTable + DocumentsPage).
+ * [M-2] Status helper di-delegate ke `constants/documentStatus.js`.
+ * [L-4] `getStatusStyles` dan `menuRef` dihapus karena tidak dipakai
+ * konsumer (DocumentTable.jsx). Konsumer cukup pakai `helpers.getStatusLabel`
+ * dan `state.openMenuId`/`setOpenMenuId`.
+ *
+ * @param {(type: string, doc: object) => void} onAction - Callback action
+ * @returns {{
+ *   state: { openMenuId: string|null, setOpenMenuId: Function },
+ *   helpers: {
+ *     getStatusLabel: (status: string) => string,
+ *     formatDate: (dateString: string) => string,
+ *     handleAction: (type: string, doc: object) => void
+ *   }
+ * }}
  */
 export const useDocumentTable = (onAction) => {
   const [openMenuId, setOpenMenuId] = useState(null);
-  const menuRef = useRef(null);
 
-  // Close menu when clicking outside
+  // Tutup menu saat klik di luar component table
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
+      // Cek via event target. Konsumer bisa stopPropagation di tombol
+      // toggle menu untuk hindari close immediate.
+      if (!event.target.closest('[data-document-menu]')) {
         setOpenMenuId(null);
       }
     };
@@ -27,24 +38,23 @@ export const useDocumentTable = (onAction) => {
   }, []);
 
   // [M-2] Re-export helper dari constants — backward-compat untuk konsumer
-  // yang destructure helpers.{getStatusLabel, getStatusStyles}.
-  const getStatusStyles = centralGetStatusStyles;
+  // yang destructure `helpers.getStatusLabel`.
   const getStatusLabel = centralGetStatusLabel;
 
   /**
-   * Helper for Indonesian date formatting
+   * Format tanggal ISO ke format Bahasa Indonesia singkat "1 Jan 2026".
    */
   const formatDate = (dateString) => {
     if (!dateString) return '-';
     return new Date(dateString).toLocaleDateString('id-ID', {
       day: 'numeric',
       month: 'short',
-      year: 'numeric'
+      year: 'numeric',
     });
   };
 
   /**
-   * Wrapper for actions that closes the menu after trigger
+   * Wrapper action yang juga close menu setelah trigger.
    */
   const handleAction = (type, doc) => {
     onAction(type, doc);
@@ -55,13 +65,11 @@ export const useDocumentTable = (onAction) => {
     state: {
       openMenuId,
       setOpenMenuId,
-      menuRef
     },
     helpers: {
-      getStatusStyles,
       getStatusLabel,
       formatDate,
-      handleAction
-    }
+      handleAction,
+    },
   };
 };
