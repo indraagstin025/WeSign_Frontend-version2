@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Plus, Search, Layers, RefreshCcw, SlidersHorizontal, RotateCcw, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Plus, Search, Layers, RefreshCcw, RotateCcw, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { usePackages } from '../hooks/usePackages';
 import PackageTable from '../components/PackageTable';
 import CreatePackageModal from '../components/CreatePackageModal';
@@ -21,6 +21,25 @@ const PackagesPage = () => {
   const [sortBy, setSortBy] = useState('Terbaru');
 
   const { currentPage, totalPages, total, showPagination, goToPage } = pagination;
+
+  // [H-6] Sort client-side untuk page aktif. Sebelumnya `sortBy` cuma
+  // controlled-state tanpa effect — UI berubah, data tidak. Pakai useMemo
+  // supaya tidak re-sort tiap render kalau packages identik.
+  // Catatan: ini sort di sisi client untuk page aktif saja. Untuk sort
+  // global lintas-page perlu query param ke backend (cross-team work).
+  const sortedPackages = useMemo(() => {
+    if (!packages?.length) return packages;
+    const arr = [...packages];
+    switch (sortBy) {
+      case 'Terlama':
+        return arr.sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
+      case 'A-Z':
+        return arr.sort((a, b) => (a.title || '').localeCompare(b.title || '', 'id'));
+      case 'Terbaru':
+      default:
+        return arr.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    }
+  }, [packages, sortBy]);
 
   // Counter independen dari view aktif — di-fetch terpisah di hook.
   const countByStatus = (status) => {
@@ -113,11 +132,6 @@ const PackagesPage = () => {
             <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
           </div>
 
-          {/* Filter lainnya */}
-          <button className="flex items-center gap-1.5 px-3 py-2 text-[12px] text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-200 bg-zinc-50 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 rounded-lg cursor-pointer transition-all bg-transparent">
-            <SlidersHorizontal size={13} /> Filter Lainnya
-          </button>
-
           {/* Reset */}
           <button
             onClick={() => { filters.setSearch(''); actions.setStatus?.(''); }}
@@ -192,7 +206,7 @@ const PackagesPage = () => {
               </button>
             </div>
           ) : packages.length > 0 ? (
-            <PackageTable packages={packages} onAction={actions.handleAction} isTrashMode={isTrashMode} />
+            <PackageTable packages={sortedPackages} onAction={actions.handleAction} isTrashMode={isTrashMode} />
           ) : (
             <div className="flex flex-col items-center justify-center py-20 gap-5 text-center">
               <div className="w-16 h-16 bg-zinc-50 dark:bg-zinc-800 rounded-2xl flex items-center justify-center border-2 border-dashed border-zinc-200 dark:border-zinc-700">
