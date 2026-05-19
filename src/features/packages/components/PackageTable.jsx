@@ -1,20 +1,7 @@
 import React, { useState } from 'react';
 import { MoreVertical, Trash2, Eye, Download, Layers, PenTool, FileText, Pencil, RotateCcw } from 'lucide-react';
 import { usePackageTable } from '../hooks/usePackageTable';
-
-const STATUS_BADGE = {
-  draft:     { label: 'Draft',    cls: 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400' },
-  pending:   { label: 'Menunggu', cls: 'bg-amber-50 text-amber-600 border border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20' },
-  completed: { label: 'Selesai',  cls: 'bg-emerald-50 text-emerald-600 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20' },
-  archived:  { label: 'Arsip',    cls: 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400' },
-};
-
-const LABEL_BADGE = {
-  General: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
-  Legal:   'bg-blue-50 text-blue-700 border border-blue-200',
-  HR:      'bg-purple-50 text-purple-700 border border-purple-200',
-  Finance: 'bg-orange-50 text-orange-700 border border-orange-200',
-};
+import { getPackageStatusBadge, getPackageLabelClass } from '../constants/packageStatus';
 
 const PackageTable = ({ packages, onAction, isTrashMode = false }) => {
   const { openMenuId, setOpenMenuId, menuRef, helpers, handleActionClick } = usePackageTable(onAction);
@@ -56,8 +43,8 @@ const PackageTable = ({ packages, onAction, isTrashMode = false }) => {
 
         {/* Rows */}
         {packages.map((pkg, index) => {
-          const badge = STATUS_BADGE[pkg.status?.toLowerCase()] || STATUS_BADGE.draft;
-          const labelCls = LABEL_BADGE[pkg.label] || 'bg-zinc-50 text-zinc-500 border border-zinc-200';
+          const badge = getPackageStatusBadge(pkg.status);
+          const labelCls = getPackageLabelClass(pkg.label);
           const signedCount = pkg.signedCount || 0;
           const docCount = pkg.documentCount || 0;
 
@@ -138,8 +125,8 @@ const PackageTable = ({ packages, onAction, isTrashMode = false }) => {
       {/* ── MOBILE LIST ───────────────────────────────────────────── */}
       <div className="lg:hidden divide-y divide-zinc-50 dark:divide-zinc-800">
         {packages.map((pkg) => {
-          const badge = STATUS_BADGE[pkg.status?.toLowerCase()] || STATUS_BADGE.draft;
-          const labelCls = LABEL_BADGE[pkg.label] || 'bg-zinc-50 text-zinc-500 border border-zinc-200';
+          const badge = getPackageStatusBadge(pkg.status);
+          const labelCls = getPackageLabelClass(pkg.label);
           return (
             <div key={pkg.id} className="p-4 hover:bg-zinc-50/50 dark:hover:bg-zinc-800/20 transition-colors">
               <div className="flex items-start justify-between gap-3" onClick={() => onAction('info', pkg)}>

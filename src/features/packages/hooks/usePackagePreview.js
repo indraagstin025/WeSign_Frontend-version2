@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { getPackageDetails } from '../api/packageService';
 import { getDocumentFile } from '../../documents/api/docService';
 import { apiFetch } from '../../../services/api';
+import { PDF_MAX_RENDER_WIDTH_PX, PDF_MIN_RENDER_WIDTH_PX } from '../constants/layout';
 
 /**
  * @hook usePackagePreview
@@ -101,9 +102,8 @@ export const usePackagePreview = (packageId) => {
     if (targetWidth > 0) {
       const paddingAreaHorizontal = 64;
       const availableWidth = targetWidth - paddingAreaHorizontal;
-      const MAX_PDF_WIDTH = 800;
-      let optimalWidth = Math.min(availableWidth, MAX_PDF_WIDTH);
-      setContainerWidth(Math.floor(Math.max(100, optimalWidth)));
+      let optimalWidth = Math.min(availableWidth, PDF_MAX_RENDER_WIDTH_PX);
+      setContainerWidth(Math.floor(Math.max(PDF_MIN_RENDER_WIDTH_PX, optimalWidth)));
       setIsReady(true);
     }
   }, []);
