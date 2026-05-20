@@ -29,7 +29,10 @@ export const useGroupData = ({ groupId, documentId, currentUserId }) => {
     if (!groupId) return;
     setLoading(true);
     try {
-      const res = await getGroupDetail(groupId);
+      // [BE-5] Signing page butuh base64 signature image untuk render preview
+      // di DraggableSignatureGroup. Pass opt-in supaya backend include
+      // signatureImageUrl di response.
+      const res = await getGroupDetail(groupId, { includeSignatureImages: true });
       if (res.status !== 'success') throw new Error(res.message);
 
       const group = res.data;
