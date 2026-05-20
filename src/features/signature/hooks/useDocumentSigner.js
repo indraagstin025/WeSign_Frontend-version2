@@ -79,7 +79,20 @@ export const useDocumentSigner = (documentId) => {
     if (!documentId) return;
     setLoading(true);
     try {
-      const docResponse = await getDocumentDetail(documentId);
+      // [FE-4] Parallelize getDocumentDetail + getDocumentFile.
+      //   Sebelumnya sequential — frontend nunggu detail dulu sebelum minta
+      //   signed URL file. Padahal keduanya independent (file URL tidak
+      //   tergantung detail metadata). Pakai Promise.all dipotong ~50%
+      //   perceived latency.
+      //
+      //   Status check `completed` dilakukan SETELAH detail tiba — bila
+      //   completed redirect dan hasil file URL akan diabaikan (tidak
+      //   ada side effect karena setPdfUrl tidak dipanggil sebelum return).
+      const [docResponse, fileResponse] = await Promise.all([
+        getDocumentDetail(documentId),
+        getDocumentFile(documentId, 'view'),
+      ]);
+
       if (docResponse.status === 'success') {
         const docData = docResponse.data;
         if (docData.status?.toLowerCase() === 'completed') {
@@ -93,7 +106,6 @@ export const useDocumentSigner = (documentId) => {
           return;
         }
         setDocument(docData);
-        const fileResponse = await getDocumentFile(documentId, 'view');
         if (fileResponse.status === 'success' && fileResponse.data?.url) {
           setPdfUrl(fileResponse.data.url);
         }
