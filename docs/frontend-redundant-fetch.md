@@ -37,15 +37,15 @@ Plus **3 task baru** muncul karena backend menyediakan endpoint ringan dari BE-4
 
 | ID | Task | Lokasi | Effort | Status | Catatan Backend |
 |----|------|--------|--------|--------|-----------------|
-| FE-3 | Module-level cache `useDocumentTypes` TTL 30 menit | `documents/hooks/useDocumentTypes.js` | 15 menit | ⏳ Belum | Backend whitelist static, bukan DB query |
-| FE-4 | Parallelize `getDocumentDetail` + `getDocumentFile` (6 lokasi) | Multiple hooks (lihat detail FE-4) | 30 menit | ⏳ Belum | — |
-| FE-5 | SWR cache untuk `getGroupDetail` + migrate ke endpoint ringan | `groups/hooks/{useGroupData, useGroupDetailPage, ...}.js` | 1.5 jam | ⏳ Belum | **Pair dengan FE-14/15** |
-| FE-6 | Frontend cache signature assets di Context atau SWR | `signature/hooks/useSignatureAssets.js` | 30 menit | ⏳ Belum | Backend Redis P1-2 cache 24h sudah ada |
-| FE-9 | Cache `useUserQuota` di UserContext atau SWR | `user/hooks/useUserQuota.js` | 30 menit | ⏳ Belum | Impact lebih kecil — backend P1-4 cache 60s |
-| FE-10 | Pisah effect `useUserProfile` pakai `user.id` dep | `user/hooks/useUserProfile.js` | 10 menit | ⏳ Belum | — |
-| FE-11 | Kombinasi 3 fetch initial `useGroupDetailPage` di `Promise.all` | `groups/hooks/useGroupDetailPage.js` | 15 menit | ⏳ Belum | Pair dengan FE-14/15 |
-| **FE-14** ✨ | Migrate `useGroupData` ke `/groups/:id/summary` (~5KB vs 200KB) untuk view ringan | `groups/hooks/useGroupData.js` | 30 menit | ⏳ Belum | **Baru** — manfaatkan BE-4 split |
-| **FE-15** ✨ | Paginated members via `/groups/:id/members?page=&search=` | `groups/components/{GroupMembersTab, GroupSettingsModal}.jsx` | 1 jam | ⏳ Belum | **Baru** — manfaatkan BE-4 split |
+| FE-3 | Module-level cache `useDocumentTypes` TTL 30 menit | `documents/hooks/useDocumentTypes.js` | 15 menit | ✅ Selesai (commit `c5deae4`) | Backend whitelist static, bukan DB query |
+| FE-4 | Parallelize `getDocumentDetail` + `getDocumentFile` (6 lokasi) | Multiple hooks (lihat detail FE-4) | 30 menit | ✅ Selesai (commit `00946c1`) | — |
+| FE-5 | SWR cache untuk `getGroupDetail` + migrate ke endpoint ringan | `groups/hooks/{useGroupData, useGroupDetailPage, ...}.js` | 1.5 jam | ✅ Selesai (commit `00946c1`) | **Pair dengan FE-14/15** |
+| FE-6 | Frontend cache signature assets di Context atau SWR | `signature/hooks/useSignatureAssets.js` | 30 menit | ✅ Selesai (commit `00946c1`) | Backend Redis P1-2 cache 24h sudah ada |
+| FE-9 | Cache `useUserQuota` di UserContext atau SWR | `user/hooks/useUserQuota.js` | 30 menit | ✅ Selesai (commit `00946c1`) | Impact lebih kecil — backend P1-4 cache 60s |
+| FE-10 | Pisah effect `useUserProfile` pakai `user.id` dep | `user/hooks/useUserProfile.js` | 10 menit | ✅ Selesai (commit `c5deae4`) | — |
+| FE-11 | Kombinasi 3 fetch initial `useGroupDetailPage` di `Promise.all` | `groups/hooks/useGroupDetailPage.js` | 15 menit | ⚠️ Skip (3 useEffect sudah paralel + lebih maintainable) | — |
+| **FE-14** ✨ | Migrate `useGroupData` ke `/groups/:id/summary` (~5KB vs 200KB) untuk view ringan | `groups/hooks/useGroupData.js` | 30 menit | ✅ Selesai (commit `c5deae4`) | **Baru** — manfaatkan BE-4 split |
+| **FE-15** ✨ | Paginated members via `/groups/:id/members?page=&search=` | `groups/components/{GroupMembersTab, GroupSettingsModal}.jsx` | 1 jam | ✅ Selesai (commit `c5deae4`) | **Baru** — manfaatkan BE-4 split |
 
 #### 🟢 Optional / Resolved
 
