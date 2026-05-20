@@ -29,9 +29,9 @@ Plus **3 task baru** muncul karena backend menyediakan endpoint ringan dari BE-4
 
 | ID | Task | Lokasi | Effort | Status |
 |----|------|--------|--------|--------|
-| FE-1 | Dedup `getPackageDetails` antar 3 hook (cache key shared / SWR) | `packages/hooks/{usePackageInfo, usePackagePreview, useSignPackage}.js` | 1.5-2 jam | ⏳ Belum |
-| FE-2 | Optimistic update `usePackages.refresh` (5 cascade → 2 calls) | `packages/hooks/usePackages.js` | 30 menit | ⏳ Belum |
-| FE-8 | Optimistic update `useDocuments.refresh` (6 cascade → 2 calls) | `documents/hooks/useDocuments.js` | 30 menit | ⏳ Belum |
+| FE-1 | Dedup `getPackageDetails` antar 3 hook (cache key shared / SWR) | `packages/hooks/{usePackageInfo, usePackagePreview, useSignPackage}.js` | 1.5-2 jam | ✅ Selesai (commit `ffcc966`) |
+| FE-2 | Optimistic update `usePackages.refresh` (5 cascade → 2 calls) | `packages/hooks/usePackages.js` | 30 menit | ✅ Selesai (commit `ffcc966`) |
+| FE-8 | Optimistic update `useDocuments.refresh` (6 cascade → 2 calls) | `documents/hooks/useDocuments.js` | 30 menit | ✅ Selesai (commit `ffcc966`) |
 
 #### 🟡 Medium (~5-6 jam total)
 
