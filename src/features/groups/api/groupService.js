@@ -13,8 +13,21 @@ export const createGroup = (name) =>
 export const getAllGroups = () =>
   apiFetch('/groups');
 
-export const getGroupDetail = (groupId) =>
-  apiFetch(`/groups/${groupId}`);
+/**
+ * Mengambil detail grup.
+ *
+ * [BE-5] Param `includeSignatureImages` opt-in untuk fetch base64 signature
+ * image (perlu di signing page untuk render preview). Default false untuk
+ * hemat bandwidth — endpoint detail biasa cuma butuh metadata.
+ *
+ * @param {string|number} groupId
+ * @param {object} [opts]
+ * @param {boolean} [opts.includeSignatureImages=false]
+ */
+export const getGroupDetail = (groupId, { includeSignatureImages = false } = {}) => {
+  const query = includeSignatureImages ? '?includeSignatureImages=true' : '';
+  return apiFetch(`/groups/${groupId}${query}`);
+};
 
 export const updateGroup = (groupId, name) =>
   apiFetch(`/groups/${groupId}`, { method: 'PUT', body: { name } });
