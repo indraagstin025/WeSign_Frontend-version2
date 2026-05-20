@@ -7,9 +7,8 @@ import { updateProfile, updateProfilePicture, getProfilePictureHistory, deletePr
  * @description Hook kustom untuk mengambil dan memperbarui data profil pengguna.
  */
 export const useUserProfile = () => {
-    const { user, setUser, loading: globalLoading, refreshUser } = useUser();
+    const { user, setUser, loading: globalLoading } = useUser();
     const [pictureHistory, setPictureHistory] = useState([]);
-    const [loading, setLoading] = useState(false); // Local loading for actions
     const [isUpdating, setIsUpdating] = useState(false);
     const [isUploadingPicture, setIsUploadingPicture] = useState(false);
     const [error, setError] = useState(null);
@@ -39,7 +38,9 @@ export const useUserProfile = () => {
     }, []);
 
     /**
-     * Efek untuk inisialisasi data form saat user dari context tersedia.
+     * [FE-10] Effect 1: sync formData saat user object dari context berubah
+     *   (mis. setelah update profile sukses, `setUser(updatedData)` ganti
+     *   reference user). Ini efek murah (cuma copy field), aman re-fire.
      */
     useEffect(() => {
         if (user) {
@@ -50,9 +51,29 @@ export const useUserProfile = () => {
                 title: user.title || '',
                 address: user.address || ''
             });
-            fetchPictureHistory();
         }
-    }, [user, fetchPictureHistory]);
+    }, [user]);
+
+    /**
+     * [FE-10] Effect 2: fetch picture history hanya saat user.id berubah
+     *   (mount + login switch), bukan setiap user object reference berubah.
+     *
+     *   Sebelumnya kedua sync formData + fetchPictureHistory berbarengan di
+     *   1 effect dengan deps `[user, fetchPictureHistory]` → setiap update
+     *   profile (yang memanggil `setUser(updatedData)` di context) akan
+     *   re-fire effect dan hit `/users/me/pictures` berulang. Untuk user yang
+     *   edit nama 1 char, ini extra request yang tidak perlu.
+     *
+     *   Sekarang deps `user?.id` lebih stabil — picture history hanya
+     *   re-fetch saat user benar-benar berbeda (login dengan akun lain).
+     *   Untuk update history setelah upload/delete picture, handler explicit
+     *   panggil `fetchPictureHistory()` (sudah ada di handleUploadPicture,
+     *   handleSelectOldPicture, handleDeletePicture).
+     */
+    useEffect(() => {
+        if (!user?.id) return;
+        fetchPictureHistory();
+    }, [user?.id, fetchPictureHistory]);
 
     /**
      * Handler untuk perubahan input form (onChange).
@@ -217,7 +238,7 @@ export const useUserProfile = () => {
         pictureHistory,
         formData,
         fieldErrors,
-        loading: globalLoading || loading,
+        loading: globalLoading,
         isUpdating,
         isUploadingPicture,
         error,
