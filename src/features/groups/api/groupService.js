@@ -20,13 +20,65 @@ export const getAllGroups = () =>
  * image (perlu di signing page untuk render preview). Default false untuk
  * hemat bandwidth — endpoint detail biasa cuma butuh metadata.
  *
+ * [FE-5] In-flight dedup + short TTL cache (30 detik). Tiga hook (`useGroupData`,
+ *   `useGroupDocumentPreviewPage`, dll) yang fire fetch identik dalam waktu
+ *   berdekatan akan share cache. Cache bust di mutation (updateGroup,
+ *   removeMember, dll) supaya tidak return data stale setelah perubahan.
+ *
+ *   Cache key meng-include `includeSignatureImages` agar signing page (yang
+ *   butuh base64) tidak share cache dengan view biasa (yang tidak butuh).
+ *
  * @param {string|number} groupId
  * @param {object} [opts]
  * @param {boolean} [opts.includeSignatureImages=false]
  */
+const _groupDetailInFlight = new Map();
+const _groupDetailCache = new Map(); // { key: { data, expiresAt } }
+const GROUP_DETAIL_CACHE_TTL_MS = 30 * 1000;
+
+const _groupDetailKey = (groupId, withImages) =>
+  `${groupId}:${withImages ? 'full' : 'meta'}`;
+
 export const getGroupDetail = (groupId, { includeSignatureImages = false } = {}) => {
+  const key = _groupDetailKey(groupId, includeSignatureImages);
+
+  // Cache TTL hit
+  const cached = _groupDetailCache.get(key);
+  if (cached && cached.expiresAt > Date.now()) {
+    return Promise.resolve(cached.data);
+  }
+
+  // De-dup in-flight
+  const existing = _groupDetailInFlight.get(key);
+  if (existing) return existing;
+
   const query = includeSignatureImages ? '?includeSignatureImages=true' : '';
-  return apiFetch(`/groups/${groupId}${query}`);
+  const promise = apiFetch(`/groups/${groupId}${query}`)
+    .then((data) => {
+      _groupDetailCache.set(key, {
+        data,
+        expiresAt: Date.now() + GROUP_DETAIL_CACHE_TTL_MS,
+      });
+      return data;
+    })
+    .finally(() => {
+      _groupDetailInFlight.delete(key);
+    });
+
+  _groupDetailInFlight.set(key, promise);
+  return promise;
+};
+
+/**
+ * [FE-5] Bust cache untuk grup tertentu setelah mutation.
+ *   Hapus baik versi `meta` maupun `full` agar caller berikutnya fresh.
+ */
+export const invalidateGroupCache = (groupId) => {
+  if (!groupId) return;
+  _groupDetailCache.delete(_groupDetailKey(groupId, false));
+  _groupDetailCache.delete(_groupDetailKey(groupId, true));
+  _groupDetailInFlight.delete(_groupDetailKey(groupId, false));
+  _groupDetailInFlight.delete(_groupDetailKey(groupId, true));
 };
 
 /**
@@ -69,10 +121,16 @@ export const getGroupMembers = (groupId, { page = 1, limit = 20, search = '' } =
 };
 
 export const updateGroup = (groupId, name) =>
-  apiFetch(`/groups/${groupId}`, { method: 'PUT', body: { name } });
+  apiFetch(`/groups/${groupId}`, { method: 'PUT', body: { name } }).then((res) => {
+    invalidateGroupCache(groupId);
+    return res;
+  });
 
 export const deleteGroup = (groupId) =>
-  apiFetch(`/groups/${groupId}`, { method: 'DELETE' });
+  apiFetch(`/groups/${groupId}`, { method: 'DELETE' }).then((res) => {
+    invalidateGroupCache(groupId);
+    return res;
+  });
 
 // ── Invitasi ─────────────────────────────────────────────────────────────────
 
@@ -87,7 +145,10 @@ export const acceptInvitation = (token) =>
 // ── Member ────────────────────────────────────────────────────────────────────
 
 export const removeMember = (groupId, userIdToRemove) =>
-  apiFetch(`/groups/${groupId}/members/${userIdToRemove}`, { method: 'DELETE' });
+  apiFetch(`/groups/${groupId}/members/${userIdToRemove}`, { method: 'DELETE' }).then((res) => {
+    invalidateGroupCache(groupId);
+    return res;
+  });
 
 // ── Dokumen Grup ──────────────────────────────────────────────────────────────
 

@@ -32,16 +32,19 @@ export const useDocumentPreview = () => {
       try {
         setLoading(true);
         setError(null);
-        
-        // 1. Fetch metadata
-        const docResponse = await getDocumentDetail(id);
-        if (docResponse.status === 'success') {
-          setDoc(docResponse.data);
-        }
 
-        // 2. Fetch URL berdasarkan mode
+        // [FE-4] Parallelize fetch detail + URL untuk mode normal.
+        //   Untuk mode audit trail, URL endpoint berbeda dan logic-nya
+        //   lebih kompleks — tetap sequential karena cek auditTrailUrl
+        //   ada/tidak baru bisa dilakukan setelah detail tiba (tidak
+        //   sebanding di-parallel-kan untuk menghindari fetch yang
+        //   pasti gagal).
         if (isAuditTrailMode) {
-          // Mode audit trail: minta signed URL dari endpoint audit-trail
+          // Mode audit trail: sequential (audit URL bisa tidak ada)
+          const docResponse = await getDocumentDetail(id);
+          if (docResponse.status === 'success') {
+            setDoc(docResponse.data);
+          }
           const auditRes = await apiFetch(`/documents/${id}/audit-trail`);
           if (auditRes?.status === 'success' && auditRes.data?.url) {
             setUrl(auditRes.data.url);
@@ -49,8 +52,15 @@ export const useDocumentPreview = () => {
             throw new Error('Audit trail tidak tersedia untuk dokumen ini.');
           }
         } else {
-          // Mode normal: minta signed URL file dokumen
-          const urlResponse = await getDocumentFile(id, 'view');
+          // Mode normal: parallel detail + file URL.
+          const [docResponse, urlResponse] = await Promise.all([
+            getDocumentDetail(id),
+            getDocumentFile(id, 'view'),
+          ]);
+
+          if (docResponse.status === 'success') {
+            setDoc(docResponse.data);
+          }
           if (urlResponse.status === 'success' && urlResponse.data?.url) {
             setUrl(urlResponse.data.url);
           } else {
