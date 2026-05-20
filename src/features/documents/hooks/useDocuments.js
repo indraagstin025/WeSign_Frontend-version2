@@ -130,6 +130,34 @@ export const useDocuments = () => {
     } catch { /* silent */ }
   }, []);
 
+  // ── Optimistic Counters ──────────────────────────────────────────────────
+  /**
+   * [FE-8] Update statusCounts secara lokal tanpa hit endpoint counts ulang.
+   *
+   * Sebelumnya setiap delete/restore = 4× round-trip ke `/documents?status=`
+   * untuk recount (all/draft/pending/completed). Sekarang langsung adjust
+   * counter berdasarkan dokumen yang di-affect — saving 4 request per action.
+   *
+   * @param {string} docStatus - 'draft' | 'pending' | 'completed' | dll
+   * @param {number} delta - +1 untuk add, -1 untuk remove
+   */
+  const adjustStatusCounts = useCallback((docStatus, delta) => {
+    const key = docStatus?.toLowerCase();
+    setStatusCounts((prev) => ({
+      all: Math.max(0, (prev.all || 0) + delta),
+      draft: key === 'draft' ? Math.max(0, (prev.draft || 0) + delta) : (prev.draft || 0),
+      pending: key === 'pending' ? Math.max(0, (prev.pending || 0) + delta) : (prev.pending || 0),
+      completed: key === 'completed' ? Math.max(0, (prev.completed || 0) + delta) : (prev.completed || 0),
+    }));
+  }, []);
+
+  /**
+   * [FE-8] Adjust trashCount lokal.
+   */
+  const adjustTrashCount = useCallback((delta) => {
+    setTrashCount((prev) => Math.max(0, (prev || 0) + delta));
+  }, []);
+
   useEffect(() => {
     fetchDocuments();
   }, [fetchDocuments]);
@@ -207,9 +235,13 @@ export const useDocuments = () => {
         try {
           await restoreMyDocument(doc.id);
           toast.success(`Dokumen "${doc.title}" berhasil di-restore.`);
+
+          // [FE-8] Optimistic — dokumen pindah dari trash ke list aktif.
+          //   Sebelumnya 6× round-trip (fetchDocuments + trashCount + 4× statusCounts).
+          //   Sekarang adjust counter lokal dan re-fetch list page saat ini saja.
+          adjustTrashCount(-1);
+          adjustStatusCounts(doc.status, +1);
           fetchDocuments();
-          fetchTrashCount();
-          fetchStatusCounts();
         } catch (err) {
           toast.error(err.message || 'Gagal me-restore dokumen.');
         }
@@ -226,10 +258,15 @@ export const useDocuments = () => {
     try {
       await deleteDocument(deleteDoc.id);
       const deletedTitle = deleteDoc.title;
+      const deletedStatus = deleteDoc.status;
       setDeleteDoc(null);
+
+      // [FE-8] Optimistic — dokumen pindah ke trash.
+      //   Sebelumnya 6× round-trip per delete. Sekarang adjust counter
+      //   lokal + 1× re-fetch list page (wajib supaya item hilang).
+      adjustStatusCounts(deletedStatus, -1);
+      adjustTrashCount(+1);
       fetchDocuments();
-      fetchTrashCount();
-      fetchStatusCounts();
 
       // Toast dengan info bahwa dokumen bisa di-restore via admin
       toast.success(`Dokumen "${deletedTitle}" berhasil dihapus.`, { autoClose: 4000 });

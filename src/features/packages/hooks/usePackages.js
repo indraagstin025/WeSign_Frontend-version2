@@ -122,6 +122,36 @@ export const usePackages = () => {
     } catch { /* silent */ }
   }, []);
 
+  // ── Optimistic Counters ──────────────────────────────────────────────────
+  /**
+   * [FE-2] Update statusCounts secara lokal tanpa hit endpoint counts ulang.
+   *
+   * Sebelumnya setiap delete/restore = 3× round-trip ke `/packages?status=`
+   * untuk recount. Sekarang langsung adjust counter berdasarkan paket yang
+   * di-affect — saving 3 request per action.
+   *
+   * Fungsi ini idempotent secara tipe (cek apakah status valid) tapi tetap
+   * apply increment/decrement bahkan kalau nilai jadi negatif (defensive 0).
+   *
+   * @param {string} pkgStatus - status paket yang affected ('draft' | 'completed' | dll)
+   * @param {number} delta - +1 untuk add, -1 untuk remove
+   */
+  const adjustStatusCounts = useCallback((pkgStatus, delta) => {
+    const key = pkgStatus?.toLowerCase();
+    setStatusCounts((prev) => ({
+      all: Math.max(0, (prev.all || 0) + delta),
+      draft: key === 'draft' ? Math.max(0, (prev.draft || 0) + delta) : (prev.draft || 0),
+      completed: key === 'completed' ? Math.max(0, (prev.completed || 0) + delta) : (prev.completed || 0),
+    }));
+  }, []);
+
+  /**
+   * [FE-2] Adjust trashCount lokal.
+   */
+  const adjustTrashCount = useCallback((delta) => {
+    setTrashCount((prev) => Math.max(0, (prev || 0) + delta));
+  }, []);
+
   useEffect(() => {
     fetchPackages(currentPage);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -180,9 +210,14 @@ export const usePackages = () => {
         try {
           await restoreMyPackage(pkg.id);
           toast.success(`Paket "${pkg.title || 'Tanpa Judul'}" berhasil di-restore.`);
+
+          // [FE-2] Optimistic update — paket pindah dari trash ke list aktif.
+          //   Sebelumnya 3× round-trip (fetchPackages + fetchTrashCount + fetchStatusCounts).
+          //   Sekarang: re-fetch list page saat ini (wajib karena urutan berubah)
+          //   tapi counter trash + status counts adjust lokal tanpa request.
+          adjustTrashCount(-1);
+          adjustStatusCounts(pkg.status, +1);
           fetchPackages(currentPage);
-          fetchTrashCount();
-          fetchStatusCounts();
         } catch (err) {
           toast.error(err.message || 'Gagal me-restore paket.');
         }
@@ -199,14 +234,21 @@ export const usePackages = () => {
     try {
       await deletePackage(target.id);
       const deletedTitle = target.title || 'Tanpa Judul';
+      const deletedStatus = target.status;
       if (deletePkg && target.id === deletePkg.id) setDeletePkg(null);
+
+      // [FE-2] Optimistic update — paket pindah ke trash.
+      //   Sebelumnya 3× round-trip setelah delete (fetchPackages +
+      //   fetchTrashCount + fetchStatusCounts). Sekarang adjust counter
+      //   lokal dan hanya re-fetch list page yang sedang dilihat (wajib
+      //   supaya item yang ke-delete hilang dari render).
+      adjustStatusCounts(deletedStatus, -1);
+      adjustTrashCount(+1);
 
       // Refresh current page (or go back one if last item on page)
       const newPage = packages.length === 1 && currentPage > 1 ? currentPage - 1 : currentPage;
       setCurrentPage(newPage);
       fetchPackages(newPage);
-      fetchTrashCount();
-      fetchStatusCounts();
 
       toast.success(
         `Paket "${deletedTitle}" dipindahkan ke Terhapus. Bisa di-restore dalam 30 hari.`,
