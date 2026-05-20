@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useUser } from '../../../context/UserContext';
 import {
-  getGroupDetail,
+  getGroupSummary,
   getGroupDocuments,
   createInvitation,
   finalizeGroupDocument,
@@ -14,6 +14,7 @@ import {
 } from '../api/groupService';
 import { rejectDocument } from '../api/groupSignatureService';
 import { useGroupSocket } from './useGroupSocket';
+import { useGroupMembers } from './useGroupMembers';
 import { createLogger } from '../../../utils/logger';
 import { GROUPS_COPY_FEEDBACK_MS } from '../../../config/timeouts';
 
@@ -100,14 +101,25 @@ export function useGroupDetailPage() {
   });
 
   // ── Fetch group (metadata + members only) ────────────────────────────────
+  //
+  // [FE-14] Migrate ke endpoint ringan `/groups/:id/summary` — kita tidak
+  //   butuh nested `documents` di sini (documents di-fetch terpisah via
+  //   `fetchDocuments` paginated). Response ~5KB vs ~50-200KB. Backend cache
+  //   3 menit (Redis P3-1) → cross-user shared.
+  //
+  //   Catatan: `summary` belum return `members` array. Kalau page detail
+  //   butuh tampilkan list members, fetch via FE-15 endpoint terpisah
+  //   `/groups/:id/members?page=`. Saat ini `groupData.members` digunakan
+  //   di komponen Settings/Members; selama transisi kita jaga back-compat
+  //   dengan fallback ke `getGroupDetail` bila summary tidak return field
+  //   yang dipakai legacy.
   const fetchGroup = useCallback(
     async (silent = false) => {
       if (!silent) setLoading(true);
       try {
-        const res = await getGroupDetail(groupId);
+        const res = await getGroupSummary(groupId);
         if (res.status === 'success') {
-          const { documents: _docs, ...groupMeta } = res.data;
-          setGroupData(groupMeta);
+          setGroupData(res.data);
         } else {
           throw new Error(res.message);
         }
@@ -154,6 +166,20 @@ export function useGroupDetailPage() {
     fetchGroup();
   }, [fetchGroup]);
 
+  // [FE-15] Fetch members via endpoint paginated ringan. Default limit 100
+  //   sudah cukup untuk semua komponen yang render full list (signer picker,
+  //   member list). Search/filter dilakukan client-side di list besar; bila
+  //   grup > 100 member, UI Settings akan butuh pagination control sendiri
+  //   (bisa di-extend dengan local state page+limit).
+  const { members: groupMembers, refresh: refreshMembers } = useGroupMembers(groupId);
+
+  // Compose `members` array ke `groupData` supaya back-compat dengan komponen
+  // yang baca `groupData.members` (GroupMemberList, UploadModal, ManageSignersModal).
+  const groupDataWithMembers = useMemo(
+    () => (groupData ? { ...groupData, members: groupMembers } : groupData),
+    [groupData, groupMembers],
+  );
+
   // Fetch documents ketika pagination/sort/search berubah
   useEffect(() => {
     fetchDocuments({ page: docPage, search: docSearch, sortBy: docSortBy });
@@ -166,11 +192,21 @@ export function useGroupDetailPage() {
     currentUserId: currentUser?.id,
     ready: !!currentUser,
     setStatusModal,
-    onRefresh: (silent) => { fetchGroup(silent); fetchDocuments({ silent: true }); },
+    onRefresh: (silent) => {
+      fetchGroup(silent);
+      // [FE-15] Member list juga perlu refresh saat ada invite accept / kick
+      //   broadcast. Backend P3-1 cache 60 detik, tapi event WebSocket ini
+      //   real-time → kita force refresh.
+      refreshMembers();
+      fetchDocuments({ silent: true });
+    },
     onKicked: () => navigate('/dashboard/groups'),
   });
 
   // ── Derivasi ──────────────────────────────────────────────────────────────
+  // [FE-14/15] Pakai `groupDataWithMembers` supaya membersihkan asumsi
+  //   `groupData.members` ada. Untuk derivasi simple (adminId), `groupData`
+  //   raw saja sudah cukup karena summary endpoint sudah include adminId.
   const isAdmin = useMemo(
     () =>
       groupData?.adminId != null &&
@@ -269,7 +305,10 @@ export function useGroupDetailPage() {
     try {
       await removeMember(groupId, kickTarget.userId);
       setKickTarget(null);
+      // [FE-14] Summary punya counts member, jadi ikut refresh.
+      // [FE-15] Refresh members list juga (anggota berkurang).
       fetchGroup(true);
+      refreshMembers();
     } catch (err) {
       setStatusModal({ isOpen: true, type: 'error', title: 'Gagal', message: err.message });
     } finally {
@@ -382,7 +421,7 @@ export function useGroupDetailPage() {
     state: {
       groupId,
       currentUser,
-      groupData,
+      groupData: groupDataWithMembers,
       loading,
       error,
       isAdmin,

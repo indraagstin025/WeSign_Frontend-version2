@@ -29,6 +29,45 @@ export const getGroupDetail = (groupId, { includeSignatureImages = false } = {})
   return apiFetch(`/groups/${groupId}${query}`);
 };
 
+/**
+ * [FE-14] Endpoint ringan: metadata grup + admin + counts (~5KB vs ~50-200KB).
+ *   Cocok untuk page header, breadcrumb, sidebar, atau pre-load data sebelum
+ *   buka full detail. Backend cache 3 menit (Redis P3-1).
+ *
+ *   Response shape:
+ *   {
+ *     id, name, code, adminId, createdAt, updatedAt,
+ *     admin: { id, name, email, userStatus, profilePictureUrl },
+ *     members_count, docs_count, viewerRole
+ *   }
+ *
+ * @param {string|number} groupId
+ */
+export const getGroupSummary = (groupId) =>
+  apiFetch(`/groups/${groupId}/summary`);
+
+/**
+ * [FE-15] List anggota grup paginated + filter search.
+ *
+ *   Response shape:
+ *   { data: [...members], pagination: { page, limit, total, totalPages } }
+ *
+ *   Backend cache per-page 60 detik (Redis P3-1).
+ *
+ * @param {string|number} groupId
+ * @param {object} [params]
+ * @param {number} [params.page=1]
+ * @param {number} [params.limit=20] - max 100 di backend
+ * @param {string} [params.search] - filter by name/email
+ */
+export const getGroupMembers = (groupId, { page = 1, limit = 20, search = '' } = {}) => {
+  const params = new URLSearchParams();
+  params.set('page', page);
+  params.set('limit', limit);
+  if (search) params.set('search', search);
+  return apiFetch(`/groups/${groupId}/members?${params.toString()}`);
+};
+
 export const updateGroup = (groupId, name) =>
   apiFetch(`/groups/${groupId}`, { method: 'PUT', body: { name } });
 
