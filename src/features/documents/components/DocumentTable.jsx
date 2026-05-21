@@ -37,7 +37,7 @@ const DocumentTable = ({ documents, onAction, modals = {}, isTrashMode = false }
       {/* ── DESKTOP TABLE ─────────────────────────────────────────── */}
       <div className="hidden lg:block">
         {/* Header */}
-        <div className="grid grid-cols-[48px_1fr_120px_120px_160px_60px] items-center px-5 py-3 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/30">
+        <div className="grid grid-cols-[48px_1fr_120px_120px_160px_160px] items-center px-5 py-3 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/30">
           {['NO.', 'NAMA DOKUMEN', 'STATUS', 'TIPE', 'TANGGAL', 'AKSI'].map((h) => (
             <div key={h} className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">{h}</div>
           ))}
@@ -46,10 +46,11 @@ const DocumentTable = ({ documents, onAction, modals = {}, isTrashMode = false }
         {/* Rows */}
         {documents.map((doc, index) => {
           const badge = getDocumentStatus(doc.status);
+          const isCompleted = doc.status?.toLowerCase() === 'completed';
           return (
             <div
               key={doc.id}
-              className="grid grid-cols-[48px_1fr_120px_120px_160px_60px] items-center px-5 py-3.5 border-b border-zinc-50 dark:border-zinc-800/50 hover:bg-zinc-50/50 dark:hover:bg-zinc-800/20 transition-colors group"
+              className="grid grid-cols-[48px_1fr_120px_120px_160px_160px] items-center px-5 py-3.5 border-b border-zinc-50 dark:border-zinc-800/50 hover:bg-zinc-50/50 dark:hover:bg-zinc-800/20 transition-colors group"
             >
               {/* No */}
               <div className="text-[11px] font-semibold text-zinc-400">
@@ -92,15 +93,66 @@ const DocumentTable = ({ documents, onAction, modals = {}, isTrashMode = false }
                 </p>
               </div>
 
-              {/* Aksi */}
-              <div className="flex justify-end">
-                <button
-                  data-document-menu
-                  onClick={(e) => handleOpenMenu(e, doc.id)}
-                  className="p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 bg-transparent border-none cursor-pointer text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-all"
-                >
-                  <MoreVertical size={16} />
-                </button>
+              {/* Aksi — Inline icons (primary) + kebab menu (secondary) */}
+              <div className="flex items-center justify-end gap-1">
+                {isTrashMode ? (
+                  // Trash mode hanya tampilkan Restore
+                  <button
+                    onClick={() => helpers.handleAction('restore', doc)}
+                    title="Restore"
+                    className="p-2 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/20 bg-transparent border-none cursor-pointer text-emerald-500 hover:text-emerald-600 transition-all"
+                    aria-label="Restore dokumen"
+                  >
+                    <RotateCcw size={16} />
+                  </button>
+                ) : (
+                  <>
+                    {/* Tanda Tangani — primary action, hidden bila completed */}
+                    {!isCompleted && (
+                      <button
+                        onClick={() => helpers.handleAction('sign', doc)}
+                        title="Tanda Tangani"
+                        className="p-2 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/20 bg-transparent border-none cursor-pointer text-zinc-400 hover:text-emerald-600 transition-all"
+                        aria-label="Tanda tangani dokumen"
+                      >
+                        <PenTool size={16} />
+                      </button>
+                    )}
+
+                    {/* Pratinjau — selalu tampil */}
+                    <button
+                      onClick={() => helpers.handleAction('view', doc)}
+                      title="Pratinjau"
+                      className="p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 bg-transparent border-none cursor-pointer text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-all"
+                      aria-label="Pratinjau dokumen"
+                    >
+                      <Eye size={16} />
+                    </button>
+
+                    {/* Riwayat Versi — bila modal-nya tersedia */}
+                    {modals.version && (
+                      <button
+                        onClick={() => helpers.handleAction('history', doc)}
+                        title="Riwayat Versi"
+                        className="p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 bg-transparent border-none cursor-pointer text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-all"
+                        aria-label="Riwayat versi dokumen"
+                      >
+                        <History size={16} />
+                      </button>
+                    )}
+
+                    {/* Kebab — secondary actions (Info, Edit, Download, Delete) */}
+                    <button
+                      data-document-menu
+                      onClick={(e) => handleOpenMenu(e, doc.id)}
+                      title="Aksi lainnya"
+                      className="p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 bg-transparent border-none cursor-pointer text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-all"
+                      aria-label="Buka menu aksi lainnya"
+                    >
+                      <MoreVertical size={16} />
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           );
@@ -134,7 +186,10 @@ const DocumentTable = ({ documents, onAction, modals = {}, isTrashMode = false }
         })}
       </div>
 
-      {/* ── FIXED DROPDOWN PORTAL ─────────────────────────────────── */}
+      {/* ── FIXED DROPDOWN PORTAL — Secondary actions saja ────────── */}
+      {/*    Aksi primer (Tanda Tangani, Pratinjau, Riwayat) sudah jadi      */}
+      {/*    icon button inline di kolom AKSI. Menu kebab hanya untuk        */}
+      {/*    aksi sekunder yang lebih jarang dipakai.                        */}
       {activeDoc && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => state.setOpenMenuId(null)} />
@@ -144,29 +199,17 @@ const DocumentTable = ({ documents, onAction, modals = {}, isTrashMode = false }
             style={{ top: menuPos.top, right: menuPos.right }}
           >
             {isTrashMode ? (
-              <>
-                <button onClick={() => helpers.handleAction('restore', activeDoc)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 bg-transparent border-none cursor-pointer text-left">
-                  <RotateCcw size={14} /> Restore
-                </button>
-              </>
+              // Trash: aksi Restore sudah jadi icon inline. Menu kebab tidak
+              // dibuka di trash mode (lihat conditional render di kolom AKSI).
+              // Block ini defensive untuk back-compat.
+              <button onClick={() => helpers.handleAction('restore', activeDoc)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 bg-transparent border-none cursor-pointer text-left">
+                <RotateCcw size={14} /> Restore
+              </button>
             ) : (
               <>
                 <button onClick={() => helpers.handleAction('info', activeDoc)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 bg-transparent border-none cursor-pointer text-left">
                   <Info size={14} /> Info Detail
                 </button>
-                {activeDoc.status?.toLowerCase() !== 'completed' && (
-                  <button onClick={() => helpers.handleAction('sign', activeDoc)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 bg-transparent border-none cursor-pointer text-left">
-                    <PenTool size={14} className="text-emerald-500" /> Tanda Tangani
-                  </button>
-                )}
-                <button onClick={() => helpers.handleAction('view', activeDoc)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 bg-transparent border-none cursor-pointer text-left">
-                  <Eye size={14} className="text-emerald-500" /> Pratinjau
-                </button>
-                {modals.version && (
-                  <button onClick={() => helpers.handleAction('history', activeDoc)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 bg-transparent border-none cursor-pointer text-left">
-                    <History size={14} /> Riwayat Versi
-                  </button>
-                )}
                 <button onClick={() => helpers.handleAction('edit', activeDoc)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 bg-transparent border-none cursor-pointer text-left">
                   <FileEdit size={14} /> Ubah Judul
                 </button>
