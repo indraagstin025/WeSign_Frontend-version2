@@ -44,8 +44,17 @@ export const socketService = {
 
     socket = io(SOCKET_URL, {
       auth: { token },           // Backend socketHandler.js membaca dari handshake.auth.token
-      transports: ['polling', 'websocket'],
-      upgrade: true,
+      // [REALTIME-LATENCY] WebSocket-only transport untuk skip phase polling
+      // long-polling. Sebelumnya `['polling', 'websocket']` + upgrade:true
+      // bikin initial connect lewat HTTP long-polling dulu (1-2 detik) baru
+      // upgrade ke WS. Selama window upgrade, event drag/resize via polling
+      // delay tinggi (~200-1000ms). Pakai WS langsung jadi connect cepat
+      // dan latency konsisten.
+      //
+      // Trade-off: kalau user di network yang block WS (rare, biasanya
+      // corporate firewall), connect gagal. ~99% network normal OK.
+      transports: ['websocket'],
+      upgrade: false,
       reconnection: true,
       reconnectionAttempts: Infinity,
       reconnectionDelay: SOCKET_RECONNECT_DELAY_MS,

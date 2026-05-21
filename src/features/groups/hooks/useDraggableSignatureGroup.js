@@ -238,7 +238,7 @@ export function useDraggableSignatureGroup({
 
   const transitionStyle =
     !isOwner && isRemoteActive
-      ? 'transform 80ms linear, width 80ms linear, height 80ms linear'
+      ? 'transform 25ms linear, width 25ms linear, height 25ms linear'
       : 'none';
 
   return {
