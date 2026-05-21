@@ -43,16 +43,17 @@ const SigningMobileBar = ({
     <div
       className="sm:hidden fixed left-4 right-4 bg-white/95 dark:bg-[#202c33]/95 backdrop-blur-md border border-zinc-200 dark:border-white/5 z-[130] shadow-[0_8px_30px_rgb(0,0,0,0.12)] rounded-2xl animate-in slide-in-from-bottom duration-500 pointer-events-auto"
       style={{
-        // 80px = SigningFooter (h-16 = 64px) + 16px gap visual.
-        // Tambah safe-area-inset-bottom agar tidak ketutup home indicator iOS.
-        bottom: 'calc(80px + env(safe-area-inset-bottom, 0px))',
+        // [Mockup fix] Action bar di paling bawah. Sebelumnya `bottom: 80px`
+        // memberi gap untuk SigningFooterBar yang sudah hidden di mobile.
+        // Sekarang langsung di-stick ke bottom + safe-area inset iOS.
+        bottom: 'calc(8px + env(safe-area-inset-bottom, 0px))',
       }}
     >
-      {/* Hint placement — pengganti hint footer yang tersembunyi di mobile.
-          Hanya tampil saat user sudah punya signature tapi belum drop ke PDF. */}
+      {/* Hint placement — kecil, kompak, tidak menambah tinggi action bar.
+          Ditampilkan inline di atas button row sebagai 1 baris kecil saja. */}
       {showPlacementHint && (
-        <p className="px-3 pt-2 text-center text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
-          Ketuk PDF untuk Menempel Tanda Tangan
+        <p className="px-3 pt-1.5 text-center text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+          Ketuk PDF untuk menempel tanda tangan
         </p>
       )}
 

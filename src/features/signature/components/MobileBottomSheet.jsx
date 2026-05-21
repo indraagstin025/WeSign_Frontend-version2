@@ -112,10 +112,13 @@ const MobileBottomSheet = ({
         ref={sheetRef}
         className="sm:hidden fixed left-0 right-0 z-[101] flex flex-col"
         style={{
-          // Posisi di atas action bar mobile (action bar height ~80-90px).
-          // Pakai dvh untuk iOS Safari support; max-height moderate karena
-          // konten ini compact (cuma 5 picker buttons).
-          bottom: 'calc(96px + env(safe-area-inset-bottom, 0px))',
+          // [Mockup fix] Posisi di atas ActiveSignatureMobileCard + ActionBar.
+          //   ActionBar: 8px + ~64px = 72px dari bottom
+          //   Gap: 8px
+          //   ActiveCard: ~80px collapsed
+          //   Gap: 8px
+          //   Total: ~168px. Plus safe-area iOS.
+          bottom: 'calc(168px + env(safe-area-inset-bottom, 0px))',
           maxHeight: 'min(40vh, 40dvh)',
           ...state.sheetStyle,
         }}
