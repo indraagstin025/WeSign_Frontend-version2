@@ -45,8 +45,8 @@ const DraggableSignatureGroup = ({
     handleNERef,
     handleSWRef,
     handleSERef,
-    controlledPosition,
-    localSize,
+    initialPosition,
+    initialSize,
     ringClass,
     outerBorderClass,
     transitionStyle,
@@ -66,9 +66,17 @@ const DraggableSignatureGroup = ({
       nodeRef={nodeRef}
       bounds="parent"
       disabled={!canInteract || isLockedByRemote}
-      position={{
-        x: Math.round(controlledPosition.x),
-        y: Math.round(controlledPosition.y),
+      // [REALTIME-PERF] UNCONTROLLED mode — defaultPosition saja, BUKAN
+      // position. react-draggable internal pegang posisi sendiri, tidak
+      // ke-rerender React parent setiap drag move.
+      //
+      // Kombinasi dengan useGroupDraggableRef yang pakai positionRef +
+      // direct DOM update = drag/resize/remote-update TIDAK trigger React
+      // render sama sekali. Pattern ini sama dengan project lama
+      // PlacedSignatureGroup yang user konfirmasi smooth visual.
+      defaultPosition={{
+        x: Math.round(initialPosition.x),
+        y: Math.round(initialPosition.y),
       }}
       cancel=".resize-handle, .delete-btn"
       onStart={actions.onDragStart}
@@ -95,8 +103,8 @@ const DraggableSignatureGroup = ({
           ${canInteract && !isLockedByRemote ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'}
         `}
         style={{
-          width: localSize.width,
-          height: localSize.height,
+          width: initialSize.width,
+          height: initialSize.height,
           left: 0,
           top: 0,
           touchAction: 'none',

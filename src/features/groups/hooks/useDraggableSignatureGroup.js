@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useDraggableSignature } from '../../signature/hooks/useDraggableSignature';
+import { useGroupDraggableRef } from './useGroupDraggableRef';
 import { socketService } from '../../../services/socketService';
 import {
   SIGNATURE_VISUAL_PADDING,
@@ -154,8 +154,8 @@ export function useDraggableSignatureGroup({
     [documentId, sig.id, sig.pageNumber, isOwner]
   );
 
-  // ── useDraggableSignature (lower-level) ───────────────────────────────────
-  const { state, actions } = useDraggableSignature(
+  // ── useGroupDraggableRef (lower-level, ref-based, no setState per drag) ──
+  const { state, actions } = useGroupDraggableRef(
     sig,
     containerWidth,
     containerHeight,
@@ -164,37 +164,19 @@ export function useDraggableSignatureGroup({
     onResizeMove
   );
 
-  // Capture remote setters via ref agar useEffect socket di bawah tidak
+  // Capture remote setter via ref agar useEffect socket di bawah tidak
   // re-subscribe setiap render.
-  const setControlledPositionRef = useRef(actions.setControlledPosition);
-  const setControlledSizeRef = useRef(actions.setControlledSize);
+  const setPositionFromRemoteRef = useRef(actions.setPositionFromRemote);
   useEffect(() => {
-    setControlledPositionRef.current = actions.setControlledPosition;
-    setControlledSizeRef.current = actions.setControlledSize;
-  }, [actions.setControlledPosition, actions.setControlledSize]);
+    setPositionFromRemoteRef.current = actions.setPositionFromRemote;
+  }, [actions.setPositionFromRemote]);
 
-  // [REALTIME-PERF] Pattern hybrid yang di-port dari project lama
-  // (PlacedSignatureGroup) yang user konfirmasi smooth visual untuk observer.
+  // [REALTIME-PERF] Pattern direct DOM update untuk remote drag — sama
+  // dengan project lama (PlacedSignatureGroup) yang user konfirmasi smooth.
   //
-  // Strategi 2-layer:
-  //   1. Direct DOM update (style.transform/width/height) di handler —
-  //      bypass React render, native compositor handle 60fps smooth.
-  //   2. Immediate React state commit (setControlledPosition synchronous) —
-  //      supaya kalau parent rerender, react-draggable apply position prop
-  //      yang up-to-date (BUKAN posisi lama yang bikin flick).
-  //
-  // Sebelumnya saya pakai rAF buffer, tapi ada race: kalau parent rerender
-  // di window T0..T1 (sebelum rAF fire), react-draggable apply
-  // controlledPosition LAMA → DOM reset ke posisi lama → user lihat
-  // "balik ke posisi awal".
-  //
-  // Pattern lama tidak punya issue ini karena DOM = single source of truth
-  // di project lama (positionRef + interact.js, no react-draggable).
-  // Di sini kita pakai react-draggable, jadi state JUGA harus selalu sync
-  // dengan DOM yang baru di-update.
-
-  // Stable nodeRef capture — useEffect tidak perlu state.nodeRef di deps.
-  const nodeRefMirror = state.nodeRef;
+  // useGroupDraggableRef pegang position di useRef (bukan useState), jadi
+  // setPositionFromRemote = manipulasi DOM langsung tanpa React reconciliation.
+  // Tidak ada state thrashing, tidak ada race antara controlled prop vs DOM.
 
   // ── Socket: Realtime drag dari user lain ──────────────────────────────
   useEffect(() => {
@@ -210,34 +192,9 @@ export function useDraggableSignatureGroup({
         outerH = Math.round(data.height * containerHeight + TOTAL_PADDING);
       }
 
-      // === LAYER 1: Direct DOM update (bypass React reconciliation) ===
-      // Native compositor render ke GPU — 60fps tanpa React overhead.
-      // Visible immediate.
-      const node = nodeRefMirror?.current;
-      if (node) {
-        node.style.transform = `translate(${outerX}px, ${outerY}px)`;
-        if (outerW !== undefined) {
-          node.style.width = `${outerW}px`;
-          node.style.height = `${outerH}px`;
-        }
-      }
-
-      // === LAYER 2: Immediate React state sync ===
-      // Update state SAMA SAAT direct DOM update. Kalau parent rerender
-      // tiba-tiba di tengah event, react-draggable terima controlledPosition
-      // yang up-to-date — match dengan DOM yang sudah di-update.
-      //
-      // Sebelumnya pakai rAF buffer yang nyebabkan race: parent rerender
-      // di window T0..T1 (sebelum rAF fire) bikin react-draggable apply
-      // posisi LAMA → DOM reset ke posisi lama → user lihat "balik ke awal".
-      //
-      // React batch state updates di event handler, jadi multiple events
-      // dalam 1 microtask = 1 reconciliation cycle. Tidak mahal kalau memo
-      // di parent + child sudah optimized.
-      setControlledPositionRef.current({ x: outerX, y: outerY });
-      if (outerW !== undefined) {
-        setControlledSizeRef.current({ width: outerW, height: outerH });
-      }
+      // Direct DOM update — bypass React render. Native compositor handle
+      // smooth 60fps di GPU thread.
+      setPositionFromRemoteRef.current(outerX, outerY, outerW, outerH);
 
       // Visual feedback (toast/ring) — pakai state karena cuma flag boolean
       setIsRemoteActive(true);
@@ -254,12 +211,6 @@ export function useDraggableSignatureGroup({
       socketService.off('update_signature_position', handleRemoteMove);
       if (remoteTimerRef.current) clearTimeout(remoteTimerRef.current);
     };
-    // [Lint] nodeRefMirror = state.nodeRef object yang re-created tiap
-    // render. Tapi `.current` yang sebenarnya kita pakai di handler stable
-    // (DOM node yang sama). Kita SENGAJA tidak masukkan ke deps array
-    // supaya effect tidak re-bind tiap render parent (yang bikin race
-    // window di mana handler tidak ke-bind).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sig.id, isOwner, containerWidth, containerHeight]);
 
   // ── Drag handler (emit throttled) ────────────────────────────────────────
@@ -296,10 +247,11 @@ export function useDraggableSignatureGroup({
   //   - Saat remote update: 100ms linear → smooth interpolation antar
   //     event throttled 30ms. Cukup pendek untuk responsive, cukup
   //     panjang untuk visual blend antar emit.
-  const transitionStyle =
-    !isOwner && isRemoteActive
-      ? 'transform 100ms linear, width 100ms linear, height 100ms linear'
-      : 'none';
+  // [REALTIME-PERF] Tidak ada CSS transition untuk transform.
+  // useGroupDraggableRef pakai positionRef + manipulasi DOM langsung.
+  // Native compositor 60fps smooth tanpa transition. Transition justru
+  // bikin animation "kabur" karena setiap event override animasi sebelumnya.
+  const transitionStyle = 'none';
 
   return {
     state: {
