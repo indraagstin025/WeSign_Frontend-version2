@@ -346,7 +346,11 @@ const GroupSigningPage = () => {
         </main>
         {/* [MOBILE] Page indicator pill — tampil floating tepat di bawah PDF.
             Tidak ada zoom control sesuai instruksi user. */}
-        <MobilePageIndicator pageNumber={pageNumber} numPages={numPages} />
+        <MobilePageIndicator
+          pageNumber={pageNumber}
+          numPages={numPages}
+          setPageNumber={setPageNumber}
+        />
         {/* [MOBILE] Active signature card — tampil setelah PDF, di atas footer/action bar */}
         <ActiveSignatureMobileCard
           currentSignature={currentSignature}
