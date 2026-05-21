@@ -78,6 +78,17 @@ export function useGroupsPage() {
   }, [fetchGroups]);
 
   // ── Realtime socket subscription ──────────────────────────────────────────
+  //
+  // [FE-7] Connect socket sekali di mount-effect terpisah supaya tidak
+  //   re-call setiap kali list grup berubah composition. `socketService.connect()`
+  //   sudah idempotent (no-op kalau sudah connected), tapi memisahkan effect
+  //   memperjelas intent dan menghindari memanggil kembali pada setiap
+  //   re-bind subscription.
+  useEffect(() => {
+    if (!currentUser) return;
+    socketService.connect();
+  }, [currentUser]);
+
   // [Lint fix] Sebelumnya pakai `groups.length` sebagai dep — kalau jumlah
   // grup tetap tapi salah satu group diganti (mis. user di-kick dari A lalu
   // join B), socket subscription tidak re-bind ke room yang benar.
@@ -86,7 +97,7 @@ export function useGroupsPage() {
   const groupIdsKey = groups.map((g) => g.id).join(',');
   useEffect(() => {
     if (!currentUser || groups.length === 0) return;
-    socketService.connect();
+
     const joinedGroupIds = groups.map((g) => g.id);
     joinedGroupIds.forEach((gId) => socketService.joinGroupRoom(gId));
 

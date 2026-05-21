@@ -8,10 +8,56 @@ import { apiFetch } from '../../../services/api';
 // ── Group CRUD ──────────────────────────────────────────────────────────────
 
 export const createGroup = (name) =>
-  apiFetch('/groups', { method: 'POST', body: { name } });
+  apiFetch('/groups', { method: 'POST', body: { name } }).then((res) => {
+    invalidateAllGroupsCache();
+    return res;
+  });
 
-export const getAllGroups = () =>
-  apiFetch('/groups');
+/**
+ * [FE-16] Cache list grup user 30 detik + dedup in-flight.
+ *
+ *   Backend Redis P3-1 sudah cache `groups:user:{userId}:list` TTL 60 detik.
+ *   Frontend cache 30 detik defensive — saat user navigate dashboard ↔ groups
+ *   list ↔ detail dalam 30 detik, langsung hit cache local (skip round-trip).
+ *
+ *   Cache di-bust saat:
+ *   - createGroup (grup baru harus tampil)
+ *   - User invalidate manual via `invalidateAllGroupsCache()`
+ *   - TTL 30 detik
+ */
+const ALL_GROUPS_CACHE_TTL_MS = 30 * 1000;
+let _allGroupsCache = null;
+let _allGroupsAt = 0;
+let _allGroupsInFlight = null;
+
+const _isAllGroupsCacheValid = () =>
+  _allGroupsCache && Date.now() - _allGroupsAt < ALL_GROUPS_CACHE_TTL_MS;
+
+export const invalidateAllGroupsCache = () => {
+  _allGroupsCache = null;
+  _allGroupsAt = 0;
+  _allGroupsInFlight = null;
+};
+
+export const getAllGroups = () => {
+  if (_isAllGroupsCacheValid()) {
+    return Promise.resolve(_allGroupsCache);
+  }
+
+  if (_allGroupsInFlight) return _allGroupsInFlight;
+
+  _allGroupsInFlight = apiFetch('/groups')
+    .then((data) => {
+      _allGroupsCache = data;
+      _allGroupsAt = Date.now();
+      return data;
+    })
+    .finally(() => {
+      _allGroupsInFlight = null;
+    });
+
+  return _allGroupsInFlight;
+};
 
 /**
  * Mengambil detail grup.
@@ -123,12 +169,14 @@ export const getGroupMembers = (groupId, { page = 1, limit = 20, search = '' } =
 export const updateGroup = (groupId, name) =>
   apiFetch(`/groups/${groupId}`, { method: 'PUT', body: { name } }).then((res) => {
     invalidateGroupCache(groupId);
+    invalidateAllGroupsCache();
     return res;
   });
 
 export const deleteGroup = (groupId) =>
   apiFetch(`/groups/${groupId}`, { method: 'DELETE' }).then((res) => {
     invalidateGroupCache(groupId);
+    invalidateAllGroupsCache();
     return res;
   });
 
@@ -140,7 +188,11 @@ export const createInvitation = (groupId, role = 'member') =>
   apiFetch(`/groups/${groupId}/invitations`, { method: 'POST', body: { role } });
 
 export const acceptInvitation = (token) =>
-  apiFetch('/groups/invitations/accept', { method: 'POST', body: { token } });
+  apiFetch('/groups/invitations/accept', { method: 'POST', body: { token } }).then((res) => {
+    // [FE-16] User join group baru → list grup berubah.
+    invalidateAllGroupsCache();
+    return res;
+  });
 
 // ── Member ────────────────────────────────────────────────────────────────────
 
