@@ -136,61 +136,68 @@ const GroupDetailPage = () => {
     <div className="flex-1 overflow-y-auto bg-zinc-50 dark:bg-zinc-950 no-scrollbar">
 
       {/* ── HEADER BANNER ─────────────────────────────────────────────── */}
-      <div className="relative h-36 w-full overflow-hidden bg-gradient-to-r from-emerald-500 via-teal-500 to-indigo-500">
+      <div className="relative h-24 sm:h-36 w-full overflow-hidden bg-gradient-to-r from-emerald-500 via-teal-500 to-indigo-500">
         <div className="absolute inset-0 bg-black/10" />
         <button
           onClick={actions.goBackToList}
-          className="absolute top-5 left-6 z-10 flex items-center gap-2 text-white/80 hover:text-white text-xs font-bold bg-black/20 hover:bg-black/30 px-3 py-2 rounded-lg border-none cursor-pointer transition-all"
+          className="absolute top-4 sm:top-5 left-4 sm:left-6 z-10 flex items-center gap-2 text-white/90 hover:text-white text-xs sm:text-sm font-bold bg-black/15 hover:bg-black/30 px-3 py-2 rounded-lg border-none cursor-pointer transition-all backdrop-blur-sm"
         >
           <ArrowLeft size={14} /> Kembali
         </button>
       </div>
 
       {/* ── WORKSPACE HEADER ──────────────────────────────────────────── */}
-      <div className="max-w-7xl mx-auto px-6 -mt-10 relative z-10">
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-white/5 shadow-sm px-6 py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 -mt-6 sm:-mt-10 relative z-10">
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-white/5 shadow-sm px-4 sm:px-6 py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-start sm:items-center gap-4">
             {/* Group avatar */}
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white text-2xl font-black shadow-lg -mt-8 border-4 border-white dark:border-zinc-900 shrink-0">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white text-xl sm:text-2xl font-black shadow-lg -mt-10 sm:-mt-8 border-4 border-white dark:border-zinc-900 shrink-0">
               {groupData?.name?.charAt(0)?.toUpperCase() || 'G'}
             </div>
-            <div>
+            <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 text-emerald-600 text-[10px] font-black uppercase tracking-widest mb-0.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
                 Official Workspace
               </div>
-              <h1 className="text-xl font-black text-zinc-900 dark:text-white uppercase tracking-tight">
+              <h1 className="text-lg sm:text-xl font-black text-zinc-900 dark:text-white uppercase tracking-tight truncate">
                 {groupData?.name || 'Loading...'}
               </h1>
-              <p className="text-xs text-zinc-400 mt-0.5">Kolaborasi tim yang aman, efisien, dan terorganisir.</p>
-              <div className="flex items-center gap-4 mt-1.5 text-[11px] text-zinc-400 font-medium">
-                <span className="flex items-center gap-1"><Users size={11} /> {memberCount} Members</span>
-                <span className="flex items-center gap-1"><FileText size={11} /> {docCount} Documents</span>
-                <span className="flex items-center gap-1 text-emerald-500"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" /> Active</span>
+              <p className="text-[11px] sm:text-xs text-zinc-400 mt-0.5">Kolaborasi tim yang aman, efisien, dan terorganisir.</p>
+              <div className="flex items-center gap-3 sm:gap-4 mt-2 text-[11px] text-zinc-500 dark:text-zinc-400 font-medium flex-wrap">
+                <span className="flex flex-col sm:flex-row sm:items-center sm:gap-1">
+                  <span className="flex items-center gap-1"><Users size={11} /> <span className="font-bold text-zinc-700 dark:text-zinc-200">{memberCount}</span></span>
+                  <span className="text-zinc-400">Members</span>
+                </span>
+                <span className="flex flex-col sm:flex-row sm:items-center sm:gap-1">
+                  <span className="flex items-center gap-1"><FileText size={11} /> <span className="font-bold text-zinc-700 dark:text-zinc-200">{docCount}</span></span>
+                  <span className="text-zinc-400">Documents</span>
+                </span>
+                <span className="flex items-center gap-1 text-emerald-500 ml-auto sm:ml-0"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" /> Active</span>
               </div>
             </div>
           </div>
 
-          {/* Header actions */}
-          <div className="flex items-center gap-2 shrink-0">
+          {/* Header actions — di mobile: full row dengan flex; di desktop: kanan inline */}
+          <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
             <button
               onClick={() => actions.fetchGroup()}
-              className="p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800 text-zinc-400 hover:text-zinc-700 dark:hover:text-white border border-zinc-100 dark:border-white/5 cursor-pointer transition-all"
+              className="p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800 text-zinc-400 hover:text-zinc-700 dark:hover:text-white border border-zinc-100 dark:border-white/5 cursor-pointer transition-all shrink-0"
               title="Refresh"
+              aria-label="Refresh"
             >
               <RefreshCw size={15} />
             </button>
             {isAdmin && (
               <button
                 onClick={actions.handleInvite}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-100 dark:border-white/5 text-zinc-700 dark:text-zinc-200 text-[11px] font-bold hover:border-emerald-500/30 cursor-pointer transition-all"
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-100 dark:border-white/5 text-zinc-700 dark:text-zinc-200 text-[11px] font-bold hover:border-emerald-500/30 cursor-pointer transition-all"
               >
                 <UserPlus size={14} /> Invite
               </button>
             )}
             <button
               onClick={actions.openUploadModal}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold border-none cursor-pointer shadow-md shadow-emerald-500/20 transition-all active:scale-95"
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold border-none cursor-pointer shadow-md shadow-emerald-500/20 transition-all active:scale-95"
             >
               <FilePlus size={14} /> New Document
             </button>
@@ -200,16 +207,16 @@ const GroupDetailPage = () => {
 
       {/* ── INVITE LINK BANNER ────────────────────────────────────────── */}
       {inviteLink && (
-        <div className="max-w-7xl mx-auto px-6 mt-4">
-          <div className="bg-emerald-600 rounded-2xl px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 mt-4">
+          <div className="bg-emerald-600 rounded-2xl px-4 sm:px-6 py-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4">
+            <div className="flex items-center gap-3 min-w-0">
               <Share2 size={18} className="text-white/80 shrink-0" />
-              <p className="text-sm text-white font-bold truncate max-w-sm">{inviteLink}</p>
+              <p className="text-xs sm:text-sm text-white font-bold truncate">{inviteLink}</p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 shrink-0">
               <button
                 onClick={actions.copyToClipboard}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white text-emerald-700 text-[11px] font-black border-none cursor-pointer hover:bg-zinc-50 transition-all"
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-white text-emerald-700 text-[11px] font-black border-none cursor-pointer hover:bg-zinc-50 transition-all"
               >
                 {isCopied ? <CheckCircle size={13} /> : <Copy size={13} />}
                 {isCopied ? 'Copied' : 'Copy Link'}
@@ -226,7 +233,7 @@ const GroupDetailPage = () => {
       )}
 
       {/* ── MAIN CONTENT ──────────────────────────────────────────────── */}
-      <div className="max-w-7xl mx-auto px-6 mt-6 pb-16 grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 mt-6 pb-16 grid grid-cols-1 lg:grid-cols-12 gap-6">
 
         {/* LEFT: DOCUMENT VAULT (8 cols) */}
         <div className="lg:col-span-8 space-y-4">
@@ -237,23 +244,23 @@ const GroupDetailPage = () => {
               <h2 className="text-base font-black text-zinc-900 dark:text-white uppercase tracking-tight">Document Vault</h2>
               <p className="text-[11px] text-zinc-400 mt-0.5">Kelola dan pantau semua dokumen tim dalam satu tempat.</p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
               {/* Search */}
-              <div className="relative">
+              <div className="relative flex-1 sm:flex-none">
                 <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
                 <input
                   type="text"
                   value={docSearch}
                   onChange={(e) => { actions.setDocSearch(e.target.value); actions.setDocPage(1); }}
-                  placeholder="Search in documents..."
-                  className="pl-8 pr-4 py-2 text-[11px] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-white/5 rounded-xl outline-none focus:border-emerald-500 text-zinc-700 dark:text-zinc-200 w-44 transition-all"
+                  placeholder="Cari dokumen..."
+                  className="w-full sm:w-44 pl-8 pr-4 py-2 text-[11px] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-white/5 rounded-xl outline-none focus:border-emerald-500 text-zinc-700 dark:text-zinc-200 transition-all"
                 />
               </div>
               {/* Sort */}
               <select
                 value={docSortBy}
                 onChange={(e) => { actions.setDocSortBy(e.target.value); actions.setDocPage(1); }}
-                className="text-[11px] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-white/5 rounded-xl px-3 py-2 outline-none focus:border-emerald-500 text-zinc-600 dark:text-zinc-300 cursor-pointer"
+                className="text-[11px] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-white/5 rounded-xl px-3 py-2 outline-none focus:border-emerald-500 text-zinc-600 dark:text-zinc-300 cursor-pointer shrink-0"
               >
                 <option value="newest">📅 Terbaru</option>
                 <option value="oldest">📅 Terlama</option>

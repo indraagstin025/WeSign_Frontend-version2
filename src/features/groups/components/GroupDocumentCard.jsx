@@ -68,19 +68,131 @@ const GroupDocumentCard = ({
   const accentColor = badge.accent;
 
   return (
-    <div className="relative flex items-center gap-4 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-white/5 rounded-2xl px-5 py-4 hover:shadow-md hover:border-zinc-200 dark:hover:border-white/10 transition-all duration-200 group">
+    <div className="relative flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-white/5 rounded-2xl px-4 sm:px-5 py-4 hover:shadow-md hover:border-zinc-200 dark:hover:border-white/10 transition-all duration-200 group">
       {/* Left accent bar */}
       <div className={`absolute left-0 top-3 bottom-3 w-1 rounded-full ${accentColor}`} />
 
+      {/* MOBILE TOP ROW: icon + info | menu */}
+      <div className="flex items-start gap-3 sm:hidden ml-2">
+        {/* File icon */}
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0
+          ${isCompleted ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600' : 'bg-zinc-50 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-300'}
+        `}>
+          {isCompleted ? <ShieldCheck size={20} /> : <FileText size={20} />}
+        </div>
+
+        {/* Title + status */}
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-zinc-900 dark:text-white leading-snug line-clamp-2">
+            {doc.title}
+          </p>
+          <span className={`inline-block mt-1 px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wide ${badge.cls}`}>
+            {badge.label}
+          </span>
+          <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-1.5">
+            Dibuat oleh {uploaderName} · {timeAgo(doc.createdAt)}
+          </p>
+          {/* Progress dots — mobile */}
+          {signers.length > 0 && (
+            <div className="flex items-center gap-1.5 mt-1.5">
+              {progressDots.map((signed, i) => (
+                <div
+                  key={i}
+                  className={`w-2.5 h-2.5 rounded-full border-2 transition-colors
+                    ${signed
+                      ? 'bg-emerald-500 border-emerald-500'
+                      : signers[i]?.status?.toUpperCase() === 'REJECTED'
+                        ? 'bg-rose-400 border-rose-400'
+                        : 'bg-transparent border-zinc-300 dark:border-zinc-600'}
+                  `}
+                />
+              ))}
+              <span className="text-[10px] text-zinc-400 ml-1">{signedCount} dari {totalSigners} signed</span>
+            </div>
+          )}
+        </div>
+
+        {/* MOBILE: Avatars + Menu (di atas kanan) */}
+        <div className="flex flex-col items-end gap-2 shrink-0">
+          {visibleSigners.length > 0 && (
+            <div className="flex items-center -space-x-2">
+              {visibleSigners.slice(0, 2).map((sr, i) => {
+                const name = sr.user?.name || 'U';
+                const initials = name.trim().split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase();
+                const signed = sr.status?.toUpperCase() === 'SIGNED';
+                return (
+                  <div
+                    key={sr.id || i}
+                    title={`${name} — ${sr.status}`}
+                    className={`w-7 h-7 rounded-full border-2 border-white dark:border-zinc-900 flex items-center justify-center text-[9px] font-black
+                      ${signed ? 'bg-emerald-500 text-white' : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300'}
+                    `}
+                  >
+                    {initials}
+                  </div>
+                );
+              })}
+              {signers.length > 2 && (
+                <div className="w-7 h-7 rounded-full border-2 border-white dark:border-zinc-900 bg-zinc-100 dark:bg-zinc-700 flex items-center justify-center text-[9px] font-black text-zinc-500">
+                  +{signers.length - 2}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Mobile menu trigger */}
+          <button
+            onClick={() => setMenuOpen((v) => !v)}
+            className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 border-none bg-transparent cursor-pointer transition-all"
+            aria-label="Menu aksi dokumen"
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+          >
+            <MoreVertical size={18} />
+          </button>
+        </div>
+      </div>
+
+      {/* MOBILE BOTTOM ROW: primary action (Sign / Finalize / Preview) full-width */}
+      <div className="flex sm:hidden items-center gap-2 pl-2">
+        {canSignNow && (
+          <button
+            onClick={onSign}
+            className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[12px] font-bold border-none cursor-pointer transition-all active:scale-95"
+          >
+            <PenLine size={14} /> Sign Document
+          </button>
+        )}
+        {canFinalize && (
+          <button
+            onClick={onFinalize}
+            disabled={isFinalizing}
+            className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[12px] font-bold border-none cursor-pointer transition-all active:scale-95 disabled:opacity-50"
+          >
+            {isFinalizing ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+            Finalize
+          </button>
+        )}
+        {!canSignNow && !canFinalize && (
+          <button
+            onClick={onPreview}
+            className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 text-[12px] font-bold border-none cursor-pointer transition-all active:scale-95"
+          >
+            <Eye size={14} /> Preview Dokumen
+          </button>
+        )}
+      </div>
+
+      {/* DESKTOP LAYOUT (sm+): icon + main info + avatars + actions */}
       {/* File icon */}
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ml-2
+      <div className={`hidden sm:flex w-10 h-10 rounded-xl items-center justify-center shrink-0 ml-2
         ${isCompleted ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600' : 'bg-zinc-50 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-300'}
       `}>
         {isCompleted ? <ShieldCheck size={20} /> : <FileText size={20} />}
       </div>
 
       {/* Main info */}
-      <div className="flex-1 min-w-0">
+      <div className="hidden sm:block flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <p className="text-sm font-bold text-zinc-900 dark:text-white truncate max-w-[220px] sm:max-w-sm">
             {doc.title}
@@ -116,7 +228,7 @@ const GroupDocumentCard = ({
         )}
       </div>
 
-      {/* Signer avatars */}
+      {/* Signer avatars — desktop only */}
       {visibleSigners.length > 0 && (
         <div className="hidden sm:flex items-center -space-x-2 shrink-0">
           {visibleSigners.map((sr, i) => {
@@ -143,8 +255,8 @@ const GroupDocumentCard = ({
         </div>
       )}
 
-      {/* Action buttons */}
-      <div className="flex items-center gap-1 shrink-0">
+      {/* Action buttons — desktop only */}
+      <div className="hidden sm:flex items-center gap-1 shrink-0">
         {/* Sign button */}
         {canSignNow && (
           <button
@@ -189,58 +301,73 @@ const GroupDocumentCard = ({
           </button>
         )}
 
-        {/* More menu */}
-        <div className="relative">
-          <button
-            onClick={() => setMenuOpen((v) => !v)}
-            className="p-2 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 border-none bg-transparent cursor-pointer transition-all"
-            aria-label="Menu aksi dokumen"
-            aria-haspopup="menu"
-            aria-expanded={menuOpen}
-          >
-            <MoreVertical size={16} />
-          </button>
-
-          {menuOpen && (
-            <>
-              <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-              <div className="absolute right-0 top-full mt-1 z-20 bg-white dark:bg-zinc-800 border border-zinc-100 dark:border-white/10 rounded-xl shadow-xl py-1 min-w-[160px]">
-                {canDownload && (
-                  <button
-                    onClick={() => { window.open(doc.currentVersion?.url, '_blank'); setMenuOpen(false); }}
-                    className="w-full flex items-center gap-2 px-4 py-2.5 text-[12px] font-bold text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-700 bg-transparent border-none cursor-pointer text-left"
-                  >
-                    <ExternalLink size={13} /> Download PDF
-                  </button>
-                )}
-                {isAdmin && !isCompleted && docStatus === 'PENDING' && onReject && (
-                  <button
-                    onClick={() => {
-                      setMenuOpen(false);
-                      // [H-4] Buka modal RejectReasonModal alih-alih
-                      // window.prompt yang blocking dan tidak match design.
-                      setRejectOpen(true);
-                    }}
-                    className="w-full flex items-center gap-2 px-4 py-2.5 text-[12px] font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 bg-transparent border-none cursor-pointer text-left"
-                  >
-                    <XCircle size={13} /> Tolak Dokumen
-                  </button>
-                )}
-                {canDelete && (
-                  <button
-                    onClick={() => { setMenuOpen(false); onDelete(); }}
-                    disabled={isDeleting}
-                    className="w-full flex items-center gap-2 px-4 py-2.5 text-[12px] font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 bg-transparent border-none cursor-pointer text-left disabled:opacity-50"
-                  >
-                    {isDeleting ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
-                    Hapus
-                  </button>
-                )}
-              </div>
-            </>
-          )}
-        </div>
+        {/* More menu — desktop trigger */}
+        <button
+          onClick={() => setMenuOpen((v) => !v)}
+          className="p-2 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 border-none bg-transparent cursor-pointer transition-all"
+          aria-label="Menu aksi dokumen"
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
+        >
+          <MoreVertical size={16} />
+        </button>
       </div>
+
+      {/* Dropdown menu — shared antara mobile dan desktop trigger.
+          Posisi absolute ke kanan-atas card. */}
+      {menuOpen && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
+          <div className="absolute right-3 top-12 z-20 bg-white dark:bg-zinc-800 border border-zinc-100 dark:border-white/10 rounded-xl shadow-xl py-1 min-w-[180px]">
+            {/* Mobile-only secondary actions — di desktop sudah ada inline. */}
+            <button
+              onClick={() => { setMenuOpen(false); onPreview(); }}
+              className="sm:hidden w-full flex items-center gap-2 px-4 py-2.5 text-[12px] font-bold text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-700 bg-transparent border-none cursor-pointer text-left"
+            >
+              <Eye size={13} /> Preview
+            </button>
+            {canManageSigners && (
+              <button
+                onClick={() => { setMenuOpen(false); onManageSigners(); }}
+                className="sm:hidden w-full flex items-center gap-2 px-4 py-2.5 text-[12px] font-bold text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-700 bg-transparent border-none cursor-pointer text-left"
+              >
+                <UserCog size={13} /> Kelola Signer
+              </button>
+            )}
+            {canDownload && (
+              <button
+                onClick={() => { window.open(doc.currentVersion?.url, '_blank'); setMenuOpen(false); }}
+                className="w-full flex items-center gap-2 px-4 py-2.5 text-[12px] font-bold text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-700 bg-transparent border-none cursor-pointer text-left"
+              >
+                <ExternalLink size={13} /> Download PDF
+              </button>
+            )}
+            {isAdmin && !isCompleted && docStatus === 'PENDING' && onReject && (
+              <button
+                onClick={() => {
+                  setMenuOpen(false);
+                  // [H-4] Buka modal RejectReasonModal alih-alih
+                  // window.prompt yang blocking dan tidak match design.
+                  setRejectOpen(true);
+                }}
+                className="w-full flex items-center gap-2 px-4 py-2.5 text-[12px] font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 bg-transparent border-none cursor-pointer text-left"
+              >
+                <XCircle size={13} /> Tolak Dokumen
+              </button>
+            )}
+            {canDelete && (
+              <button
+                onClick={() => { setMenuOpen(false); onDelete(); }}
+                disabled={isDeleting}
+                className="w-full flex items-center gap-2 px-4 py-2.5 text-[12px] font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 bg-transparent border-none cursor-pointer text-left disabled:opacity-50"
+              >
+                {isDeleting ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+                Hapus
+              </button>
+            )}
+          </div>
+        </>
+      )}
 
       {/* [H-4] Reject reason modal — replace window.prompt */}
       <RejectReasonModal
