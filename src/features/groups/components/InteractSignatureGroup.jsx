@@ -83,6 +83,12 @@ const InteractSignatureGroup = ({
   // Reset ke null di drag/resize end.
   const cachedParentRectRef = useRef(null);
 
+  // [RESIZE-PRECISION] Aspect ratio dari image natural — supaya resize lock
+  // ratio (signature tidak distorsi) sama seperti DraggableSignature pattern.
+  // Default 2:1 sebelum image load, akan di-update saat image natural ratio
+  // ke-detect via onLoad handler.
+  const aspectRatioRef = useRef(2);
+
   // ── 3. INTERACTION STATE ─────────────────────────────────────────────────
   const [isActive, setIsActive] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -280,6 +286,8 @@ const InteractSignatureGroup = ({
         ],
       })
       .resizable({
+        // [RESIZE-PRECISION] Boolean true semua — kita handle aspect ratio
+        // lock di move handler, bukan via edges class mapping. Lebih reliable.
         edges: { left: true, right: true, bottom: true, top: true },
         listeners: {
           start() {
@@ -294,30 +302,63 @@ const InteractSignatureGroup = ({
             const { x: oldX, y: oldY, w: oldW, h: oldH } = positionRef.current;
             const { deltaRect, edges } = event;
 
-            const newW = Math.max(oldW - (deltaRect.left || 0) + (deltaRect.right || 0), 80);
-            const newH = Math.max(oldH - (deltaRect.top || 0) + (deltaRect.bottom || 0), 50);
+            // [RESIZE-PRECISION] Pattern aspect-ratio lock dari useDraggableSignature
+            // (versi react-draggable yang user bilang lebih smooth/presisi):
+            //   1. Hitung newW dari delta WIDTH saja
+            //   2. Hitung newH = newW / ratio (lock aspect)
+            //   3. Adjust posisi x/y kalau resize dari edge kiri/atas
+            //   4. Math.round() semua nilai pixel — hindari subpixel blur
+            const ratio = aspectRatioRef.current || (oldW / oldH);
 
+            // Hitung perubahan width dari delta horizontal saja (left atau right edge)
+            const dW = (deltaRect.right || 0) - (deltaRect.left || 0);
+            let newW = Math.max(oldW + dW, 80);
+            // Lock height ke ratio image (tidak independent dari deltaRect.top/bottom)
+            let newH = Math.max(newW / ratio, 50);
+            // Kalau height yang lock sentuh min 50, fallback adjust width
+            if (newW / ratio < 50) {
+              newH = 50;
+              newW = newH * ratio;
+            }
+
+            // Adjust posisi: kalau resize dari edge kiri (NW/SW), pivot di kanan;
+            // kalau dari edge atas (NW/NE), pivot di bawah.
             let x = oldX;
             let y = oldY;
             if (edges.left) x = oldX + oldW - newW;
             if (edges.top) y = oldY + oldH - newH;
 
-            positionRef.current = { x, y, w: newW, h: newH };
-            element.style.width = `${newW}px`;
-            element.style.height = `${newH}px`;
-            element.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+            // [RESIZE-PRECISION] Boundary clamp manual (lebih reliable dari
+            // interact.modifiers.restrictRect saat ratio-lock).
+            const parentRect = cachedParentRectRef.current;
+            if (parentRect) {
+              x = Math.max(0, Math.min(parentRect.width - newW, x));
+              y = Math.max(0, Math.min(parentRect.height - newH, y));
+            }
+
+            // [RESIZE-PRECISION] Round ke integer pixel — hindari subpixel
+            // rendering blur saat resize cepat. Ini yang bikin react-draggable
+            // versi lebih "presisi" feel-nya.
+            const finalW = Math.round(newW);
+            const finalH = Math.round(newH);
+            const finalX = Math.round(x);
+            const finalY = Math.round(y);
+
+            positionRef.current = { x: finalX, y: finalY, w: finalW, h: finalH };
+            element.style.width = `${finalW}px`;
+            element.style.height = `${finalH}px`;
+            element.style.transform = `translate3d(${finalX}px, ${finalY}px, 0)`;
 
             if (documentId) {
               // [PERF] Pakai cached parentRect, bukan re-calc per move.
-              const parentRect = cachedParentRectRef.current;
               if (parentRect) {
                 emitSocketDrag({
                   documentId,
                   signatureId: sig.id,
-                  positionX: (x + CONTENT_OFFSET) / parentRect.width,
-                  positionY: (y + CONTENT_OFFSET) / parentRect.height,
-                  width: (newW - TOTAL_REDUCTION) / parentRect.width,
-                  height: (newH - TOTAL_REDUCTION) / parentRect.height,
+                  positionX: (finalX + CONTENT_OFFSET) / parentRect.width,
+                  positionY: (finalY + CONTENT_OFFSET) / parentRect.height,
+                  width: (finalW - TOTAL_REDUCTION) / parentRect.width,
+                  height: (finalH - TOTAL_REDUCTION) / parentRect.height,
                   pageNumber: sig.pageNumber,
                 });
               }
@@ -353,9 +394,9 @@ const InteractSignatureGroup = ({
             onUpdateSize?.(sig.id, realW, realH);
           },
         },
+        // Min size — match dengan logic di move handler (W >= 80, H >= 50).
         modifiers: [
           interact.modifiers.restrictSize({ min: { width: 80, height: 50 } }),
-          interact.modifiers.restrictRect({ restriction: 'parent' }),
         ],
       });
 
@@ -431,13 +472,16 @@ const InteractSignatureGroup = ({
           </div>
         )}
 
-        {/* Resize handles */}
+        {/* Resize handles — pakai class names supaya interact.js edges
+            mapping bisa pinpoint corner mana yang di-grab.
+            [RESIZE-PRECISION] Cuma 4 corner (no edge tengah) supaya resize
+            selalu 2-axis dengan aspect ratio lock. */}
         {isActive && canInteract && !isLockedByRemote && (
           <>
-            <div className={`${handleStyle} -top-1.5 -left-1.5 cursor-nw-resize`} />
-            <div className={`${handleStyle} -top-1.5 -right-1.5 cursor-ne-resize`} />
-            <div className={`${handleStyle} -bottom-1.5 -left-1.5 cursor-sw-resize`} />
-            <div className={`${handleStyle} -bottom-1.5 -right-1.5 cursor-se-resize`} />
+            <div className={`${handleStyle} resize-nw -top-1.5 -left-1.5 cursor-nw-resize`} />
+            <div className={`${handleStyle} resize-ne -top-1.5 -right-1.5 cursor-ne-resize`} />
+            <div className={`${handleStyle} resize-sw -bottom-1.5 -left-1.5 cursor-sw-resize`} />
+            <div className={`${handleStyle} resize-se -bottom-1.5 -right-1.5 cursor-se-resize`} />
           </>
         )}
 
@@ -470,6 +514,15 @@ const InteractSignatureGroup = ({
                 alt={`Tanda tangan ${displayName}`}
                 className="w-full h-full object-contain pointer-events-none select-none"
                 draggable={false}
+                onLoad={(e) => {
+                  // [RESIZE-PRECISION] Update aspectRatioRef dari natural
+                  // image ratio supaya resize lock proporsional ke gambar
+                  // asli (signature canvas biasanya 2:1, tapi varies).
+                  const { naturalWidth, naturalHeight } = e.target;
+                  if (naturalWidth > 0 && naturalHeight > 0) {
+                    aspectRatioRef.current = naturalWidth / naturalHeight;
+                  }
+                }}
                 style={{
                   // [PERF] Promote ke GPU layer supaya resize tidak trigger
                   // CPU re-rasterize tiap frame. transform: translateZ(0) bikin
