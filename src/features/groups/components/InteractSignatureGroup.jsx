@@ -78,6 +78,11 @@ const InteractSignatureGroup = ({
     x: 0, y: 0, w: 0, h: 0,
   });
 
+  // [PERF] Cache parent rect saat drag/resize start. Hindari getBoundingClientRect()
+  // di tiap move event (force layout reflow di browser, mahal saat 60fps).
+  // Reset ke null di drag/resize end.
+  const cachedParentRectRef = useRef(null);
+
   // ── 3. INTERACTION STATE ─────────────────────────────────────────────────
   const [isActive, setIsActive] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -122,7 +127,7 @@ const InteractSignatureGroup = ({
       const calcH = data.height * parentRect.height + TOTAL_REDUCTION;
 
       // Direct DOM update — bypass React render
-      element.style.transform = `translate(${calcX}px, ${calcY}px)`;
+      element.style.transform = `translate3d(${calcX}px, ${calcY}px, 0)`;
       element.style.width = `${calcW}px`;
       element.style.height = `${calcH}px`;
 
@@ -169,7 +174,7 @@ const InteractSignatureGroup = ({
         const calcH = sig.height * parentRect.height + TOTAL_REDUCTION;
 
         positionRef.current = { x: calcX, y: calcY, w: calcW, h: calcH };
-        element.style.transform = `translate(${calcX}px, ${calcY}px)`;
+        element.style.transform = `translate3d(${calcX}px, ${calcY}px, 0)`;
         element.style.width = `${calcW}px`;
         element.style.height = `${calcH}px`;
       }
@@ -208,17 +213,20 @@ const InteractSignatureGroup = ({
             setIsDragging(true);
             setIsActive(true);
             element.style.cursor = 'grabbing';
+            // [PERF] Cache parentRect saat drag start.
+            const parent = element.parentElement;
+            cachedParentRectRef.current = parent ? parent.getBoundingClientRect() : null;
           },
           move(event) {
             positionRef.current.x += event.dx;
             positionRef.current.y += event.dy;
-            element.style.transform = `translate(${positionRef.current.x}px, ${positionRef.current.y}px)`;
+            element.style.transform = `translate3d(${positionRef.current.x}px, ${positionRef.current.y}px, 0)`;
 
             // Emit socket throttled
             if (documentId) {
-              const parent = element.parentElement;
-              if (parent) {
-                const parentRect = parent.getBoundingClientRect();
+              // [PERF] Pakai cached parentRect, bukan re-calc per move.
+              const parentRect = cachedParentRectRef.current;
+              if (parentRect) {
                 const realW = positionRef.current.w - TOTAL_REDUCTION;
                 const realH = positionRef.current.h - TOTAL_REDUCTION;
                 const realX = positionRef.current.x + CONTENT_OFFSET;
@@ -241,9 +249,9 @@ const InteractSignatureGroup = ({
             element.style.cursor = 'grab';
 
             // Persist final position via PATCH (parent handler)
-            const parent = element.parentElement;
-            if (!parent) return;
-            const parentRect = parent.getBoundingClientRect();
+            const parentRect = cachedParentRectRef.current;
+            cachedParentRectRef.current = null;
+            if (!parentRect) return;
             const realX = (positionRef.current.x + CONTENT_OFFSET) / parentRect.width;
             const realY = (positionRef.current.y + CONTENT_OFFSET) / parentRect.height;
 
@@ -276,6 +284,11 @@ const InteractSignatureGroup = ({
         listeners: {
           start() {
             setIsResizing(true);
+            // [PERF] Cache parentRect saat resize start — hindari
+            // getBoundingClientRect() per move event (force layout reflow
+            // setiap call, expensive saat di tengah resize 60fps).
+            const parent = element.parentElement;
+            cachedParentRectRef.current = parent ? parent.getBoundingClientRect() : null;
           },
           move(event) {
             const { x: oldX, y: oldY, w: oldW, h: oldH } = positionRef.current;
@@ -292,12 +305,12 @@ const InteractSignatureGroup = ({
             positionRef.current = { x, y, w: newW, h: newH };
             element.style.width = `${newW}px`;
             element.style.height = `${newH}px`;
-            element.style.transform = `translate(${x}px, ${y}px)`;
+            element.style.transform = `translate3d(${x}px, ${y}px, 0)`;
 
             if (documentId) {
-              const parent = element.parentElement;
-              if (parent) {
-                const parentRect = parent.getBoundingClientRect();
+              // [PERF] Pakai cached parentRect, bukan re-calc per move.
+              const parentRect = cachedParentRectRef.current;
+              if (parentRect) {
                 emitSocketDrag({
                   documentId,
                   signatureId: sig.id,
@@ -312,9 +325,9 @@ const InteractSignatureGroup = ({
           },
           end() {
             setIsResizing(false);
-            const parent = element.parentElement;
-            if (!parent) return;
-            const parentRect = parent.getBoundingClientRect();
+            const parentRect = cachedParentRectRef.current;
+            cachedParentRectRef.current = null;
+            if (!parentRect) return;
             const { x, y, w, h } = positionRef.current;
 
             const realX = (x + CONTENT_OFFSET) / parentRect.width;
@@ -373,13 +386,19 @@ const InteractSignatureGroup = ({
       style={{
         left: 0,
         top: 0,
-        // Init transform — useEffect calculatePosition akan replace
-        transform: `translate(0px, 0px)`,
-        // Transition smooth saat REMOTE update; kosong saat owner drag/resize
+        // Init transform — useEffect calculatePosition akan replace.
+        // [PERF] translateZ(0) promote ke GPU layer (composited), supaya
+        // perubahan transform/width/height tidak trigger paint+layout di
+        // CPU thread. Native compositor handle smooth dengan GPU.
+        transform: `translate3d(0px, 0px, 0px)`,
+        // Transition smooth saat REMOTE update; kosong saat owner drag/resize.
         transition: isDragging || isResizing ? 'none' : 'transform 0.1s linear',
         cursor: !canInteract ? 'default' : isDragging ? 'grabbing' : 'grab',
         pointerEvents: isLockedByRemote || isFinal ? 'none' : 'auto',
         touchAction: 'none',
+        // [PERF] Tell browser kita akan animate transform + dimensions.
+        // Browser akan optimize dengan layer compositing.
+        willChange: canInteract ? 'transform' : 'auto',
       }}
       data-id={sig.id}
       onMouseDown={(e) => {
@@ -451,6 +470,18 @@ const InteractSignatureGroup = ({
                 alt={`Tanda tangan ${displayName}`}
                 className="w-full h-full object-contain pointer-events-none select-none"
                 draggable={false}
+                style={{
+                  // [PERF] Promote ke GPU layer supaya resize tidak trigger
+                  // CPU re-rasterize tiap frame. transform: translateZ(0) bikin
+                  // browser cache image di GPU texture, scaling jadi murah.
+                  transform: 'translateZ(0)',
+                  // Saat user drag/resize, gunakan crisp pixel scaling supaya
+                  // image tidak blur saat ukuran berubah cepat. Setelah idle,
+                  // bisa kembali ke high-quality tapi untuk realtime pakai
+                  // hint yang lebih cepat di GPU.
+                  imageRendering: isResizing ? 'pixelated' : 'auto',
+                  willChange: isDragging || isResizing ? 'transform, width, height' : 'auto',
+                }}
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-amber-50 border-2 border-dashed border-amber-400 text-amber-700 rounded">
