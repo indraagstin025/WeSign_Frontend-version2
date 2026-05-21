@@ -169,15 +169,6 @@ export function useDraggableSignatureGroup({
     setControlledSizeRef.current = actions.setControlledSize;
   }, [actions.setControlledPosition, actions.setControlledSize]);
 
-  // [REALTIME-PERF] DOM node ref dari useDraggableSignature, untuk fast-path
-  // direct style update saat remote event datang. Hindari React re-render
-  // setiap 16ms yang mahal (re-evaluate seluruh component tree).
-  //
-  // Pattern: remote event → langsung update transform/width/height DOM,
-  // commit ke React state hanya saat throttle timer fire (handleRemoteFinal).
-  // Sama dengan pattern owner local drag yang sudah pakai DOM update.
-  const remoteFinalTimerRef = useRef(null);
-
   // ── Socket: Realtime drag dari user lain ──────────────────────────────
   useEffect(() => {
     const handleRemoteMove = (data) => {
@@ -186,22 +177,19 @@ export function useDraggableSignatureGroup({
 
       const outerX = data.positionX * containerWidth - VISUAL_PADDING;
       const outerY = data.positionY * containerHeight - VISUAL_PADDING;
-      const roundedX = Math.round(outerX);
-      const roundedY = Math.round(outerY);
 
-      // [REALTIME-PERF] Fast-path direct DOM. Mahal: setControlledPosition
-      // (React setState) dipanggil 60x/detik kalau pakai naif → re-render full
-      // component, GC churn, browser layout thrash. Direct style.transform
-      // bypass React, native browser compositor handle smooth animation.
-      const node = state.nodeRef?.current;
-      if (node) {
-        node.style.transform = `translate(${roundedX}px, ${roundedY}px)`;
-        if (data.width !== undefined && data.height !== undefined) {
-          const outerW = Math.round(data.width * containerWidth + TOTAL_PADDING);
-          const outerH = Math.round(data.height * containerHeight + TOTAL_PADDING);
-          node.style.width = `${outerW}px`;
-          node.style.height = `${outerH}px`;
-        }
+      setControlledPositionRef.current({
+        x: Math.round(outerX),
+        y: Math.round(outerY),
+      });
+
+      if (data.width !== undefined && data.height !== undefined) {
+        const outerW = data.width * containerWidth + TOTAL_PADDING;
+        const outerH = data.height * containerHeight + TOTAL_PADDING;
+        setControlledSizeRef.current({
+          width: Math.round(outerW),
+          height: Math.round(outerH),
+        });
       }
 
       setIsRemoteActive(true);
@@ -211,30 +199,14 @@ export function useDraggableSignatureGroup({
         setIsRemoteActive(false);
         setIsLockedByRemote(false);
       }, 800);
-
-      // [REALTIME-PERF] Commit posisi terakhir ke React state setelah burst
-      // event selesai (debounce 150ms dari last event). Ini supaya React
-      // tetap aware posisi terakhir untuk render selanjutnya (mis. parent
-      // re-render karena state lain berubah). Tanpa commit, DOM bisa "balik"
-      // ke posisi React state yang stale.
-      if (remoteFinalTimerRef.current) clearTimeout(remoteFinalTimerRef.current);
-      remoteFinalTimerRef.current = setTimeout(() => {
-        setControlledPositionRef.current({ x: roundedX, y: roundedY });
-        if (data.width !== undefined && data.height !== undefined) {
-          const outerW = Math.round(data.width * containerWidth + TOTAL_PADDING);
-          const outerH = Math.round(data.height * containerHeight + TOTAL_PADDING);
-          setControlledSizeRef.current({ width: outerW, height: outerH });
-        }
-      }, 150);
     };
 
     socketService.on('update_signature_position', handleRemoteMove);
     return () => {
       socketService.off('update_signature_position', handleRemoteMove);
       if (remoteTimerRef.current) clearTimeout(remoteTimerRef.current);
-      if (remoteFinalTimerRef.current) clearTimeout(remoteFinalTimerRef.current);
     };
-  }, [sig.id, isOwner, containerWidth, containerHeight, state.nodeRef]);
+  }, [sig.id, isOwner, containerWidth, containerHeight]);
 
   // ── Drag handler (emit throttled) ────────────────────────────────────────
   const handleDrag = (e, data) => {
@@ -264,14 +236,16 @@ export function useDraggableSignatureGroup({
       ? 'border border-blue-500 bg-white/40 shadow-sm'
       : 'border border-transparent';
 
-  // [REALTIME-PERF] Saat remote-active, JANGAN set CSS transition.
-  // Direct DOM update style.transform di handleRemoteMove sudah jadi
-  // source of truth — transition ke posisi sebelumnya bikin animation race
-  // (animasi 25ms ke posisi A, datang event ke posisi B 16ms kemudian,
-  // animation A keinterrupt → visible jeda).
+  // [REALTIME-PERF] CSS transition untuk smooth interpolation antar event remote.
+  // Frontend pakai throttle 16ms = setiap ~16ms ada update. Transition 16ms linear
+  // bikin browser smooth dari posisi A ke B tanpa visible "jump".
   //
-  // Native compositor + 60fps emit dari owner = smooth tanpa transition.
-  const transitionStyle = 'none';
+  // Owner sendiri tidak butuh transition — react-draggable native + GPU compositor
+  // sudah smooth saat drag.
+  const transitionStyle =
+    !isOwner && isRemoteActive
+      ? 'transform 16ms linear, width 16ms linear, height 16ms linear'
+      : 'none';
 
   return {
     state: {

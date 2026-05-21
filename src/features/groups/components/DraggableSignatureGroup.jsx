@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import Draggable from 'react-draggable';
 import { X, Lock } from 'lucide-react';
 import { useDraggableSignatureGroup } from '../hooks/useDraggableSignatureGroup';
@@ -184,4 +184,32 @@ const DraggableSignatureGroup = ({
   );
 };
 
-export default DraggableSignatureGroup;
+export default memo(DraggableSignatureGroup, (prev, next) => {
+  // [REALTIME-PERF] Custom equality check supaya component re-render hanya
+  // saat data signature SENDIRI berubah, bukan setiap parent re-render.
+  //
+  // Sebelumnya: setiap setSignatures di parent (mis. socket signature_saved
+  // dari user lain), seluruh signature group di-rerender. Untuk 5+ signer
+  // di satu page, ini bottleneck visible saat drag.
+  //
+  // Bandingkan field yang berarti — kalau sama, skip re-render.
+  // Owner-controlled position (drag/drop) tetap re-render via Draggable's
+  // own state, tidak depend pada parent re-render.
+  return (
+    prev.sig.id === next.sig.id &&
+    prev.sig.signerId === next.sig.signerId &&
+    prev.sig.userId === next.sig.userId &&
+    prev.sig.status === next.sig.status &&
+    prev.sig.signatureImageUrl === next.sig.signatureImageUrl &&
+    prev.sig.positionX === next.sig.positionX &&
+    prev.sig.positionY === next.sig.positionY &&
+    prev.sig.width === next.sig.width &&
+    prev.sig.height === next.sig.height &&
+    prev.sig.pageNumber === next.sig.pageNumber &&
+    prev.sig._pending === next.sig._pending &&
+    prev.containerWidth === next.containerWidth &&
+    prev.containerHeight === next.containerHeight &&
+    prev.readOnly === next.readOnly &&
+    prev.documentId === next.documentId
+  );
+});
