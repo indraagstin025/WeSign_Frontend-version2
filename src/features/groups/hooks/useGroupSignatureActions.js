@@ -118,6 +118,24 @@ export const useGroupSignatureActions = ({
       // Optimistic update
       setSignatures((prev) => [...prev, newSig]);
 
+      // [REALTIME-PERF] Emit socket OPTIMISTIC sebelum saveDraft response.
+      // User lain akan langsung lihat signature ini muncul di-PDF tanpa
+      // menunggu round-trip ke backend (~150-300ms total).
+      //
+      // Trade-off: kalau saveDraft gagal nanti, user lain sempat lihat
+      // signature, lalu hilang saat catch block remove dari state. Tapi
+      // kasus error sangat rare (validation/auth issue, bukan flaky network),
+      // jadi acceptable trade.
+      //
+      // ID yang di-emit = tempId (UUID v4 client). Saat saveDraft response
+      // sampai, frontend re-emit dengan server-generated ID — tapi receiver
+      // di useGroupSocket dedup berdasarkan ID, jadi optimistic + final emit
+      // tidak bikin duplicate.
+      socketService.emitAddSignature(documentId, {
+        ...newSig,
+        _pending: false, // Hide _pending dari payload network
+      });
+
       try {
         const res = await saveDraft(documentId, {
           // Catatan: backend mengabaikan `id` dari client (FIX #11 service),
