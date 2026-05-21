@@ -14,20 +14,31 @@ const SigningModals = ({
   handleSaveCanvas,
   isSheetOpen,
   setIsSheetOpen,
-  currentSignature,
-  signatures,
-  removeSignature,
-  handleFinalSign,
-  isSubmitting,
+  // Status modal
   statusModal,
   setStatusModal,
-  finalizeText,
-  disableFinalize = null,
   // Saved assets props
   savedAssets = [],
   onDeleteAsset,
   onSelectAsset,
+  // [Mobile picker] Element picker handlers untuk admin (Paraf/Stamp/Text/Date).
+  //   Bila tidak diberikan, button tidak tampil di sheet (signer biasa).
+  onOpenParaf,
+  onOpenStamp,
+  onOpenText,
+  onOpenDate,
+  // [Mobile picker] Tipe element yang sedang aktif saat ini —
+  //   akan di-highlight di sheet element picker.
+  activeElement = null,
+  // Note: props lama (currentSignature, signatures, removeSignature,
+  // handleFinalSign, isSubmitting, finalizeText, disableFinalize) sudah
+  // tidak diteruskan ke MobileBottomSheet baru. Konten tersebut dipindah
+  // ke ActiveSignatureMobileCard (preview + list) dan SigningMobileBar
+  // (tombol finalisasi). Caller boleh tetap pass props lama untuk
+  // back-compat — akan di-ignore via rest spread.
+  ...legacyProps
 }) => {
+  void legacyProps; // silence unused — props lama disengaja diabaikan
   return (
     <>
       {/* 1. Signature Hand-Drawn Canvas */}
@@ -40,18 +51,16 @@ const SigningModals = ({
         onSelectAsset={onSelectAsset}
       />
 
-      {/* 2. Mobile Bottom Control Sheet */}
+      {/* 2. Mobile Bottom Element Picker Sheet */}
       <MobileBottomSheet
         isOpen={isSheetOpen}
         onClose={() => setIsSheetOpen(false)}
         onOpenCanvas={() => setIsCanvasOpen(true)}
-        currentSignature={currentSignature}
-        signatures={signatures}
-        onRemoveSignature={removeSignature}
-        onFinalize={handleFinalSign}
-        isSubmitting={isSubmitting}
-        finalizeText={finalizeText}
-        disabled={disableFinalize}
+        onOpenParaf={onOpenParaf}
+        onOpenStamp={onOpenStamp}
+        onOpenText={onOpenText}
+        onOpenDate={onOpenDate}
+        activeElement={activeElement}
       />
 
       {/* 3. Global Feedback Status Modal */}
@@ -62,5 +71,12 @@ const SigningModals = ({
     </>
   );
 };
+
+// Note: signatures, removeSignature, handleFinalSign, isSubmitting, finalizeText,
+// disableFinalize tidak lagi digunakan oleh MobileBottomSheet baru. Konten
+// preview signature aktif & list penempatan dipindah ke ActiveSignatureMobileCard,
+// dan tombol finalisasi tetap di SigningMobileBar (action bar bawah).
+// Props masih diterima oleh SigningModals untuk back-compat dengan caller
+// lama via rest spread `...legacyProps` (lihat destructure di atas).
 
 export default SigningModals;

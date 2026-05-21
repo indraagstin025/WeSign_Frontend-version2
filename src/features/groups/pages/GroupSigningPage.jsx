@@ -17,6 +17,7 @@ import { useSignatureAssets } from '../../signature/hooks/useSignatureAssets';
 import { useInteractionMode } from '../../signature/hooks/useInteractionMode';
 import DraggableSignatureGroup from '../components/DraggableSignatureGroup';
 import GroupSignerProgress from '../components/GroupSignerProgress';
+import GroupInfoMobileCard from '../components/GroupInfoMobileCard';
 import RejectReasonModal from '../components/RejectReasonModal';
 
 // Komponen Reusable dari Personal Signing
@@ -26,6 +27,7 @@ import SigningFooterBar from '../../signature/components/SigningFooterBar';
 import DocumentSettingsPanel from '../../signature/components/DocumentSettingsPanel';
 import SigningMobileBar from '../../signature/components/SigningMobileBar';
 import SigningModals from '../../signature/components/SigningModals';
+import ActiveSignatureMobileCard from '../../signature/components/ActiveSignatureMobileCard';
 import ParafModal from '../../signature/components/ParafModal';
 import StampModal from '../../signature/components/StampModal';
 import TextAnnotationModal from '../../signature/components/TextAnnotationModal';
@@ -259,6 +261,17 @@ const GroupSigningPage = () => {
           </div>
         )}
 
+        {/* [MOBILE] Group info card — tampil di atas PDF, di bawah navbar */}
+        <GroupInfoMobileCard
+          groupData={groupData}
+          activeUsers={activeUsers}
+          signerRequests={
+            groupData?.documents?.find((d) => String(d.id) === String(documentId))
+              ?.signerRequests || []
+          }
+          currentUserId={currentUser?.id}
+        />
+
         {/* PDF Viewer */}
         <main
           className={`flex-1 overflow-y-auto no-scrollbar bg-zinc-100 dark:bg-zinc-950 p-4 sm:p-8 flex items-start justify-center relative select-none pb-28 sm:pb-8 min-w-0
@@ -330,6 +343,12 @@ const GroupSigningPage = () => {
             ) : null}
           </div>
         </main>
+        {/* [MOBILE] Active signature card — tampil setelah PDF, di atas footer/action bar */}
+        <ActiveSignatureMobileCard
+          currentSignature={currentSignature}
+          signatures={mySignatures}
+          onRemoveSignature={handleDeleteSignature}
+        />
         {/* Footer */}
         <SigningFooterBar
           pageNumber={pageNumber}
@@ -389,6 +408,12 @@ const GroupSigningPage = () => {
         savedAssets={assets.filter(a => a.type === 'signature')}
         onDeleteAsset={(id) => removeAsset(id)}
         onSelectAsset={(asset) => { handleSaveCanvas(asset.imageUrl, 'signature'); setActiveElement({ type: 'signature', imageUrl: asset.imageUrl }); }}
+        // [Mobile picker] Tambah Element handler — admin only
+        onOpenParaf={isAdmin ? () => setIsParafOpen(true) : undefined}
+        onOpenStamp={isAdmin ? () => setIsStampOpen(true) : undefined}
+        onOpenText={isAdmin ? () => setIsTextOpen(true) : undefined}
+        onOpenDate={isAdmin ? () => setIsDateOpen(true) : undefined}
+        activeElement={activeElement?.type || 'signature'}
       />
 
       {/* Tool Modals */}
