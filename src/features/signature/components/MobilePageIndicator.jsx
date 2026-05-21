@@ -28,7 +28,18 @@ const MobilePageIndicator = ({ pageNumber, numPages, setPageNumber }) => {
   const showNav = typeof setPageNumber === 'function' && numPages > 1;
 
   return (
-    <div className="sm:hidden flex justify-center px-4 -mt-3 mb-3 pointer-events-none">
+    <div
+      className="sm:hidden fixed left-0 right-0 flex justify-center px-4 pointer-events-none z-[99]"
+      style={{
+        // Pill floating di atas ActiveSignatureMobileCard.
+        //   ActionBar bottom: 12 + ~58 = top 70px
+        //   ActiveCard bottom: 82 + ~76 = top 158px
+        //   Gap 12px ke pill bottom edge → pill bottom: 170px
+        //   Saat sheet open, sheet z-101 di bottom 170px akan menutupi pill (z-99)
+        //   sehingga pill ikut hilang seperti di mockup 2.
+        bottom: 'calc(170px + env(safe-area-inset-bottom, 0px))',
+      }}
+    >
       <div className="bg-white dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 rounded-full shadow-sm flex items-center gap-1 pl-1 pr-1 py-1 pointer-events-auto">
         {showNav && (
           <button
