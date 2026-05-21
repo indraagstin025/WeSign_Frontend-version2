@@ -7,13 +7,9 @@ import {
   CheckCircle2,
   ChevronRight
 } from 'lucide-react';
-import { pdfjs, Document, Page } from 'react-pdf';
+import { Document, Page } from 'react-pdf';
 
-// Konfigurasi Worker PDF.js — bundle lokal via Vite
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url,
-).toString();
+// PDF.js worker singleton — sudah di-init di main.jsx via config/pdfWorker.js.
 
 import { useSignPackage } from '../hooks/useSignPackage';
 import { useSignatureAssets } from '../../signature/hooks/useSignatureAssets';

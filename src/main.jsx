@@ -2,6 +2,11 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
+// [REALTIME-PERF] Init PDF.js worker singleton di entry point.
+// Konfigurasi terpusat supaya tidak ada race re-assign workerSrc dari
+// multiple page komponen yang dulunya tiap-tiap set sendiri (bikin
+// "Worker was terminated" error saat user navigate cepat antar page).
+import './config/pdfWorker.js'
 
 // [FIX] Suppress harmless dev-only "Worker was terminated" rejection dari PDF.js.
 // React StrictMode mount → unmount → remount menyebabkan loadDocument promise

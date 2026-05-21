@@ -1,13 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AlertCircle } from 'lucide-react';
-import { pdfjs, Document, Page } from 'react-pdf';
+import { Document, Page } from 'react-pdf';
 
-// Konfigurasi Worker PDF.js — bundle lokal via Vite
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url,
-).toString();
+// PDF.js worker singleton — sudah di-init di main.jsx via config/pdfWorker.js.
 
 // Import CSS react-pdf
 import 'react-pdf/dist/Page/AnnotationLayer.css';

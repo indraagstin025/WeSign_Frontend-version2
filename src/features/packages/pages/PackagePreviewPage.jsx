@@ -11,13 +11,9 @@ import {
   CheckCircle2,
   ClipboardList
 } from 'lucide-react';
-import { pdfjs, Document, Page } from 'react-pdf';
+import { Document, Page } from 'react-pdf';
 
-// Konfigurasi Worker PDF.js — bundle lokal via Vite (lepas dependency unpkg CDN)
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url,
-).toString();
+// PDF.js worker singleton — sudah di-init di main.jsx via config/pdfWorker.js.
 
 import { usePackagePreview } from '../hooks/usePackagePreview';
 import { getDocumentFile } from '../../documents/api/docService';

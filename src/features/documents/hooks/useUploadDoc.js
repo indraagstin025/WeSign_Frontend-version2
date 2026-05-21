@@ -4,11 +4,9 @@ import { uploadDocument } from '../api/docService';
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from '../constants/uploadLimits';
 import { createLogger } from '../../../utils/logger';
 
-// Konfigurasi worker pdfjs (kompatibel dengan Vite).
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url,
-).toString();
+// PDF.js worker singleton — sudah di-init di main.jsx via config/pdfWorker.js.
+// pdfjs masih di-import di sini untuk akses pdfjs.getDocument() (parse PDF
+// untuk count halaman saat upload, tidak butuh react-pdf rendering).
 
 // [L-7] Scoped logger agar console output konsisten dengan service lain.
 const log = createLogger('UploadDoc');

@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { AlertCircle, CheckCircle } from 'lucide-react';
-import { pdfjs, Document, Page } from 'react-pdf';
+import { Document, Page } from 'react-pdf';
 
-// Konfigurasi Worker PDF.js — bundle lokal via Vite
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url,
-).toString();
+// PDF.js worker singleton — sudah di-init di main.jsx via config/pdfWorker.js.
+// Tidak perlu setup workerSrc di sini lagi (mencegah race re-assign yang
+// bikin "Worker was terminated" error saat user navigate antar page).
 
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';

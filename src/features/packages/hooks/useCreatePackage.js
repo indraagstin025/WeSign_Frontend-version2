@@ -5,11 +5,9 @@ import { createLogger } from '../../../utils/logger';
 
 const logger = createLogger('CreatePackage');
 
-// Konfigurasi worker pdfjs secara lokal (Vite Compatible)
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url,
-).toString();
+// PDF.js worker singleton — sudah di-init di main.jsx via config/pdfWorker.js.
+// pdfjs masih di-import di sini untuk akses pdfjs.getDocument() (parse PDF
+// untuk count halaman, tidak butuh react-pdf rendering).
 
 /**
  * @hook useCreatePackage
