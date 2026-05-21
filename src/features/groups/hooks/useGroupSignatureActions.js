@@ -181,6 +181,12 @@ export const useGroupSignatureActions = ({
           ...newSig,
           ...(localSnapshot ? { width: localSnapshot.width, height: localSnapshot.height } : {}),
           id: serverSig?.id || tempId,
+          // [REALTIME-PERF] Tag oldId supaya peer (useGroupSocket.handleAddSig)
+          // bisa REPLACE signature optimistic yang sebelumnya kita emit dengan
+          // tempId — bukan ADD baru. Tanpa ini, peer akan punya 2 signature
+          // (yang dengan tempId optimistic + yang dengan server ID), bikin
+          // visual cloning saat drag/drop sebelum saveDraft response sampai.
+          oldId: tempId,
           _pending: false,
         });
 

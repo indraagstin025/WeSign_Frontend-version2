@@ -129,8 +129,39 @@ export const useGroupSocket = ({
       if (!signature?.id || !setSignatures) return;
       if (String(signature.userId) === String(currentUserId)) return;
       setSignatures((prev) => {
+        // [REALTIME-PERF] Kalau ini final emit (post-saveDraft) yang
+        // membawa `oldId` (tempId optimistic), REPLACE row dengan ID lama
+        // alih-alih ADD baru. Tanpa ini, peer akan punya 2 signature
+        // (optimistic + final) yang bikin visual cloning saat drag/drop
+        // sebelum saveDraft response.
+        if (signature.oldId) {
+          const idx = prev.findIndex((s) => s.id === signature.oldId);
+          if (idx !== -1) {
+            // Replace — preserve posisi/size yang mungkin sudah di-update
+            // via update_signature_position event antara optimistic dan final.
+            const next = [...prev];
+            const existing = next[idx];
+            const { oldId: _oldId, ...rest } = signature;
+            next[idx] = {
+              ...existing,
+              ...rest,
+              // Posisi/size dari state lokal lebih trustworthy (sudah di-sync
+              // via update_signature_position events). Final emit dari
+              // sender bisa stale beberapa frame.
+              positionX: existing.positionX ?? rest.positionX,
+              positionY: existing.positionY ?? rest.positionY,
+              width: existing.width ?? rest.width,
+              height: existing.height ?? rest.height,
+            };
+            return next;
+          }
+          // oldId tidak ketemu (user join setelah optimistic emit) — fall through
+          // ke add baru di bawah.
+        }
+        // Add: skip kalau ID sudah ada (idempotent).
         if (prev.find((s) => s.id === signature.id)) return prev;
-        return [...prev, signature];
+        const { oldId: _oldId, ...clean } = signature;
+        return [...prev, clean];
       });
     };
 
