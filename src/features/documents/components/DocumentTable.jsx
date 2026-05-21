@@ -95,6 +95,7 @@ const DocumentTable = ({ documents, onAction, modals = {}, isTrashMode = false }
               {/* Aksi */}
               <div className="flex justify-end">
                 <button
+                  data-document-menu
                   onClick={(e) => handleOpenMenu(e, doc.id)}
                   className="p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 bg-transparent border-none cursor-pointer text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-all"
                 >
@@ -138,6 +139,7 @@ const DocumentTable = ({ documents, onAction, modals = {}, isTrashMode = false }
         <>
           <div className="fixed inset-0 z-40" onClick={() => state.setOpenMenuId(null)} />
           <div
+            data-document-menu
             className="fixed z-50 w-52 bg-white dark:bg-zinc-800 rounded-xl shadow-2xl border border-zinc-100 dark:border-zinc-700 py-1 animate-in fade-in zoom-in-95 duration-150"
             style={{ top: menuPos.top, right: menuPos.right }}
           >
