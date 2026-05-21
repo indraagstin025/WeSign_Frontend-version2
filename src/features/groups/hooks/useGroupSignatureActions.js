@@ -153,12 +153,13 @@ export const useGroupSignatureActions = ({
         });
 
         const serverSig = res.data;
-        // PENTING: preserve s.width/s.height dari state lokal — handleImageLoad
-        // di useDraggableSignature mungkin sudah update width/height ke nilai
-        // AR-correct sebelum response saveDraft sampai (saveDraft ~40ms,
-        // image cached load ~5ms). Tanpa ini, ...serverSig akan menimpa nilai
-        // AR-correct dengan placeholder (mis. height: 0.1) yang kita kirim
-        // ke backend saat drop.
+        // PENTING: preserve s.width/s.height/s.positionX/s.positionY dari state
+        // lokal — kalau user drag/resize sebelum saveDraft response sampai,
+        // state lokal sudah berubah. Tanpa preserve, ...serverSig akan menimpa
+        // dengan posisi DROP AWAL → signature lompat ke posisi awal di tab
+        // sender (dan juga di peer kalau emit pakai serverSig).
+        //
+        // saveDraft + image cached load ~5ms, drag bisa fire dalam window itu.
         let localSnapshot = null;
         setSignatures((prev) =>
           prev.map((s) => {
@@ -169,8 +170,13 @@ export const useGroupSignatureActions = ({
               ...rest,
               ...serverSig,
               userId: currentUser.id,
+              // [FIX] Preserve posisi + size dari state lokal — kalau user
+              // sudah drag/resize antara drop dan saveDraft response sampai.
+              positionX: s.positionX,
+              positionY: s.positionY,
               width: s.width,
               height: s.height,
+              pageNumber: s.pageNumber,
               // [FIX] Hapus flag — signature kini ter-persist, PATCH boleh.
               _pending: false,
             };
@@ -179,7 +185,19 @@ export const useGroupSignatureActions = ({
 
         socketService.emitAddSignature(documentId, {
           ...newSig,
-          ...(localSnapshot ? { width: localSnapshot.width, height: localSnapshot.height } : {}),
+          // [FIX] Spread posisi + size DARI LOCAL SNAPSHOT (state setelah
+          // ada drag), bukan dari `newSig` (state saat drop). Kalau user
+          // drag setelah drop tapi sebelum saveDraft response, posisi
+          // sudah berubah di state lokal via update_signature_position
+          // events. Tanpa ini, peer akan terima posisi DROP AWAL — bikin
+          // signature lompat ke posisi awal saat saveDraft response sampai.
+          ...(localSnapshot ? {
+            positionX: localSnapshot.positionX,
+            positionY: localSnapshot.positionY,
+            width: localSnapshot.width,
+            height: localSnapshot.height,
+            pageNumber: localSnapshot.pageNumber,
+          } : {}),
           id: serverSig?.id || tempId,
           // [REALTIME-PERF] Tag oldId supaya peer (useGroupSocket.handleAddSig)
           // bisa REPLACE signature optimistic yang sebelumnya kita emit dengan
@@ -190,24 +208,29 @@ export const useGroupSignatureActions = ({
           _pending: false,
         });
 
-        // [FIX] Bila handleImageLoad sudah update width/height ke nilai
-        // AR-correct (state lokal berbeda dari payload yang dikirim ke saveDraft),
-        // sync ke backend dengan PATCH terpisah pakai server-generated ID.
-        // Tanpa ini, DB punya height placeholder (mis. 0.1) padahal frontend
-        // sudah render dengan height yang benar.
+        // [FIX] Bila state lokal sudah berubah (size DAN/ATAU position) saat
+        // saveDraft response sampai (mis. user sudah drag/resize), sync ke
+        // backend dengan PATCH terpisah pakai server-generated ID. Tanpa
+        // ini, DB akan punya posisi DROP awal padahal frontend sudah render
+        // di posisi terkini.
         const persistedId = serverSig?.id;
-        const sizeChanged =
+        const stateChanged =
           localSnapshot &&
           persistedId &&
           (localSnapshot.width !== dropData.width ||
-            localSnapshot.height !== dropData.height);
-        if (sizeChanged) {
+            localSnapshot.height !== dropData.height ||
+            localSnapshot.positionX !== dropData.positionX ||
+            localSnapshot.positionY !== dropData.positionY);
+        if (stateChanged) {
           updateDraftPosition(persistedId, {
+            positionX: localSnapshot.positionX,
+            positionY: localSnapshot.positionY,
             width: localSnapshot.width,
             height: localSnapshot.height,
+            pageNumber: localSnapshot.pageNumber,
           }).catch((err) => {
             if (err?.name === 'AbortError') return;
-            log.warn('post-save size sync error:', err.message);
+            log.warn('post-save state sync error:', err.message);
           });
         }
       } catch (err) {
