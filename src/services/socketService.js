@@ -44,17 +44,19 @@ export const socketService = {
 
     socket = io(SOCKET_URL, {
       auth: { token },           // Backend socketHandler.js membaca dari handshake.auth.token
-      // [REALTIME-LATENCY] WebSocket-only transport untuk skip phase polling
-      // long-polling. Sebelumnya `['polling', 'websocket']` + upgrade:true
-      // bikin initial connect lewat HTTP long-polling dulu (1-2 detik) baru
-      // upgrade ke WS. Selama window upgrade, event drag/resize via polling
-      // delay tinggi (~200-1000ms). Pakai WS langsung jadi connect cepat
-      // dan latency konsisten.
-      //
-      // Trade-off: kalau user di network yang block WS (rare, biasanya
-      // corporate firewall), connect gagal. ~99% network normal OK.
-      transports: ['websocket'],
-      upgrade: false,
+      // Pakai pattern polling-first + auto-upgrade ke websocket. Ini pattern
+      // yang sama dengan implementasi lama yang work smooth. Polling-first
+      // memberi:
+      //   1. Session affinity yang lebih reliable di load balancer (Railway,
+      //      reverse proxy, dll) — beberapa LB perlu sticky session via
+      //      cookie yang kalau pakai WS-only kadang tidak ke-set duluan.
+      //   2. Fallback otomatis kalau network user block WS (rare di network
+      //      modern, tapi mungkin di network kampus dengan firewall ketat).
+      //   3. Setelah handshake polling sukses, browser auto-upgrade ke WS
+      //      yang persist untuk subsequent traffic — latency tetap rendah
+      //      setelah upgrade selesai (~1-2 detik di awal).
+      transports: ['polling', 'websocket'],
+      upgrade: true,
       reconnection: true,
       reconnectionAttempts: Infinity,
       reconnectionDelay: SOCKET_RECONNECT_DELAY_MS,

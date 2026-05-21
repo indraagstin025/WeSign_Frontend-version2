@@ -12,49 +12,21 @@ const VISUAL_PADDING = SIGNATURE_VISUAL_PADDING;
 const TOTAL_PADDING = VISUAL_PADDING * 2;
 const SOCKET_THROTTLE_MS = SIGNATURE_SOCKET_THROTTLE_MS;
 
-/**
- * Throttle dengan trailing edge — pastikan posisi/ukuran terakhir selalu
- * ter-emit walau user lepas drag dalam throttle window.
- *
- * Sebelumnya pakai leading-edge only:
- *   - Call pertama execute langsung
- *   - Semua call dalam window 16ms DROPPED
- *   - Kalau user drop di window itu, posisi final hilang → user lain
- *     lihat posisi 16ms sebelum drop, bukan posisi sebenarnya.
- *
- * Sekarang leading + trailing:
- *   - Call pertama: execute langsung (leading)
- *   - Call selanjutnya dalam window: simpan args, schedule trailing
- *   - Saat timer expire: execute args terakhir (trailing) — ini yang
- *     jamin posisi terakhir tidak hilang.
- *
- * Pattern standard di Lodash/Underscore throttle({ leading, trailing }).
- */
+// Throttle leading-only — sama dengan implementasi yang work smooth di
+// repo lama (utils/throttle.js). Trailing call tidak diperlukan karena:
+//   - Drag move emit setiap window (16ms) — natural granularity drag yang
+//     diterima user lain
+//   - Drop akhir di-emit lewat onDragStop (wrappedOnUpdatePosition) yang
+//     langsung emit tanpa throttle, jadi posisi final TIDAK akan hilang.
+//   - Tambah trailing call malah bisa double-emit di edge case (drag end
+//     fire emit terakhir, lalu trailing fire emit sama lagi).
 function throttle(func, limit) {
-  let inThrottle = false;
-  let lastArgs = null;
-  let timeoutId = null;
-  let lastThis = null;
-
+  let inThrottle;
   return function (...args) {
     if (!inThrottle) {
-      // Leading edge: execute langsung
       func.apply(this, args);
       inThrottle = true;
-      timeoutId = setTimeout(() => {
-        inThrottle = false;
-        // Trailing edge: kalau ada call tertunda dalam window,
-        // execute args terakhir setelah timer expire.
-        if (lastArgs) {
-          func.apply(lastThis, lastArgs);
-          lastArgs = null;
-          lastThis = null;
-        }
-      }, limit);
-    } else {
-      // Buffer args terakhir untuk trailing call
-      lastArgs = args;
-      lastThis = this;
+      setTimeout(() => (inThrottle = false), limit);
     }
   };
 }
@@ -272,15 +244,15 @@ export function useDraggableSignatureGroup({
       ? 'border border-blue-500 bg-white/40 shadow-sm'
       : 'border border-transparent';
 
-  // [REALTIME-PERF] CSS transition untuk smooth interpolation antar event remote.
-  // Frontend pakai throttle 16ms = setiap ~16ms ada update. Transition 16ms linear
-  // bikin browser smooth dari posisi A ke B tanpa visible "jump".
-  //
-  // Owner sendiri tidak butuh transition — react-draggable native + GPU compositor
-  // sudah smooth saat drag.
+  // Pattern transition sama dengan repo lama:
+  //   - Saat owner drag/resize sendiri: NO transition (lihat
+  //     DraggableSignatureGroup.jsx, react-draggable handle native)
+  //   - Saat remote update: 100ms linear → smooth interpolation antar
+  //     event throttled 30ms. Cukup pendek untuk responsive, cukup
+  //     panjang untuk visual blend antar emit.
   const transitionStyle =
     !isOwner && isRemoteActive
-      ? 'transform 16ms linear, width 16ms linear, height 16ms linear'
+      ? 'transform 100ms linear, width 100ms linear, height 100ms linear'
       : 'none';
 
   return {
