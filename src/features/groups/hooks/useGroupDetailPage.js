@@ -277,6 +277,12 @@ export function useGroupDetailPage() {
       fetchGroup(true);
       fetchTrashCount();
 
+      // [Bug fix] Refresh trash list juga supaya dokumen yang baru ke-soft-delete
+      //   langsung muncul di tab "Terhapus" tanpa user harus refresh manual.
+      //   Sebelumnya hanya `fetchTrashCount` (badge counter) yang ke-refresh,
+      //   list `trashDocs` masih state lama → tab tampilkan data outdated.
+      fetchTrashDocuments({ silent: true });
+
       // Jika item terakhir di halaman ini, mundur ke halaman sebelumnya.
       const isLastItemOnPage = documents.length === 1;
       const shouldGoBack = isLastItemOnPage && docPage > 1;
