@@ -166,10 +166,6 @@ export function useDraggableSignatureGroup({
 
   // Capture remote setters via ref agar useEffect socket di bawah tidak
   // re-subscribe setiap render.
-  // [M-2] Tambah deps eksplisit. Sebelumnya useEffect tanpa array → effect
-  // jalan setiap render (effectively sama dengan ref update tiap render),
-  // tapi React lint tidak bisa verifikasi correctness dan StrictMode
-  // double-invoke jadi 2x update per render.
   const setControlledPositionRef = useRef(actions.setControlledPosition);
   const setControlledSizeRef = useRef(actions.setControlledSize);
   useEffect(() => {
@@ -177,29 +173,75 @@ export function useDraggableSignatureGroup({
     setControlledSizeRef.current = actions.setControlledSize;
   }, [actions.setControlledPosition, actions.setControlledSize]);
 
+  // [REALTIME-PERF] Buffer remote update di ref + rAF-batched React commit.
+  //
+  // Pattern hybrid yang di-port dari project lama (PlacedSignatureGroup +
+  // useSignatureManagerGroup) yang user konfirmasi smooth visual untuk
+  // observer (peer yang lihat user lain drag).
+  //
+  // Strategi 2-layer:
+  //   1. Direct DOM update (style.transform/width/height) di handler —
+  //      bypass React render, native compositor handle 60fps smooth.
+  //   2. React state commit di-batch via requestAnimationFrame — cegah
+  //      parent rerender thrashing tiap event 30ms throttle. rAF natural
+  //      dedup ke 60fps (16ms): kalau ada update baru sebelum frame next,
+  //      pakai data terbaru saja saat commit.
+  //
+  //      rAF preferred dibanding setTimeout 100ms karena:
+  //      - Kalau parent rerender karena state lain, react-draggable akan
+  //        apply controlledPosition prop yang masih lama (state belum
+  //        commit) → flick balik ke posisi lama. rAF commit dalam 1 frame
+  //        cegah window race ini.
+  //      - Browser optimize rAF callback dengan paint cycle, lebih smooth
+  //        secara visual.
+  const pendingRemoteRef = useRef(null);
+  const remoteRafRef = useRef(null);
+
   // ── Socket: Realtime drag dari user lain ──────────────────────────────
   useEffect(() => {
     const handleRemoteMove = (data) => {
       if (data.signatureId !== sig.id) return;
       if (isOwner) return; // Jangan override posisi milik sendiri
 
-      const outerX = data.positionX * containerWidth - VISUAL_PADDING;
-      const outerY = data.positionY * containerHeight - VISUAL_PADDING;
+      const outerX = Math.round(data.positionX * containerWidth - VISUAL_PADDING);
+      const outerY = Math.round(data.positionY * containerHeight - VISUAL_PADDING);
 
-      setControlledPositionRef.current({
-        x: Math.round(outerX),
-        y: Math.round(outerY),
-      });
+      // === LAYER 1: Direct DOM update (bypass React) ===
+      const node = state.nodeRef?.current;
+      if (node) {
+        node.style.transform = `translate(${outerX}px, ${outerY}px)`;
+        if (data.width !== undefined && data.height !== undefined) {
+          const outerW = Math.round(data.width * containerWidth + TOTAL_PADDING);
+          const outerH = Math.round(data.height * containerHeight + TOTAL_PADDING);
+          node.style.width = `${outerW}px`;
+          node.style.height = `${outerH}px`;
+        }
+      }
 
-      if (data.width !== undefined && data.height !== undefined) {
-        const outerW = data.width * containerWidth + TOTAL_PADDING;
-        const outerH = data.height * containerHeight + TOTAL_PADDING;
-        setControlledSizeRef.current({
-          width: Math.round(outerW),
-          height: Math.round(outerH),
+      // === LAYER 2: rAF-batched React state commit (latest-wins) ===
+      pendingRemoteRef.current = data;
+
+      if (remoteRafRef.current === null) {
+        remoteRafRef.current = requestAnimationFrame(() => {
+          remoteRafRef.current = null;
+          const latest = pendingRemoteRef.current;
+          if (!latest) return;
+          pendingRemoteRef.current = null;
+
+          const finalX = Math.round(latest.positionX * containerWidth - VISUAL_PADDING);
+          const finalY = Math.round(latest.positionY * containerHeight - VISUAL_PADDING);
+
+          setControlledPositionRef.current({ x: finalX, y: finalY });
+
+          if (latest.width !== undefined && latest.height !== undefined) {
+            const finalW = Math.round(latest.width * containerWidth + TOTAL_PADDING);
+            const finalH = Math.round(latest.height * containerHeight + TOTAL_PADDING);
+            setControlledSizeRef.current({ width: finalW, height: finalH });
+          }
         });
       }
 
+      // Visual feedback (toast/ring) — pakai state karena cuma flag boolean
       setIsRemoteActive(true);
       setIsLockedByRemote(true);
       if (remoteTimerRef.current) clearTimeout(remoteTimerRef.current);
@@ -213,8 +255,13 @@ export function useDraggableSignatureGroup({
     return () => {
       socketService.off('update_signature_position', handleRemoteMove);
       if (remoteTimerRef.current) clearTimeout(remoteTimerRef.current);
+      if (remoteRafRef.current !== null) {
+        cancelAnimationFrame(remoteRafRef.current);
+        remoteRafRef.current = null;
+      }
+      pendingRemoteRef.current = null;
     };
-  }, [sig.id, isOwner, containerWidth, containerHeight]);
+  }, [sig.id, isOwner, containerWidth, containerHeight, state.nodeRef]);
 
   // ── Drag handler (emit throttled) ────────────────────────────────────────
   const handleDrag = (e, data) => {
