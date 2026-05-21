@@ -51,10 +51,10 @@ Plus **3 task baru** muncul karena backend menyediakan endpoint ringan dari BE-4
 
 | ID | Task | Lokasi | Status | Catatan |
 |----|------|--------|--------|---------|
-| FE-7 | Pisah `socketService.connect()` ke mount-once di `useGroupsPage` | `groups/hooks/useGroupsPage.js` | ⏳ 10 menit (cosmetic) | — |
-| FE-12 | (cover by FE-6) | — | ⏳ Cover by FE-6 | — |
+| FE-7 | Pisah `socketService.connect()` ke mount-once di `useGroupsPage` | `groups/hooks/useGroupsPage.js` | ✅ Selesai (commit `d056758`) | — |
+| FE-12 | (cover by FE-6) | — | ✅ Cover by FE-6 | — |
 | **FE-13** ✅ | `useDashboard` no cache | — | ✅ **RESOLVED** | BE-2 dashboard cache 60s sudah cover |
-| **FE-16** ✨ | Verifikasi `useGroupsPage` benefit dari P3-1 group list cache | `groups/hooks/useGroupsPage.js` | ⏳ 10 menit (verifikasi) | **Baru** — sudah otomatis via P3-1 backend |
+| **FE-16** ✨ | `getAllGroups` cache 30s di service layer + auto-bust di mutation | `groups/api/groupService.js` | ✅ Selesai (commit `d056758`) | **Baru** — pair dengan backend P3-1 |
 
 ### Ringkasan Total Setelah Update
 
