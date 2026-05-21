@@ -43,7 +43,7 @@ const SigningMobileBar = ({
   const isDisabled = disabled !== null ? disabled : (signatureCount === 0 || isSubmitting);
   return (
     <div
-      className="sm:hidden fixed left-4 right-4 bg-white/95 dark:bg-[#202c33]/95 backdrop-blur-md border border-zinc-200 dark:border-white/5 z-[130] shadow-[0_8px_30px_rgb(0,0,0,0.12)] rounded-2xl animate-in slide-in-from-bottom duration-500 pointer-events-auto"
+      className="sm:hidden fixed left-3 right-3 bg-white/95 dark:bg-[#202c33]/95 backdrop-blur-md border border-zinc-200 dark:border-white/5 z-[130] shadow-[0_8px_30px_rgb(0,0,0,0.12)] rounded-2xl animate-in slide-in-from-bottom duration-500 pointer-events-auto"
       style={{
         // [Mockup fix] Action bar di paling bawah dengan margin 12px dari edge.
         bottom: 'calc(12px + env(safe-area-inset-bottom, 0px))',
