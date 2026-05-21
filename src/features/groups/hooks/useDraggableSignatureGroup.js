@@ -12,13 +12,49 @@ const VISUAL_PADDING = SIGNATURE_VISUAL_PADDING;
 const TOTAL_PADDING = VISUAL_PADDING * 2;
 const SOCKET_THROTTLE_MS = SIGNATURE_SOCKET_THROTTLE_MS;
 
+/**
+ * Throttle dengan trailing edge — pastikan posisi/ukuran terakhir selalu
+ * ter-emit walau user lepas drag dalam throttle window.
+ *
+ * Sebelumnya pakai leading-edge only:
+ *   - Call pertama execute langsung
+ *   - Semua call dalam window 16ms DROPPED
+ *   - Kalau user drop di window itu, posisi final hilang → user lain
+ *     lihat posisi 16ms sebelum drop, bukan posisi sebenarnya.
+ *
+ * Sekarang leading + trailing:
+ *   - Call pertama: execute langsung (leading)
+ *   - Call selanjutnya dalam window: simpan args, schedule trailing
+ *   - Saat timer expire: execute args terakhir (trailing) — ini yang
+ *     jamin posisi terakhir tidak hilang.
+ *
+ * Pattern standard di Lodash/Underscore throttle({ leading, trailing }).
+ */
 function throttle(func, limit) {
-  let inThrottle;
+  let inThrottle = false;
+  let lastArgs = null;
+  let timeoutId = null;
+  let lastThis = null;
+
   return function (...args) {
     if (!inThrottle) {
+      // Leading edge: execute langsung
       func.apply(this, args);
       inThrottle = true;
-      setTimeout(() => (inThrottle = false), limit);
+      timeoutId = setTimeout(() => {
+        inThrottle = false;
+        // Trailing edge: kalau ada call tertunda dalam window,
+        // execute args terakhir setelah timer expire.
+        if (lastArgs) {
+          func.apply(lastThis, lastArgs);
+          lastArgs = null;
+          lastThis = null;
+        }
+      }, limit);
+    } else {
+      // Buffer args terakhir untuk trailing call
+      lastArgs = args;
+      lastThis = this;
     }
   };
 }
