@@ -35,35 +35,35 @@ const GroupsPage = () => {
 
   return (
     <div className="flex-1 overflow-y-auto bg-zinc-50/50 dark:bg-transparent no-scrollbar">
-      <div className="max-w-7xl mx-auto p-6 sm:p-10 space-y-12">
+      <div className="max-w-7xl mx-auto p-4 sm:p-10 space-y-6 sm:space-y-12">
 
         {/* HEADER */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 sm:gap-8">
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-emerald-500 font-black text-[10px] uppercase tracking-[0.3em]">
               <Layers size={14} />
               Community Hub
             </div>
-            <h1 className="text-4xl font-black text-zinc-900 dark:text-white tracking-tighter">
+            <h1 className="text-2xl sm:text-4xl font-black text-zinc-900 dark:text-white tracking-tighter">
               Explore Your Groups
             </h1>
-            <p className="text-zinc-500 dark:text-zinc-100 text-sm font-bold opacity-80">
+            <p className="text-zinc-500 dark:text-zinc-100 text-xs sm:text-sm font-bold opacity-80">
               Collaborate, sign, and manage documents with your specialized teams.
             </p>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <button
               onClick={() => actions.fetchGroups()}
-              className="p-4 rounded-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-white/5 text-zinc-400 hover:text-emerald-500 transition-all cursor-pointer shadow-xl"
+              className="p-3 sm:p-4 rounded-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-white/5 text-zinc-400 hover:text-emerald-500 transition-all cursor-pointer shadow-xl shrink-0"
             >
-              <RefreshCw size={20} />
+              <RefreshCw size={18} />
             </button>
             <button
               onClick={actions.openCreateForm}
-              className="flex items-center gap-2 px-8 py-4 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black uppercase tracking-widest border-none cursor-pointer shadow-xl shadow-emerald-500/20 transition-all active:scale-95"
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 sm:px-8 py-3 sm:py-4 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] sm:text-xs font-black uppercase tracking-widest border-none cursor-pointer shadow-xl shadow-emerald-500/20 transition-all active:scale-95"
             >
-              <Plus size={18} /> Create Community
+              <Plus size={16} /> Create Community
             </button>
           </div>
         </div>
@@ -116,7 +116,7 @@ const GroupsPage = () => {
 
         {/* COMMUNITIES GRID */}
         {!loading && groups.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-8">
             {groups.map((group, idx) => {
               const isAdmin = actions.isAdminOf(group);
               const memberCount = group.members?.length || 0;
