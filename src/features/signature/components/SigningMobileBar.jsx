@@ -24,9 +24,6 @@ const SigningMobileBar = ({
   onFinalize, 
   signatureCount, 
   isSubmitting,
-  // Optional: kalau true, tampilkan hint "Tap PDF untuk Menempel TTD"
-  // (gunakan saat user sudah punya currentSignature tapi belum drop ke PDF)
-  showPlacementHint = false,
   // Optional: kalau true, tombol kanan tampil sebagai tombol "Finalisasi"
   // berlabel (untuk admin di mode readyToFinalize). Default: tombol icon Check.
   isFinalizeMode = false,
@@ -37,25 +34,27 @@ const SigningMobileBar = ({
   // setelah TTD final tersimpan, atau enable di mode finalisasi admin tanpa
   // perlu signature).
   disabled = null,
+  // Note: prop `showPlacementHint` lama tidak lagi dipakai. ActiveSignatureMobileCard
+  // sudah menampilkan info penempatan + status, jadi hint redundant. Caller
+  // boleh tetap pass — akan di-ignore via rest spread.
+  // eslint-disable-next-line no-unused-vars
+  ...legacyProps
 }) => {
   const isDisabled = disabled !== null ? disabled : (signatureCount === 0 || isSubmitting);
   return (
     <div
       className="sm:hidden fixed left-4 right-4 bg-white/95 dark:bg-[#202c33]/95 backdrop-blur-md border border-zinc-200 dark:border-white/5 z-[130] shadow-[0_8px_30px_rgb(0,0,0,0.12)] rounded-2xl animate-in slide-in-from-bottom duration-500 pointer-events-auto"
       style={{
-        // [Mockup fix] Action bar di paling bawah. Sebelumnya `bottom: 80px`
-        // memberi gap untuk SigningFooterBar yang sudah hidden di mobile.
-        // Sekarang langsung di-stick ke bottom + safe-area inset iOS.
-        bottom: 'calc(8px + env(safe-area-inset-bottom, 0px))',
+        // [Mockup fix] Action bar di paling bawah dengan margin 12px dari edge.
+        bottom: 'calc(12px + env(safe-area-inset-bottom, 0px))',
       }}
     >
-      {/* Hint placement — kecil, kompak, tidak menambah tinggi action bar.
-          Ditampilkan inline di atas button row sebagai 1 baris kecil saja. */}
-      {showPlacementHint && (
-        <p className="px-3 pt-1.5 text-center text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
-          Ketuk PDF untuk menempel tanda tangan
-        </p>
-      )}
+      {/* [Mockup fix] Hint placement banner dihapus dari mobile bar.
+          Sebelumnya `showPlacementHint && <p>...` menambah ~14-20px tinggi
+          ke action bar saat aktif, membuat "Tanda Tangan Aktif" card di
+          atasnya kelihatan menyatu (visual gap-nya hilang). Hint sekarang
+          redundant karena ActiveSignatureMobileCard sudah menunjukkan
+          jumlah penempatan + status — user akan tap PDF natural. */}
 
       {/* Action Buttons (Pagination ada di footer) */}
       <div className="flex items-center gap-2 p-2">

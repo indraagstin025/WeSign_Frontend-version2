@@ -37,11 +37,10 @@ const ActiveSignatureMobileCard = ({
     <div
       className="sm:hidden fixed left-4 right-4 bg-white dark:bg-zinc-800/40 border border-zinc-100 dark:border-zinc-700/60 rounded-2xl shadow-sm overflow-hidden z-[129] animate-in slide-in-from-bottom duration-500"
       style={{
-        // Posisi tepat di atas SigningMobileBar.
-        // SigningMobileBar: bottom 8px + safe-area, height ~64px (action row 56px + ~8px hint optional).
-        // Total stack action bar dari bottom: 8 + ~64 + 8 (gap) = ~80px.
-        // Tambah safe-area inset untuk iOS.
-        bottom: 'calc(80px + env(safe-area-inset-bottom, 0px))',
+        // Posisi di atas SigningMobileBar dengan gap 12px untuk visual breathing room.
+        // SigningMobileBar: bottom 12px + safe-area, height ~70px max (action row + hint + padding).
+        // Total: 12 + 70 + 12 (gap) = 94px dari bottom, plus safe-area iOS.
+        bottom: 'calc(94px + env(safe-area-inset-bottom, 0px))',
       }}
     >
       {/* Header — clickable untuk expand/collapse */}

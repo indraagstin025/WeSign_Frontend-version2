@@ -112,13 +112,10 @@ const MobileBottomSheet = ({
         ref={sheetRef}
         className="sm:hidden fixed left-0 right-0 z-[101] flex flex-col"
         style={{
-          // [Mockup fix] Posisi di atas ActiveSignatureMobileCard + ActionBar.
-          //   ActionBar: 8px + ~64px = 72px dari bottom
-          //   Gap: 8px
-          //   ActiveCard: ~80px collapsed
-          //   Gap: 8px
-          //   Total: ~168px. Plus safe-area iOS.
-          bottom: 'calc(168px + env(safe-area-inset-bottom, 0px))',
+          // [Mockup fix] Posisi di atas ActiveSignatureMobileCard.
+          //   Stack: ActionBar (12 + 60) + gap 12 + ActiveCard (~94) + gap 12 = ~190px.
+          //   Plus safe-area iOS.
+          bottom: 'calc(200px + env(safe-area-inset-bottom, 0px))',
           maxHeight: 'min(40vh, 40dvh)',
           ...state.sheetStyle,
         }}
