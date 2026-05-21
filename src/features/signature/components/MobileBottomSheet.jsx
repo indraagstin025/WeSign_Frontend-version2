@@ -46,10 +46,13 @@ const MobileBottomSheet = ({
 
   // Element list — Signature selalu tersedia, Paraf/Stamp/Text/Date hanya
   // bila handler diberikan (admin only).
+  // `shortLabel` dipakai di mobile picker grid yang sempit supaya tidak
+  // ke-truncate (mis. "Date Field" → "Date").
   const elements = [
     {
       key: 'signature',
       label: 'Signature',
+      shortLabel: 'Signature',
       icon: PenTool,
       onClick: () => {
         onOpenCanvas?.();
@@ -60,6 +63,7 @@ const MobileBottomSheet = ({
     {
       key: 'initial',
       label: 'Paraf',
+      shortLabel: 'Paraf',
       icon: Edit3,
       onClick: () => {
         onOpenParaf?.();
@@ -70,6 +74,7 @@ const MobileBottomSheet = ({
     {
       key: 'stamp',
       label: 'Stamp',
+      shortLabel: 'Stamp',
       icon: StampIcon,
       onClick: () => {
         onOpenStamp?.();
@@ -80,6 +85,7 @@ const MobileBottomSheet = ({
     {
       key: 'text',
       label: 'Text',
+      shortLabel: 'Text',
       icon: Type,
       onClick: () => {
         onOpenText?.();
@@ -90,6 +96,7 @@ const MobileBottomSheet = ({
     {
       key: 'date',
       label: 'Date Field',
+      shortLabel: 'Date',
       icon: Calendar,
       onClick: () => {
         onOpenDate?.();
@@ -143,7 +150,7 @@ const MobileBottomSheet = ({
               Sebelumnya horizontal scroll dengan w-20, sekarang grid 5 kolom
               yang fit ke layar tanpa scroll (semua button kelihatan rata). */}
           <div
-            className="px-3 pb-4 grid gap-2"
+            className="px-2 pb-4 grid gap-1.5"
             style={{
               gridTemplateColumns: `repeat(${elements.filter((e) => e.enabled).length}, minmax(0, 1fr))`,
             }}
@@ -157,7 +164,7 @@ const MobileBottomSheet = ({
                   key={el.key}
                   type="button"
                   onClick={el.onClick}
-                  className={`flex flex-col items-center justify-center gap-1.5 py-3 px-1 rounded-xl border cursor-pointer transition-all min-w-0
+                  className={`flex flex-col items-center justify-center gap-1.5 py-3 px-0.5 rounded-xl border cursor-pointer transition-all min-w-0 overflow-hidden
                     ${isActive
                       ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-500/40 text-emerald-700 dark:text-emerald-400'
                       : 'bg-white dark:bg-zinc-800/40 border-zinc-200 dark:border-zinc-700/60 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800'
@@ -165,8 +172,11 @@ const MobileBottomSheet = ({
                   aria-label={`Tambah elemen ${el.label}`}
                 >
                   <IconComp size={22} className={isActive ? 'text-emerald-600 dark:text-emerald-400' : ''} />
-                  <span className="text-[11px] font-semibold leading-tight text-center truncate w-full">
-                    {el.label}
+                  {/* Label — pakai shortLabel kalau ada (untuk fit di grid sempit),
+                      else fallback ke label panjang. Font 10px + nowrap supaya
+                      single line tanpa truncate. */}
+                  <span className="text-[10px] font-semibold leading-tight text-center whitespace-nowrap">
+                    {el.shortLabel || el.label}
                   </span>
                 </button>
               );
