@@ -89,6 +89,29 @@ export function useGroupSigningPage() {
   const finalizeText = isFinalizeMode ? 'Finalisasi Dokumen' : 'Simpan Tanda Tangan';
   const submittingAny = isSubmitting || isFinalizing;
 
+  // [Bug fix back-button] Setelah finalize sukses, replace URL `/sign` di
+  // history dengan URL group detail. Kalau user klik browser back dari
+  // completed screen, browser pop ke entry sebelum signing (mis. group list)
+  // — tidak balik lagi ke signing UI yang sudah tidak relevan.
+  //
+  // Pakai `history.replaceState` daripada `navigate(..., { replace: true })`
+  // supaya komponen tidak unmount (completed screen tetap tampil sampai user
+  // klik Kembali ke Grup atau Lihat PDF). React Router masih anggap URL aktif
+  // adalah `/sign` (state internal), tapi browser address bar + history
+  // ter-update ke group detail.
+  React.useEffect(() => {
+    if (iFinalized && documentStatus?.toUpperCase() === 'COMPLETED') {
+      const groupDetailPath = `/dashboard/groups/${groupId}`;
+      // window.location.pathname punya base path bila app di-mount di sub-path,
+      // tapi React Router base biasanya `/` jadi cukup gunakan path absolut.
+      try {
+        window.history.replaceState(null, '', groupDetailPath);
+      } catch {
+        /* fail-safe — jangan crash kalau browser block replaceState */
+      }
+    }
+  }, [iFinalized, documentStatus, groupId]);
+
   // Gating tombol aksi (Simpan / Finalisasi):
   // - Mode finalisasi (admin + readyToFinalize): cukup blokir saat sedang
   //   finalisasi atau sudah selesai difinalisasi pada session ini. Tidak
@@ -142,7 +165,13 @@ export function useGroupSigningPage() {
   );
 
   // ── Navigation ────────────────────────────────────────────────────────────
-  const goBackToGroup = () => navigate(`/dashboard/groups/${groupId}`);
+  // [Bug fix back-button] Setelah finalize, kita sudah pakai `replaceState`
+  // di useEffect di atas — URL aktif address bar adalah group detail. Saat
+  // user klik tombol "Kembali ke Grup" di completed screen, navigate dengan
+  // `replace: true` supaya React Router state ikut sinkron (tidak push entry
+  // duplikat group detail).
+  const goBackToGroup = () =>
+    navigate(`/dashboard/groups/${groupId}`, { replace: true });
   const openFinalPdf = () => {
     if (pdfUrl) window.open(pdfUrl, '_blank');
   };
