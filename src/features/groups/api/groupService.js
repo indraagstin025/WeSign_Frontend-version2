@@ -39,6 +39,17 @@ export const invalidateAllGroupsCache = () => {
   _allGroupsInFlight = null;
 };
 
+// [LOGOUT-CLEANUP] Subscribe ke auth-cleanup event dari api.js handleLogout.
+// Bust semua cache module-level supaya user berikutnya yang login tidak
+// dapat data stale dari user sebelumnya.
+if (typeof window !== 'undefined') {
+  window.addEventListener('wesign:auth-cleanup', () => {
+    invalidateAllGroupsCache();
+    _groupDetailCache.clear();
+    _groupDetailInFlight.clear();
+  });
+}
+
 export const getAllGroups = () => {
   if (_isAllGroupsCacheValid()) {
     return Promise.resolve(_allGroupsCache);

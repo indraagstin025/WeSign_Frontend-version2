@@ -261,6 +261,15 @@ function handleLogout() {
   localStorage.removeItem("wesign_csrf_token");
   localStorage.removeItem("wesign_user");
 
+  // [LOGOUT-CLEANUP] Dispatch event supaya feature module clear cache mereka.
+  // Module-level cache di groupService, docService, dll harus di-bust supaya
+  // user yang login berikutnya (mungkin akun beda kalau Anda multi-akun di
+  // 1 browser) tidak dapat data milik user sebelumnya.
+  //
+  // Subscriber ada di: groupService.invalidateAllGroupsCache, dll.
+  // Pakai event-based untuk hindari circular import.
+  window.dispatchEvent(new CustomEvent('wesign:auth-cleanup'));
+
   // Hindari loop redirect jika sudah di login
   if (window.location.pathname === "/login") return;
 
