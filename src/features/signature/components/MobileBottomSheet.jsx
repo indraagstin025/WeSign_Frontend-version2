@@ -122,9 +122,14 @@ const MobileBottomSheet = ({
         ref={sheetRef}
         className="sm:hidden fixed left-0 right-0 z-[101] flex flex-col px-3"
         style={{
-          // Stack from bottom: ActionBar (12 + ~58) + gap 12 + ActiveCard
-          // (~76) + gap 8 = ~166px. Plus safe-area iOS.
-          bottom: 'calc(180px + env(safe-area-inset-bottom, 0px))',
+          // [Mockup pixel-perfect] Stack from bottom:
+          //   ActionBar (12 + ~58 height) = 70px
+          //   + gap 8px
+          //   + ActiveCard (~76 height) = 154px top edge
+          //   + gap 6px ke sheet bottom
+          //   = sheet bottom: 160px
+          //   Sebelumnya 180px → gap 26px terlihat terlalu lebar.
+          bottom: 'calc(160px + env(safe-area-inset-bottom, 0px))',
           maxHeight: 'min(40vh, 40dvh)',
           ...state.sheetStyle,
         }}
