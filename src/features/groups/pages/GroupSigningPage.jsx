@@ -274,7 +274,7 @@ const GroupSigningPage = () => {
 
         {/* PDF Viewer */}
         <main
-          className={`flex-1 overflow-y-auto no-scrollbar bg-zinc-100 dark:bg-zinc-950 p-4 sm:p-8 flex items-start justify-center relative select-none pb-28 sm:pb-8 min-w-0
+          className={`flex-1 overflow-y-auto no-scrollbar bg-zinc-100 dark:bg-zinc-950 p-4 sm:p-8 flex items-start justify-center relative select-none pb-56 sm:pb-8 min-w-0
             ${interactionMode === 'cursor' && canSign ? 'cursor-crosshair' : interactionMode === 'hand' ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'}
           `}
           ref={containerRef}

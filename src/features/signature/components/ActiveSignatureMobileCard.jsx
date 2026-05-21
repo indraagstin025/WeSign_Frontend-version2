@@ -34,7 +34,15 @@ const ActiveSignatureMobileCard = ({
   const finalCount = signatures.filter((s) => s.status === 'final').length;
 
   return (
-    <div className="sm:hidden bg-white dark:bg-zinc-800/40 border border-zinc-100 dark:border-zinc-700/60 rounded-2xl mx-4 mb-3 shadow-sm overflow-hidden">
+    <div
+      className="sm:hidden fixed left-4 right-4 bg-white dark:bg-zinc-800/40 border border-zinc-100 dark:border-zinc-700/60 rounded-2xl shadow-sm overflow-hidden z-[129] animate-in slide-in-from-bottom duration-500"
+      style={{
+        // Posisi di atas SigningMobileBar (yang ada di bottom: 80px + safe-area).
+        // SigningMobileBar tinggi ~64px, gap 8px → ActiveSignatureMobileCard
+        // bottom: 80 + 64 + 8 = 152px + safe-area.
+        bottom: 'calc(152px + env(safe-area-inset-bottom, 0px))',
+      }}
+    >
       {/* Header — clickable untuk expand/collapse */}
       <button
         type="button"
