@@ -107,38 +107,47 @@ const MobileBottomSheet = ({
         onClick={onClose}
       />
 
-      {/* Sheet */}
+      {/* Sheet — floating card di atas ActiveSignatureMobileCard.
+          Sesuai mockup user, sheet bukan true bottom sheet (tidak menempel
+          ke bawah layar) tapi card floating dengan rounded all corners.
+          Posisi: tepat di atas ActiveCard dengan gap kecil. */}
       <div
         ref={sheetRef}
-        className="sm:hidden fixed left-0 right-0 z-[101] flex flex-col"
+        className="sm:hidden fixed left-0 right-0 z-[101] flex flex-col px-3"
         style={{
-          // [Mockup fix] Posisi di atas ActiveSignatureMobileCard.
-          //   Stack: ActionBar (12 + 60) + gap 12 + ActiveCard (~94) + gap 12 = ~190px.
-          //   Plus safe-area iOS.
-          bottom: 'calc(200px + env(safe-area-inset-bottom, 0px))',
+          // Stack from bottom: ActionBar (12 + ~58) + gap 12 + ActiveCard
+          // (~76) + gap 8 = ~166px. Plus safe-area iOS.
+          bottom: 'calc(180px + env(safe-area-inset-bottom, 0px))',
           maxHeight: 'min(40vh, 40dvh)',
           ...state.sheetStyle,
         }}
       >
-        <div className="bg-white dark:bg-zinc-900 rounded-t-3xl shadow-2xl flex flex-col overflow-hidden border-t border-x border-zinc-200 dark:border-white/10 mx-3">
+        <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] flex flex-col overflow-hidden border border-zinc-100 dark:border-white/10">
 
           {/* Drag Handle */}
           <div
-            className="py-3 flex flex-col items-center cursor-grab active:cursor-grabbing select-none"
+            className="py-2.5 flex flex-col items-center cursor-grab active:cursor-grabbing select-none"
             {...actions.gestureHandlers}
           >
-            <div className="w-10 h-1.5 bg-zinc-300 dark:bg-zinc-600 rounded-full" />
+            <div className="w-10 h-1 bg-zinc-300 dark:bg-zinc-600 rounded-full" />
           </div>
 
           {/* Header */}
-          <div className="px-5 pb-3">
-            <h3 className="text-[14px] font-bold text-zinc-900 dark:text-white text-left">
+          <div className="px-4 pb-2">
+            <h3 className="text-[13px] font-bold text-zinc-900 dark:text-white text-left">
               Tambah Elemen
             </h3>
           </div>
 
-          {/* Element picker grid — 5 buttons horizontal scrollable */}
-          <div className="px-3 pb-4 flex items-stretch gap-2 overflow-x-auto no-scrollbar">
+          {/* Element picker — equal-width grid sesuai mockup.
+              Sebelumnya horizontal scroll dengan w-20, sekarang grid 5 kolom
+              yang fit ke layar tanpa scroll (semua button kelihatan rata). */}
+          <div
+            className="px-3 pb-4 grid gap-2"
+            style={{
+              gridTemplateColumns: `repeat(${elements.filter((e) => e.enabled).length}, minmax(0, 1fr))`,
+            }}
+          >
             {elements.map((el) => {
               if (!el.enabled) return null;
               const IconComp = el.icon;
@@ -148,15 +157,17 @@ const MobileBottomSheet = ({
                   key={el.key}
                   type="button"
                   onClick={el.onClick}
-                  className={`shrink-0 w-20 flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl border cursor-pointer transition-all
+                  className={`flex flex-col items-center justify-center gap-1.5 py-3 px-1 rounded-xl border cursor-pointer transition-all min-w-0
                     ${isActive
-                      ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
-                      : 'bg-zinc-50 dark:bg-zinc-800/40 border-zinc-100 dark:border-zinc-700/60 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                      ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-500/40 text-emerald-700 dark:text-emerald-400'
+                      : 'bg-white dark:bg-zinc-800/40 border-zinc-200 dark:border-zinc-700/60 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800'
                     }`}
                   aria-label={`Tambah elemen ${el.label}`}
                 >
-                  <IconComp size={20} className={isActive ? 'text-emerald-600 dark:text-emerald-400' : ''} />
-                  <span className="text-[11px] font-semibold">{el.label}</span>
+                  <IconComp size={22} className={isActive ? 'text-emerald-600 dark:text-emerald-400' : ''} />
+                  <span className="text-[11px] font-semibold leading-tight text-center truncate w-full">
+                    {el.label}
+                  </span>
                 </button>
               );
             })}

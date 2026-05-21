@@ -28,6 +28,7 @@ import DocumentSettingsPanel from '../../signature/components/DocumentSettingsPa
 import SigningMobileBar from '../../signature/components/SigningMobileBar';
 import SigningModals from '../../signature/components/SigningModals';
 import ActiveSignatureMobileCard from '../../signature/components/ActiveSignatureMobileCard';
+import MobilePageIndicator from '../../signature/components/MobilePageIndicator';
 import ParafModal from '../../signature/components/ParafModal';
 import StampModal from '../../signature/components/StampModal';
 import TextAnnotationModal from '../../signature/components/TextAnnotationModal';
@@ -343,6 +344,9 @@ const GroupSigningPage = () => {
             ) : null}
           </div>
         </main>
+        {/* [MOBILE] Page indicator pill — tampil floating tepat di bawah PDF.
+            Tidak ada zoom control sesuai instruksi user. */}
+        <MobilePageIndicator pageNumber={pageNumber} numPages={numPages} />
         {/* [MOBILE] Active signature card — tampil setelah PDF, di atas footer/action bar */}
         <ActiveSignatureMobileCard
           currentSignature={currentSignature}
