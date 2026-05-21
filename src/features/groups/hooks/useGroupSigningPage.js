@@ -89,28 +89,49 @@ export function useGroupSigningPage() {
   const finalizeText = isFinalizeMode ? 'Finalisasi Dokumen' : 'Simpan Tanda Tangan';
   const submittingAny = isSubmitting || isFinalizing;
 
-  // [Bug fix back-button] Setelah finalize sukses, replace URL `/sign` di
-  // history dengan URL group detail. Kalau user klik browser back dari
-  // completed screen, browser pop ke entry sebelum signing (mis. group list)
-  // — tidak balik lagi ke signing UI yang sudah tidak relevan.
+  // [Bug fix back-button + duplicate signature] Saat user buka /sign tapi
+  // document status sudah COMPLETED, auto-redirect ke halaman preview.
   //
-  // Pakai `history.replaceState` daripada `navigate(..., { replace: true })`
-  // supaya komponen tidak unmount (completed screen tetap tampil sampai user
-  // klik Kembali ke Grup atau Lihat PDF). React Router masih anggap URL aktif
-  // adalah `/sign` (state internal), tapi browser address bar + history
-  // ter-update ke group detail.
+  // 2 skenario yang ter-cover:
+  //   A) User finalize dari card di GroupDetailPage → klik back → browser
+  //      pop ke /sign yang ada di history. Tanpa redirect, signing UI render
+  //      ulang dengan signature lama + draft local → signature dobel di PDF.
+  //   B) User finalize dari signing page sendiri (`iFinalized=true`).
+  //      Setelah completed screen ditutup atau back, redirect ke preview.
+  //
+  // Skenario yang TIDAK ter-cover (sengaja, untuk preserve UX):
+  //   - User signer biasa (bukan finalizer) yang sedang aktif sign saat admin
+  //     finalize lewat socket. Untuk mereka, `useGroupSocket.handleGroupDocUpdate`
+  //     case 'finalized' yang menampilkan toast "Admin telah menyelesaikan".
+  //     Mereka bisa baca toast dulu sebelum manual close / pindah halaman.
+  //
+  // Detection: pakai `documentStatusInitiallyCompleted` ref yang capture nilai
+  // documentStatus saat first non-loading render. Bila dari awal mount sudah
+  // COMPLETED (skenario A), redirect. Bila status berubah jadi COMPLETED
+  // selama session (skenario B handled via iFinalized → completed screen),
+  // skip redirect karena user perlu lihat completed screen dulu.
+  const initialStatusRef = React.useRef(null);
   React.useEffect(() => {
-    if (iFinalized && documentStatus?.toUpperCase() === 'COMPLETED') {
-      const groupDetailPath = `/dashboard/groups/${groupId}`;
-      // window.location.pathname punya base path bila app di-mount di sub-path,
-      // tapi React Router base biasanya `/` jadi cukup gunakan path absolut.
-      try {
-        window.history.replaceState(null, '', groupDetailPath);
-      } catch {
-        /* fail-safe — jangan crash kalau browser block replaceState */
+    if (signing.loading) return;
+    // First render setelah loading selesai — capture initial status.
+    if (initialStatusRef.current === null) {
+      initialStatusRef.current = documentStatus?.toUpperCase() || 'UNKNOWN';
+
+      // Skenario A: user buka /sign tapi document sudah COMPLETED dari awal.
+      if (initialStatusRef.current === 'COMPLETED') {
+        navigate(
+          `/dashboard/groups/${groupId}/documents/${documentId}/preview`,
+          { replace: true },
+        );
       }
     }
-  }, [iFinalized, documentStatus, groupId]);
+  }, [
+    documentStatus,
+    signing.loading,
+    groupId,
+    documentId,
+    navigate,
+  ]);
 
   // Gating tombol aksi (Simpan / Finalisasi):
   // - Mode finalisasi (admin + readyToFinalize): cukup blokir saat sedang

@@ -8,7 +8,7 @@ import {
   signDocument,
   rejectDocument,
 } from '../api/groupSignatureService';
-import { finalizeGroupDocument } from '../api/groupService';
+import { finalizeGroupDocument, invalidateGroupCache } from '../api/groupService';
 import { socketService } from '../../../services/socketService';
 import { createLogger } from '../../../utils/logger';
 
@@ -329,6 +329,12 @@ export const useGroupSignatureActions = ({
 
       socketService.emitSignatureSaved(documentId, groupId);
 
+      // [Bug fix duplicate signature] Bust frontend cache /groups/:id setelah
+      // sign sukses. Tanpa ini, user yang back ke /sign dalam 30 detik akan
+      // dapat data lama (signature draft + final-tanpa-status-update sebelum)
+      // -> render dobel.
+      invalidateGroupCache(groupId);
+
       toast.success(
         remainingSigners > 0
           ? `Tanda tangan Anda berhasil disimpan. Menunggu ${remainingSigners} orang lagi.`
@@ -387,6 +393,9 @@ export const useGroupSignatureActions = ({
 
       // Emit socket agar user lain tahu
       socketService.emitSignatureSaved(documentId, groupId);
+
+      // [Bug fix] Bust cache supaya group detail re-fetch dengan status baru.
+      invalidateGroupCache(groupId);
 
       // Redirect kembali ke halaman grup setelah reject
       if (fetchGroupData) fetchGroupData();

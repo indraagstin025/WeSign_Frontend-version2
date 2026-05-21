@@ -214,6 +214,9 @@ export const uploadGroupDocument = (groupId, formData) =>
     method: 'POST',
     body: formData,
     // apiFetch otomatis hapus Content-Type jika body instanceof FormData
+  }).then((res) => {
+    invalidateGroupCache(groupId);
+    return res;
   });
 
 /**
@@ -223,19 +226,28 @@ export const assignDocumentToGroup = (groupId, documentId, signerUserIds = []) =
   apiFetch(`/groups/${groupId}/documents`, {
     method: 'PUT',
     body: { documentId, signerUserIds },
+  }).then((res) => {
+    invalidateGroupCache(groupId);
+    return res;
   });
 
 /**
  * Kembalikan dokumen dari grup ke privat (tidak dihapus, hanya unassign).
  */
 export const unassignDocument = (groupId, documentId) =>
-  apiFetch(`/groups/${groupId}/documents/${documentId}`, { method: 'DELETE' });
+  apiFetch(`/groups/${groupId}/documents/${documentId}`, { method: 'DELETE' }).then((res) => {
+    invalidateGroupCache(groupId);
+    return res;
+  });
 
 /**
  * Hapus dokumen secara permanen dari grup dan storage.
  */
 export const deleteGroupDocument = (groupId, documentId) =>
-  apiFetch(`/groups/${groupId}/documents/${documentId}/delete`, { method: 'DELETE' });
+  apiFetch(`/groups/${groupId}/documents/${documentId}/delete`, { method: 'DELETE' }).then((res) => {
+    invalidateGroupCache(groupId);
+    return res;
+  });
 
 /**
  * Update daftar penandatangan dokumen.
@@ -245,6 +257,9 @@ export const updateDocumentSigners = (groupId, documentId, signerUserIds) =>
   apiFetch(`/groups/${groupId}/documents/${documentId}/signers`, {
     method: 'PUT',
     body: { signerUserIds },
+  }).then((res) => {
+    invalidateGroupCache(groupId);
+    return res;
   });
 
 /**
@@ -276,7 +291,21 @@ export const finalizeGroupDocument = (groupId, documentId, auditTrailMode = "emb
     method: 'POST',
     body: { auditTrailMode },
     timeout: 120000,
+  }).then((res) => {
+    // [Bug fix duplicate signature] Wajib bust cache /groups/:id setelah
+    // finalize. Tanpa ini, user yang back ke /sign akan dapat data lama
+    // dari cache 30 detik (signature draft + final terlihat dobel di UI).
+    invalidateGroupCache(groupId);
+    return res;
   });
+
+/**
+ * Upload dokumen baru ke grup.
+ *
+ * Note: didefinisikan ulang di sini supaya konsisten dengan helper invalidate.
+ * Versi sebelumnya tidak invalidate cache — list dokumen di /groups/:id stale
+ * sampai TTL 30s habis.
+ */
 
 // ── Trash (Soft Delete) — Group Document ──────────────────────────────────
 
@@ -296,4 +325,7 @@ export const getDeletedGroupDocuments = (groupId, { page = 1, limit = 10 } = {})
  * @param {string} documentId
  */
 export const restoreGroupDocument = (groupId, documentId) =>
-  apiFetch(`/groups/${groupId}/documents/trash/${documentId}/restore`, { method: 'POST' });
+  apiFetch(`/groups/${groupId}/documents/trash/${documentId}/restore`, { method: 'POST' }).then((res) => {
+    invalidateGroupCache(groupId);
+    return res;
+  });
