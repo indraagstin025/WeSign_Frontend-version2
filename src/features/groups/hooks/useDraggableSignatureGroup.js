@@ -173,29 +173,28 @@ export function useDraggableSignatureGroup({
     setControlledSizeRef.current = actions.setControlledSize;
   }, [actions.setControlledPosition, actions.setControlledSize]);
 
-  // [REALTIME-PERF] Buffer remote update di ref + rAF-batched React commit.
-  //
-  // Pattern hybrid yang di-port dari project lama (PlacedSignatureGroup +
-  // useSignatureManagerGroup) yang user konfirmasi smooth visual untuk
-  // observer (peer yang lihat user lain drag).
+  // [REALTIME-PERF] Pattern hybrid yang di-port dari project lama
+  // (PlacedSignatureGroup) yang user konfirmasi smooth visual untuk observer.
   //
   // Strategi 2-layer:
   //   1. Direct DOM update (style.transform/width/height) di handler —
   //      bypass React render, native compositor handle 60fps smooth.
-  //   2. React state commit di-batch via requestAnimationFrame — cegah
-  //      parent rerender thrashing tiap event 30ms throttle. rAF natural
-  //      dedup ke 60fps (16ms): kalau ada update baru sebelum frame next,
-  //      pakai data terbaru saja saat commit.
+  //   2. Immediate React state commit (setControlledPosition synchronous) —
+  //      supaya kalau parent rerender, react-draggable apply position prop
+  //      yang up-to-date (BUKAN posisi lama yang bikin flick).
   //
-  //      rAF preferred dibanding setTimeout 100ms karena:
-  //      - Kalau parent rerender karena state lain, react-draggable akan
-  //        apply controlledPosition prop yang masih lama (state belum
-  //        commit) → flick balik ke posisi lama. rAF commit dalam 1 frame
-  //        cegah window race ini.
-  //      - Browser optimize rAF callback dengan paint cycle, lebih smooth
-  //        secara visual.
-  const pendingRemoteRef = useRef(null);
-  const remoteRafRef = useRef(null);
+  // Sebelumnya saya pakai rAF buffer, tapi ada race: kalau parent rerender
+  // di window T0..T1 (sebelum rAF fire), react-draggable apply
+  // controlledPosition LAMA → DOM reset ke posisi lama → user lihat
+  // "balik ke posisi awal".
+  //
+  // Pattern lama tidak punya issue ini karena DOM = single source of truth
+  // di project lama (positionRef + interact.js, no react-draggable).
+  // Di sini kita pakai react-draggable, jadi state JUGA harus selalu sync
+  // dengan DOM yang baru di-update.
+
+  // Stable nodeRef capture — useEffect tidak perlu state.nodeRef di deps.
+  const nodeRefMirror = state.nodeRef;
 
   // ── Socket: Realtime drag dari user lain ──────────────────────────────
   useEffect(() => {
@@ -205,40 +204,39 @@ export function useDraggableSignatureGroup({
 
       const outerX = Math.round(data.positionX * containerWidth - VISUAL_PADDING);
       const outerY = Math.round(data.positionY * containerHeight - VISUAL_PADDING);
+      let outerW, outerH;
+      if (data.width !== undefined && data.height !== undefined) {
+        outerW = Math.round(data.width * containerWidth + TOTAL_PADDING);
+        outerH = Math.round(data.height * containerHeight + TOTAL_PADDING);
+      }
 
-      // === LAYER 1: Direct DOM update (bypass React) ===
-      const node = state.nodeRef?.current;
+      // === LAYER 1: Direct DOM update (bypass React reconciliation) ===
+      // Native compositor render ke GPU — 60fps tanpa React overhead.
+      // Visible immediate.
+      const node = nodeRefMirror?.current;
       if (node) {
         node.style.transform = `translate(${outerX}px, ${outerY}px)`;
-        if (data.width !== undefined && data.height !== undefined) {
-          const outerW = Math.round(data.width * containerWidth + TOTAL_PADDING);
-          const outerH = Math.round(data.height * containerHeight + TOTAL_PADDING);
+        if (outerW !== undefined) {
           node.style.width = `${outerW}px`;
           node.style.height = `${outerH}px`;
         }
       }
 
-      // === LAYER 2: rAF-batched React state commit (latest-wins) ===
-      pendingRemoteRef.current = data;
-
-      if (remoteRafRef.current === null) {
-        remoteRafRef.current = requestAnimationFrame(() => {
-          remoteRafRef.current = null;
-          const latest = pendingRemoteRef.current;
-          if (!latest) return;
-          pendingRemoteRef.current = null;
-
-          const finalX = Math.round(latest.positionX * containerWidth - VISUAL_PADDING);
-          const finalY = Math.round(latest.positionY * containerHeight - VISUAL_PADDING);
-
-          setControlledPositionRef.current({ x: finalX, y: finalY });
-
-          if (latest.width !== undefined && latest.height !== undefined) {
-            const finalW = Math.round(latest.width * containerWidth + TOTAL_PADDING);
-            const finalH = Math.round(latest.height * containerHeight + TOTAL_PADDING);
-            setControlledSizeRef.current({ width: finalW, height: finalH });
-          }
-        });
+      // === LAYER 2: Immediate React state sync ===
+      // Update state SAMA SAAT direct DOM update. Kalau parent rerender
+      // tiba-tiba di tengah event, react-draggable terima controlledPosition
+      // yang up-to-date — match dengan DOM yang sudah di-update.
+      //
+      // Sebelumnya pakai rAF buffer yang nyebabkan race: parent rerender
+      // di window T0..T1 (sebelum rAF fire) bikin react-draggable apply
+      // posisi LAMA → DOM reset ke posisi lama → user lihat "balik ke awal".
+      //
+      // React batch state updates di event handler, jadi multiple events
+      // dalam 1 microtask = 1 reconciliation cycle. Tidak mahal kalau memo
+      // di parent + child sudah optimized.
+      setControlledPositionRef.current({ x: outerX, y: outerY });
+      if (outerW !== undefined) {
+        setControlledSizeRef.current({ width: outerW, height: outerH });
       }
 
       // Visual feedback (toast/ring) — pakai state karena cuma flag boolean
@@ -255,13 +253,14 @@ export function useDraggableSignatureGroup({
     return () => {
       socketService.off('update_signature_position', handleRemoteMove);
       if (remoteTimerRef.current) clearTimeout(remoteTimerRef.current);
-      if (remoteRafRef.current !== null) {
-        cancelAnimationFrame(remoteRafRef.current);
-        remoteRafRef.current = null;
-      }
-      pendingRemoteRef.current = null;
     };
-  }, [sig.id, isOwner, containerWidth, containerHeight, state.nodeRef]);
+    // [Lint] nodeRefMirror = state.nodeRef object yang re-created tiap
+    // render. Tapi `.current` yang sebenarnya kita pakai di handler stable
+    // (DOM node yang sama). Kita SENGAJA tidak masukkan ke deps array
+    // supaya effect tidak re-bind tiap render parent (yang bikin race
+    // window di mana handler tidak ke-bind).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sig.id, isOwner, containerWidth, containerHeight]);
 
   // ── Drag handler (emit throttled) ────────────────────────────────────────
   const handleDrag = (e, data) => {
