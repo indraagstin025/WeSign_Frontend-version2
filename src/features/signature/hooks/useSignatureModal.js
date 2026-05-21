@@ -1,4 +1,5 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
+import { toast } from 'react-toastify';
 import { useSignatureCanvas } from './useSignatureCanvas';
 
 /**
@@ -63,7 +64,6 @@ export const useSignatureModal = (isOpen, onSave, onClose) => {
   const [initials, setInitials] = useState('');
   const [typedName, setTypedName] = useState('');
   const [selectedFont, setSelectedFont] = useState('font-dancing');
-  const typeCanvasRef = useRef(null);
   const [uploadedImage, setUploadedImage] = useState(null);
 
   const { state: canvasState, actions: canvasActions } = useSignatureCanvas(
@@ -78,15 +78,34 @@ export const useSignatureModal = (isOpen, onSave, onClose) => {
 
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        alert('Ukuran file maksimal 2MB');
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = (event) => setUploadedImage(event.target.result);
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    // [H-4] Replace blocking alert dengan toast.error. Alert blocking,
+    // tidak ter-styled, beda di Chrome/Safari/Firefox, dan bisa
+    // freeze UI saat user upload file gede di hp lambat.
+    const MAX_SIZE = 2 * 1024 * 1024; // 2 MB
+    if (file.size > MAX_SIZE) {
+      toast.error('Ukuran file maksimal 2 MB. Pilih file yang lebih kecil atau kompres dulu.');
+      // Reset input agar user bisa pilih file lagi (kalau sama, browser
+      // tidak fire onChange karena value tidak berubah).
+      e.target.value = '';
+      return;
     }
+
+    // Validasi tipe file (defense in depth — accept attribute di <input>
+    // bisa di-bypass user yang ganti tipe file via "All files" picker).
+    if (!file.type.startsWith('image/')) {
+      toast.error('Hanya file gambar yang diizinkan (PNG, JPG, dll).');
+      e.target.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => setUploadedImage(event.target.result);
+    reader.onerror = () => {
+      toast.error('Gagal membaca file. Coba pilih ulang atau pakai file lain.');
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleFinalSave = useCallback(() => {

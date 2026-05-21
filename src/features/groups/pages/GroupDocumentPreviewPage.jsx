@@ -1,104 +1,38 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import React from 'react';
+import { Link } from 'react-router-dom';
 import {
   ChevronLeft, FileText, Download, ExternalLink,
-  AlertCircle, Loader2, Crown, CheckCircle2,
-  Clock, Users, Lock, PenLine, RefreshCw,
-  ShieldCheck, Share2
+  AlertCircle, Loader2, CheckCircle2,
+  Users, PenLine, RefreshCw, ShieldCheck, ClipboardList,
 } from 'lucide-react';
-import { useUser } from '../../../context/UserContext';
-import { getGroupDetail } from '../api/groupService';
-import { getDocumentFile } from '../../documents/api/docService';
-import { useGroupSocket } from '../hooks/useGroupSocket';
 import StatusModal from '../../../components/ui/StatusModal';
+import { useGroupDocumentPreviewPage } from '../hooks/useGroupDocumentPreviewPage';
 
+/**
+ * @page GroupDocumentPreviewPage
+ * @description Pure presentation — semua logic di `useGroupDocumentPreviewPage`.
+ */
 const GroupDocumentPreviewPage = () => {
-  const { groupId, documentId } = useParams();
-  const navigate = useNavigate();
-  const { user: currentUser } = useUser();
+  const { state, actions } = useGroupDocumentPreviewPage();
+  const {
+    currentUser,
+    groupData,
+    doc,
+    pdfUrl,
+    loading,
+    error,
+    statusModal,
+    signerRequests,
+    signedCount,
+    totalSigners,
+    progress,
+    myStatus,
+    canSign,
+    docStatusCfg,
+    signUrl,
+    isAuditTrailMode,
+  } = state;
 
-  const [groupData, setGroupData] = useState(null);
-  const [doc, setDoc] = useState(null);
-  const [pdfUrl, setPdfUrl] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [statusModal, setStatusModal] = useState({ isOpen: false, type: 'success', title: '', message: '' });
-
-  const loadData = useCallback(async (silent = false) => {
-    if (!groupId || !documentId) return;
-    if (!silent) setLoading(true);
-    setError(null);
-    try {
-      const groupRes = await getGroupDetail(groupId);
-      if (groupRes.status !== 'success') throw new Error(groupRes.message);
-      const gData = groupRes.data;
-      setGroupData(gData);
-
-      const foundDoc = gData.documents?.find((d) => String(d.id) === String(documentId));
-      if (!foundDoc) throw new Error('Dokumen tidak ditemukan di grup ini.');
-      setDoc(foundDoc);
-
-      const urlRes = await getDocumentFile(documentId, 'view');
-      if (urlRes.status === 'success' && urlRes.data?.url) {
-        setPdfUrl(urlRes.data.url);
-      } else {
-        throw new Error('Gagal mendapatkan akses ke file dokumen.');
-      }
-    } catch (err) {
-      setError(err.message || 'Gagal memuat dokumen.');
-    } finally {
-      if (!silent) setLoading(false);
-    }
-  }, [groupId, documentId]);
-
-  useEffect(() => { loadData(); }, [loadData]);
-
-  // ── Realtime Socket ──────────────────────────────────────────────────────
-  useGroupSocket({
-    groupId,
-    documentId,
-    currentUserId: currentUser?.id,
-    ready: !!groupData,
-    onRefresh: () => loadData(true),
-    setStatusModal,
-  });
-
-  const handleDownload = async () => {
-    try {
-      const res = await getDocumentFile(documentId, 'download');
-      if (res.status === 'success' && res.data?.url) {
-        window.location.assign(res.data.url);
-      }
-    } catch {
-      alert('Gagal mengunduh dokumen.');
-    }
-  };
-
-  const isAdmin = groupData?.adminId != null && currentUser?.id != null &&
-    String(groupData.adminId) === String(currentUser.id);
-
-  const signerRequests = doc?.signerRequests || [];
-  const signedCount = signerRequests.filter((sr) => sr.status?.toUpperCase() === 'SIGNED').length;
-  const totalSigners = signerRequests.length;
-  const progress = totalSigners > 0 ? Math.round((signedCount / totalSigners) * 100) : 0;
-
-  const isFinal = doc?.status === 'COMPLETED' || doc?.status === 'completed' ||
-    doc?.status === 'final' || doc?.status === 'FINAL';
-
-  const mySignerRecord = signerRequests.find(
-    (sr) => String(sr.userId) === String(currentUser?.id)
-  );
-  const myStatus = mySignerRecord?.status?.toUpperCase() || null;
-  const canSign = myStatus === 'PENDING' && !isFinal;
-
-  const statusConfig = {
-    PENDING: { label: 'Menunggu', color: 'text-amber-600', bg: 'bg-amber-500/10', icon: Clock },
-    SIGNED: { label: 'Ditandatangani', color: 'text-emerald-600', bg: 'bg-emerald-500/10', icon: CheckCircle2 },
-    COMPLETED: { label: 'Finalized', color: 'text-blue-600', bg: 'bg-blue-500/10', icon: Lock },
-  };
-
-  const docStatus = isFinal ? 'COMPLETED' : (doc?.status?.toUpperCase() || 'PENDING');
-  const docStatusCfg = statusConfig[docStatus] || statusConfig.PENDING;
   const DocStatusIcon = docStatusCfg.icon;
 
   return (
@@ -108,7 +42,7 @@ const GroupDocumentPreviewPage = () => {
       <div className="h-20 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-white/5 flex items-center justify-between px-6 shadow-sm shrink-0 gap-8">
         <div className="flex items-center gap-6 min-w-0 flex-1">
           <button
-            onClick={() => navigate(`/dashboard/groups/${groupId}`)}
+            onClick={actions.goBackToGroup}
             className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 hover:text-emerald-600 transition-colors border-none bg-transparent cursor-pointer group"
           >
             <ChevronLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
@@ -134,7 +68,7 @@ const GroupDocumentPreviewPage = () => {
 
         <div className="flex items-center gap-3 shrink-0">
           <button
-            onClick={() => loadData(true)}
+            onClick={actions.handleRefresh}
             className="p-3 rounded-xl hover:bg-zinc-50 dark:hover:bg-white/5 text-zinc-400 hover:text-emerald-500 transition-all border-none bg-transparent cursor-pointer"
           >
             <RefreshCw size={18} />
@@ -142,14 +76,27 @@ const GroupDocumentPreviewPage = () => {
 
           {!loading && pdfUrl && (
             <div className="flex items-center gap-2 border-l border-zinc-100 dark:border-white/5 pl-3">
+              {doc?.currentVersion?.auditTrailUrl && (
+                <button
+                  onClick={actions.toggleAuditTrail}
+                  className={`flex items-center gap-2 px-5 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer border shadow-sm ${
+                    isAuditTrailMode
+                      ? 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-white/5 text-zinc-700 dark:text-zinc-300 hover:border-zinc-300'
+                      : 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20 text-emerald-600 hover:bg-emerald-100'
+                  }`}
+                >
+                  <ClipboardList size={14} />
+                  {isAuditTrailMode ? 'Dokumen' : 'Audit Trail'}
+                </button>
+              )}
               <button
-                onClick={handleDownload}
+                onClick={actions.handleDownload}
                 className="flex items-center gap-2 px-5 py-3 rounded-xl bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-white/5 text-zinc-700 dark:text-zinc-300 text-[10px] font-black uppercase tracking-widest hover:border-emerald-500 transition-all cursor-pointer shadow-sm"
               >
                 <Download size={14} /> Unduh
               </button>
               <button
-                onClick={() => window.open(pdfUrl, '_blank')}
+                onClick={actions.openInNewTab}
                 className="p-3 rounded-xl bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-white/5 text-zinc-400 hover:text-emerald-500 transition-all cursor-pointer shadow-sm"
               >
                 <ExternalLink size={18} />
@@ -159,7 +106,7 @@ const GroupDocumentPreviewPage = () => {
 
           {canSign && (
             <Link
-              to={`/dashboard/groups/${groupId}/documents/${documentId}/sign`}
+              to={signUrl}
               className="flex items-center gap-2 px-6 py-3 rounded-xl bg-zinc-900 dark:bg-emerald-600 hover:bg-zinc-800 dark:hover:bg-emerald-700 text-white text-[10px] font-black uppercase tracking-widest border-none cursor-pointer no-underline shadow-xl shadow-zinc-900/10 dark:shadow-emerald-500/20 active:scale-95 transition-all"
             >
               <PenLine size={14} /> Tanda Tangan
@@ -170,7 +117,7 @@ const GroupDocumentPreviewPage = () => {
 
       {/* MAIN CONTENT */}
       <div className="flex-1 flex overflow-hidden">
-        
+
         {/* PDF VIEW */}
         <div className="flex-1 relative bg-zinc-100 dark:bg-[#0b141a] overflow-hidden">
           {loading && !pdfUrl ? (
@@ -188,7 +135,7 @@ const GroupDocumentPreviewPage = () => {
                 <p className="text-sm text-zinc-500 font-medium mt-2">{error}</p>
               </div>
               <button
-                onClick={() => loadData()}
+                onClick={actions.handleRetry}
                 className="px-8 py-3.5 rounded-2xl bg-zinc-900 dark:bg-white dark:text-zinc-900 text-white text-xs font-black uppercase tracking-widest border-none cursor-pointer"
               >
                 Coba Lagi
@@ -206,9 +153,9 @@ const GroupDocumentPreviewPage = () => {
         {/* SIDEBAR */}
         {!loading && !error && (
           <div className="w-80 bg-white dark:bg-zinc-900 border-l border-zinc-200 dark:border-white/5 flex flex-col shrink-0 hidden xl:flex">
-            
+
             <div className="p-8 space-y-10 overflow-y-auto">
-              
+
               {/* STATUS CARD */}
               <div className="space-y-4">
                 <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">Dokumen Info</p>
@@ -251,6 +198,7 @@ const GroupDocumentPreviewPage = () => {
                   {signerRequests.map((sr) => {
                     const isMe = String(sr.userId) === String(currentUser?.id);
                     const signed = sr.status?.toUpperCase() === 'SIGNED';
+                    const rejected = sr.status?.toUpperCase() === 'REJECTED';
                     const name = sr.user?.name || sr.name || 'User';
                     const initials = name.trim().split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase();
 
@@ -259,12 +207,15 @@ const GroupDocumentPreviewPage = () => {
                         key={sr.id || sr.userId}
                         className={`flex items-center gap-3 p-3 rounded-2xl border transition-all duration-300
                           ${isMe ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-transparent border-transparent'}
+                          ${rejected ? 'bg-rose-500/5 border-rose-500/20' : ''}
                         `}
                       >
                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-[10px] font-black shrink-0
-                          ${signed 
-                            ? 'bg-emerald-500 text-white' 
-                            : 'bg-zinc-100 dark:bg-white/5 text-zinc-400'}
+                          ${signed
+                            ? 'bg-emerald-500 text-white'
+                            : rejected
+                              ? 'bg-rose-500 text-white'
+                              : 'bg-zinc-100 dark:bg-white/5 text-zinc-400'}
                         `}>
                           {initials}
                         </div>
@@ -272,9 +223,15 @@ const GroupDocumentPreviewPage = () => {
                           <p className="text-xs font-black text-zinc-800 dark:text-white truncate uppercase">
                             {name} {isMe && <span className="text-[9px] text-emerald-500">(Anda)</span>}
                           </p>
-                          <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-tight">{sr.status}</p>
+                          <p className={`text-[9px] font-bold uppercase tracking-tight ${rejected ? 'text-rose-500' : 'text-zinc-400'}`}>
+                            {sr.status}
+                            {rejected && sr.rejectionReason && (
+                              <span className="normal-case tracking-normal ml-1 text-rose-400">— {sr.rejectionReason}</span>
+                            )}
+                          </p>
                         </div>
                         {signed && <ShieldCheck size={16} className="text-emerald-500 shrink-0" />}
+                        {rejected && <span className="text-[9px] font-black text-rose-500 bg-rose-50 dark:bg-rose-900/30 px-2 py-0.5 rounded-full shrink-0">Ditolak</span>}
                       </div>
                     );
                   })}
@@ -287,7 +244,7 @@ const GroupDocumentPreviewPage = () => {
             <div className="mt-auto p-8 border-t border-zinc-100 dark:border-white/5 space-y-3">
               {canSign ? (
                 <Link
-                  to={`/dashboard/groups/${groupId}/documents/${documentId}/sign`}
+                  to={signUrl}
                   className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black uppercase tracking-[0.2em] transition-all no-underline shadow-xl shadow-emerald-600/20 active:scale-95"
                 >
                   <PenLine size={14} /> Tanda Tangan
@@ -297,9 +254,9 @@ const GroupDocumentPreviewPage = () => {
                   <CheckCircle2 size={14} /> Terkirim
                 </div>
               ) : null}
-              
+
               <button
-                onClick={handleDownload}
+                onClick={actions.handleDownload}
                 className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl border border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300 text-[10px] font-black uppercase tracking-[0.2em] bg-transparent hover:bg-zinc-50 dark:hover:bg-white/5 transition-all cursor-pointer"
               >
                 <Download size={14} /> Simpan Copy
@@ -311,7 +268,7 @@ const GroupDocumentPreviewPage = () => {
 
       <StatusModal
         {...statusModal}
-        onClose={() => setStatusModal(prev => ({ ...prev, isOpen: false }))}
+        onClose={actions.closeStatusModal}
       />
     </div>
   );

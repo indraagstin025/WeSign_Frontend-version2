@@ -1,4 +1,9 @@
 import { useRef, useState, useEffect } from 'react';
+import {
+  VISUAL_PADDING,
+  TOTAL_PADDING,
+  MIN_INNER_WIDTH,
+} from '../constants/signatureLayout';
 
 /**
  * @hook useDraggableSignature
@@ -13,6 +18,9 @@ import { useRef, useState, useEffect } from 'react';
  * PADDING BREAKDOWN (per sisi):
  *   1px (outer border) + 16px (CSS p-4 padding) + 1px (inner border) = 18px
  *   Total per axis = 36px
+ *
+ * [M-6] VISUAL_PADDING, TOTAL_PADDING, MIN_INNER_WIDTH di-import dari
+ * `../constants/signatureLayout.js`. Sebelumnya hardcoded di hook.
  */
 export const useDraggableSignature = (sig, containerWidth, containerHeight, onUpdatePosition, onUpdateSize, onResizeMove) => {
   const nodeRef = useRef(null);
@@ -28,30 +36,24 @@ export const useDraggableSignature = (sig, containerWidth, containerHeight, onUp
   const [isReady, setIsReady] = useState(false);
   const aspectRatioRef = useRef(null);
 
-  // ============================================================
-  // PADDING CALCULATION:
-  // Outer div: border (1px) + padding p-4 (16px) = 17px
-  // Inner div: border (1px) = 1px
-  // Total per side: 18px. Total per axis: 36px.
-  // ============================================================
-  const VISUAL_PADDING = 18;
-  const TOTAL_PADDING = VISUAL_PADDING * 2; // 36px total per axis
-
   /**
    * Menghitung OUTER height dari OUTER width, mempertahankan aspect ratio gambar.
    */
   const outerHeightFromOuterWidth = (outerWidth, ratio) => {
-    const innerW = Math.max(10, outerWidth - TOTAL_PADDING);
+    const innerW = Math.max(MIN_INNER_WIDTH, outerWidth - TOTAL_PADDING);
     const innerH = innerW / (ratio || 1);
     return Math.round(innerH + TOTAL_PADDING);
   };
 
   // Display size (OUTER = inner + padding + borders)
+  // Inisialisasi tinggi dari sig.height kalau ada — jangan hardcode 60 supaya
+  // signature di sisi receiver tidak "lonjong tipis" sebelum image load.
   const [localSize, setLocalSize] = useState(() => {
     const innerW = sig.width * containerWidth;
+    const innerH = (sig.height || 0) * containerHeight;
     return {
       width: Math.round(innerW + TOTAL_PADDING) || 160,
-      height: 60
+      height: innerH > 0 ? Math.round(innerH + TOTAL_PADDING) : 60,
     };
   });
 
@@ -70,19 +72,41 @@ export const useDraggableSignature = (sig, containerWidth, containerHeight, onUp
   useEffect(() => { containerHeightRef.current = containerHeight; }, [containerHeight]);
 
   // --- CLICK OUTSIDE (DESELECT) ---
+  // [M-2] Sebelumnya pakai mousedown + touchstart yang fire SEBELUM event
+  // dispatch ke child target. Konsekuensi: kalau user klik handle resize/drag,
+  // handleClickOutside fire dulu → setIsActive(false) → handle disappear
+  // sebelum drag bisa start (sometimes intermittent, depends on browser
+  // event timing).
+  //
+  // Fix: pakai `pointerdown` dengan check `composedPath()` — modern unified
+  // event API yang cover mouse + touch + pen, dan composedPath() return
+  // semua node dari target sampai root, termasuk node yang event-nya stop
+  // propagation di antara mereka. Lebih reliable daripada `contains()` saat
+  // event di-stop di tengah jalan.
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (nodeRef.current && !nodeRef.current.contains(event.target)) {
+    if (!isActive) return;
+
+    const handlePointerDown = (event) => {
+      const node = nodeRef.current;
+      if (!node) return;
+
+      // composedPath modern: lihat seluruh chain dari target ke root.
+      // Fallback ke contains() untuk old browser yang tidak support composedPath.
+      const path = typeof event.composedPath === 'function'
+        ? event.composedPath()
+        : null;
+      const isInside = path
+        ? path.includes(node)
+        : node.contains(event.target);
+
+      if (!isInside) {
         setIsActive(false);
       }
     };
-    if (isActive) {
-      document.addEventListener('mousedown', handleClickOutside);
-      document.addEventListener('touchstart', handleClickOutside);
-    }
+
+    document.addEventListener('pointerdown', handlePointerDown);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('touchstart', handleClickOutside);
+      document.removeEventListener('pointerdown', handlePointerDown);
     };
   }, [isActive]);
 
@@ -113,6 +137,26 @@ export const useDraggableSignature = (sig, containerWidth, containerHeight, onUp
       }, 0);
     }
   };
+
+  // Cached-image fallback: kalau <img> sudah loaded SEBELUM React sempat
+  // pasang handler onLoad (umum terjadi ketika user baru drop signature
+  // miliknya sendiri — image data: URL atau cached URL), event onLoad tidak
+  // akan fire lagi. Cek manual via .complete + .naturalWidth setelah mount,
+  // panggil handleImageLoad dengan synthetic target supaya AR tetap dihitung.
+  useEffect(() => {
+    if (isReadyRef.current) return;
+    const node = nodeRef.current;
+    if (!node) return;
+    const img = node.querySelector('img');
+    if (img && img.complete && img.naturalWidth > 0) {
+      handleImageLoad({ target: img });
+    }
+    // [Lint fix] handleImageLoad re-creates per render (closure atas
+    // sigRef/containerWidthRef), tapi efeknya tidak invariant — fungsi
+    // self-guard via isReadyRef. Re-run effect tiap dimensi container
+    // berubah (containerWidth/containerHeight) sudah cukup.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [containerWidth, containerHeight]);
 
   // --- RESIZE LOGIC ---
   useEffect(() => {
@@ -199,10 +243,22 @@ export const useDraggableSignature = (sig, containerWidth, containerHeight, onUp
     return () => cleanups.forEach(fn => fn());
   }, [isActive, onUpdatePosition, onUpdateSize, onResizeMove]);
 
+  // [Lint fix] `isResizingRef.current` di state object akan trigger
+  // react-hooks/refs rule (akses ref selama "render" hook).
+  // Solusi: expose `isResizingRef` saja (ref object, bukan .current),
+  // consumer bisa baca `.current` di handler/effect kalau perlu.
+  // Saat ini consumer DraggableSignature tidak pakai `isResizing` value
+  // di JSX, jadi ini safe untuk di-remove dari return shape.
+
   return {
-    state: { nodeRef, handleNWRef, handleNERef, handleSWRef, handleSERef, isActive, isDragging, isResizing: isResizingRef.current, localSize, controlledPosition: dragPos, isReady },
-    actions: { 
+    state: { nodeRef, handleNWRef, handleNERef, handleSWRef, handleSERef, isActive, isDragging, localSize, controlledPosition: dragPos, isReady },
+    actions: {
       setIsActive, setIsDragging, handleImageLoad,
+      // Setter untuk update posisi/size dari sumber eksternal (mis. event socket
+      // dari user lain). Pakai ini supaya React render jadi sumber kebenaran
+      // tunggal — tidak ada konflik dengan DOM manipulation.
+      setControlledPosition: setDragPos,
+      setControlledSize: setLocalSize,
       onDragStart: (e) => { if (isResizingRef.current) return false; e.stopPropagation(); setIsDragging(true); setIsActive(true); },
       onDrag: (e, data) => setDragPos({ x: data.x, y: data.y }),
       onDragStop: (e, data) => {

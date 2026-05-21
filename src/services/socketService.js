@@ -6,9 +6,13 @@
  */
 
 import { io } from 'socket.io-client';
-
-const SOCKET_URL = (import.meta.env.VITE_API_URL || 'https://wesign-backend-production.up.railway.app/api')
-  .replace(/\/api\/?$/, '');
+import { SOCKET_URL } from '@/config/env';
+import {
+  SOCKET_RECONNECT_DELAY_MS,
+  SOCKET_RECONNECT_DELAY_MAX_MS,
+  SOCKET_CONNECT_TIMEOUT_MS,
+  SOCKET_RECONNECT_JITTER,
+} from '@/config/timeouts';
 
 let socket = null;
 
@@ -19,8 +23,13 @@ let currentGroupRooms = new Set();
 // Subscribers untuk perubahan status koneksi
 const connectionCallbacks = new Set();
 
-// Map untuk deduplication group listeners
-const groupListeners = new Map();
+// Map untuk dedup group listeners — pakai object reference (cb) sebagai key
+// agar dedup deterministic. Sebelumnya pakai `${prefix}_${cb}` yang mengandalkan
+// Function.toString() — tidak reliable untuk arrow function (body-dependent),
+// bound function, atau native function (semua di-stringify "function () { [native code] }").
+// Dipisah per event agar overhead lookup minimal.
+const groupDocListeners = new Map();    // cb -> wrapper
+const groupMemberListeners = new Map();
 
 export const socketService = {
   /**
@@ -39,10 +48,10 @@ export const socketService = {
       upgrade: true,
       reconnection: true,
       reconnectionAttempts: Infinity,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 30000,
-      randomizationFactor: 0.5,
-      timeout: 20000,
+      reconnectionDelay: SOCKET_RECONNECT_DELAY_MS,
+      reconnectionDelayMax: SOCKET_RECONNECT_DELAY_MAX_MS,
+      randomizationFactor: SOCKET_RECONNECT_JITTER,
+      timeout: SOCKET_CONNECT_TIMEOUT_MS,
     });
 
     // ── Event: Connected ──────────────────────────────────────────────────────
@@ -113,6 +122,10 @@ export const socketService = {
     }
     currentDocumentRoom = null;
     currentGroupRooms.clear();
+    // Clear listener wrapper Map agar GC bisa bersihkan reference dan
+    // re-connect berikutnya tidak punya wrapper basi.
+    groupDocListeners.clear();
+    groupMemberListeners.clear();
   },
 
   // ── Document Room ─────────────────────────────────────────────────────────
@@ -141,6 +154,37 @@ export const socketService = {
 
   // ── Emitters ──────────────────────────────────────────────────────────────
 
+  /**
+   * Emit posisi/ukuran signature ke peer di room dokumen (drag + resize).
+   *
+   * [M-1] Naming yang akurat untuk semantik. Sebelumnya hanya ada `emitDrag`
+   * yang dipakai untuk drag DAN resize event (di useDraggableSignatureGroup
+   * ada emitDragThrottled untuk drag dan emitResizeThrottled yang di
+   * dalamnya tetap memanggil socketService.emitDrag — misleading saat baca
+   * code).
+   *
+   * Backend event-nya tetap `drag_signature` untuk backward compat — server
+   * dan peer lama tidak perlu di-update. Yang berubah hanya alias di sisi
+   * client agar code lebih jelas.
+   *
+   * @param {{
+   *   documentId: string,
+   *   signatureId: string,
+   *   positionX: number,
+   *   positionY: number,
+   *   width?: number,
+   *   height?: number,
+   *   pageNumber?: number
+   * }} data
+   */
+  emitSignatureUpdate: (data) => {
+    if (socket?.connected) socket.emit('drag_signature', data);
+  },
+
+  /**
+   * @deprecated Pakai `emitSignatureUpdate` — naming lebih akurat untuk
+   * drag + resize. Method ini tetap ada untuk backward compat caller lama.
+   */
   emitDrag: (data) => {
     if (socket?.connected) socket.emit('drag_signature', data);
   },
@@ -185,43 +229,43 @@ export const socketService = {
   // Trigger refetch dari server (misal admin kick user)
   onRefetchData: (cb) => socket?.on('refetch_data', cb),
 
-  // ── Listeners: Group Room (deduplicated) ──────────────────────────────────
+  // ── Listeners: Group Room (deduplicated by cb reference) ─────────────────
 
   onGroupDocumentUpdate: (cb) => {
     if (!socket) return;
-    const key = `doc_${cb}`;
-    const existing = groupListeners.get(key);
+    // Cleanup wrapper lama untuk cb yang sama supaya re-subscribe (mis. saat
+    // useEffect re-run karena dep berubah) tidak tumpuk listener.
+    const existing = groupDocListeners.get(cb);
     if (existing) socket.off('group_document_update', existing);
     const wrapper = (data) => cb(data);
-    groupListeners.set(key, wrapper);
+    groupDocListeners.set(cb, wrapper);
     socket.on('group_document_update', wrapper);
   },
 
   offGroupDocumentUpdate: (cb) => {
     if (!socket) return;
-    const wrapper = groupListeners.get(`doc_${cb}`);
+    const wrapper = groupDocListeners.get(cb);
     if (wrapper) {
       socket.off('group_document_update', wrapper);
-      groupListeners.delete(`doc_${cb}`);
+      groupDocListeners.delete(cb);
     }
   },
 
   onGroupMemberUpdate: (cb) => {
     if (!socket) return;
-    const key = `member_${cb}`;
-    const existing = groupListeners.get(key);
+    const existing = groupMemberListeners.get(cb);
     if (existing) socket.off('group_member_update', existing);
     const wrapper = (data) => cb(data);
-    groupListeners.set(key, wrapper);
+    groupMemberListeners.set(cb, wrapper);
     socket.on('group_member_update', wrapper);
   },
 
   offGroupMemberUpdate: (cb) => {
     if (!socket) return;
-    const wrapper = groupListeners.get(`member_${cb}`);
+    const wrapper = groupMemberListeners.get(cb);
     if (wrapper) {
       socket.off('group_member_update', wrapper);
-      groupListeners.delete(`member_${cb}`);
+      groupMemberListeners.delete(cb);
     }
   },
 

@@ -5,6 +5,11 @@
  */
 
 import { apiFetch } from "../../../services/api";
+import { createLogger } from "../../../utils/logger";
+
+// [L-5] Scoped logger agar console output konsisten dengan service lain.
+// Sebelumnya pakai console.warn/error langsung tanpa prefix.
+const log = createLogger("AuthService");
 
 /**
  * Registrasi akun baru.
@@ -21,10 +26,27 @@ export async function registerUser({ name, email, password, isCompany }) {
 
 /**
  * Login pengguna dan simpan token ke localStorage.
+ *
+ * [M-4] Bersihkan auth state lama sebelum request login. Sebelumnya kalau
+ * user pernah login dengan akun A, lalu logout incomplete (mis. tab
+ * crash sebelum logout API selesai), token akun A tertinggal di
+ * localStorage. Saat login akun B, request akan kirim Authorization:
+ * Bearer <tokenA> -> backend reject 401 -> trigger refresh -> chain
+ * confusing. Clear duluan agar request login truly anonymous.
+ *
  * @param {{ email: string, password: string, rememberMe?: boolean }} payload
  * @returns {Promise<object>} Data user + session token
  */
 export async function loginUser({ email, password, rememberMe }) {
+  // [M-4] Clear stale auth state before fresh login.
+  // Tidak hapus 'wesign_user' di sini — dibiarkan agar UI lama (kalau ada
+  // route protect lambat) tidak flash logout. UserContext.refreshUser()
+  // akan overwrite setelah login sukses.
+  localStorage.removeItem("wesign_token");
+  localStorage.removeItem("wesign_refresh_token");
+  localStorage.removeItem("wesign_csrf_token");
+  localStorage.removeItem("wesign_login_at");
+
   const data = await apiFetch("/auth/login", {
     method: "POST",
     body: { email, password, rememberMe },
@@ -61,7 +83,7 @@ export async function getCsrfToken() {
       return response.data.csrfToken;
     }
   } catch (err) {
-    console.warn("Failed to fetch CSRF token:", err.message);
+    log.warn("Failed to fetch CSRF token:", err.message);
   }
   return null;
 }
@@ -82,7 +104,7 @@ export async function logoutUser() {
 
     return data;
   } catch (err) {
-    console.error("Gagal logout di server:", err.message);
+    log.error("Gagal logout di server:", err.message);
   } finally {
     // Hapus hanya data autentikasi, bukan SEMUA localStorage
     localStorage.removeItem("wesign_token");

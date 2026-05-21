@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { CounterNumber } from '@/components/ui/counter-number';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/UI/card';
+import { CounterNumber } from '@/components/UI/counter-number';
 import { fadeInUp, staggerContainer } from '@/lib/animations';
 
 const FeatureBento = () => {

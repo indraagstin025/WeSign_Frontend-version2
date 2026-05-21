@@ -3,8 +3,10 @@
  * @description Wrapper Fetch API dengan dukungan Timeout dan Penanganan Jaringan.
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "https://wesign-backend-production.up.railway.app/api";
-const DEFAULT_TIMEOUT = 15000; // 15 Detik (Batas wajar menunggu jaringan)
+import { API_BASE_URL } from "@/config/env";
+import { DEFAULT_REQUEST_TIMEOUT_MS } from "@/config/timeouts";
+
+const DEFAULT_TIMEOUT = DEFAULT_REQUEST_TIMEOUT_MS;
 
 let isRefreshing = false;
 let refreshSubscribers = [];
@@ -36,14 +38,39 @@ function setCsrfToken(token) {
 
 /**
  * Wrapper fetch yang menangani JSON, token, timeout, CSRF, dan error jaringan.
+ *
+ * @param {string} endpoint - API endpoint relative ke API_BASE_URL (e.g., '/auth/login')
+ * @param {object} [options={}] - Fetch options + WeSign-specific options
+ * @param {string} [options.method='GET'] - HTTP method
+ * @param {object|FormData} [options.body] - Request body (auto-serialize JSON)
+ * @param {object} [options.headers] - Additional headers (Authorization & CSRF auto-handled)
+ * @param {number} [options.timeout=DEFAULT_TIMEOUT] - Custom timeout dalam ms
+ * @param {AbortSignal} [options.signal] - External abort signal (untuk cancel/coalesce)
+ * @param {string} [options._tokenOverride] - Internal: token override (dipakai oleh retry handler setelah refresh)
+ * @param {boolean} [options._retry] - Internal: marker bahwa ini adalah retry attempt
+ * @returns {Promise<object>} Parsed JSON response dari backend
+ * @throws {Error} Network error, timeout, atau backend error (dengan friendly message)
  */
 export async function apiFetch(endpoint, options = {}) {
-  const token = localStorage.getItem("wesign_token");
+  // [H-1] Token resolution priority:
+  //   1. options._tokenOverride — di-pass dari retry handler setelah refresh
+  //      sukses. Mencegah race antara localStorage.setItem dan retry yang
+  //      baca dari localStorage di micro-task berikutnya.
+  //   2. localStorage 'wesign_token' — token aktif normal
+  const token = options._tokenOverride || localStorage.getItem("wesign_token");
   const csrfToken = getCsrfToken();
 
   // 1. Setup AbortController untuk handling Timeout
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), options.timeout || DEFAULT_TIMEOUT);
+
+  // External signal support — caller bisa membatalkan request lebih awal
+  // (dipakai oleh withRetryCoalesce untuk membatalkan request lama saat
+  // request baru datang untuk signature yang sama).
+  if (options.signal) {
+    if (options.signal.aborted) controller.abort();
+    else options.signal.addEventListener('abort', () => controller.abort(), { once: true });
+  }
 
   const defaultHeaders = {
     "Content-Type": "application/json",
@@ -81,7 +108,10 @@ export async function apiFetch(endpoint, options = {}) {
     clearTimeout(timeoutId);
 
     // --- INTERCEPTOR 401 (UNAUTHORIZED) ---
-    if (response.status === 401 && !options._retry && endpoint !== "/auth/login") {
+    // Skip auto-refresh untuk endpoint auth publik (reset-password, forgot-password)
+    const skipRefreshEndpoints = ["/auth/login", "/auth/reset-password", "/auth/forgot-password"];
+    const shouldSkipRefresh = skipRefreshEndpoints.some((p) => endpoint.startsWith(p));
+    if (response.status === 401 && !options._retry && !shouldSkipRefresh) {
       console.warn(`[apiFetch] 401 detected on ${options.method} ${endpoint}, attempting token refresh...`);
       const refreshToken = localStorage.getItem("wesign_refresh_token");
 
@@ -94,10 +124,20 @@ export async function apiFetch(endpoint, options = {}) {
       // ✅ PENTING: Daftarkan subscriber DULU sebelum memulai refresh
       // Ini mencegah race condition dimana onTokenRefreshed() dipanggil
       // sebelum subscriber terdaftar (menyebabkan Promise tidak pernah resolve)
+      //
+      // [H-1] Pass newToken langsung ke retry via _tokenOverride supaya
+      // tidak ada micro-task race antara localStorage.setItem dan retry
+      // yang baca dari localStorage. Sebelumnya kalau retry kick in
+      // sebelum localStorage flush ke disk (rare tapi possible), retry
+      // pakai token lama -> 401 lagi -> infinite loop risk.
       const retryPromise = new Promise((resolve) => {
         subscribeTokenRefresh((newToken) => {
           console.log("[apiFetch] Retrying request after token refresh...");
-          resolve(apiFetch(endpoint, { ...options, _retry: true }));
+          resolve(apiFetch(endpoint, {
+            ...options,
+            _retry: true,
+            _tokenOverride: newToken,
+          }));
         });
       });
 
@@ -162,7 +202,11 @@ export async function apiFetch(endpoint, options = {}) {
     }
 
     if (!response.ok) {
-      if (response.status === 401) handleLogout();
+      // Jangan auto-logout untuk endpoint auth publik yang bisa return 401
+      // (login: password salah, reset-password: token expired/invalid, forgot-password: edge case)
+      const authPublicEndpoints = ["/auth/login", "/auth/reset-password", "/auth/forgot-password"];
+      const isAuthPublic = authPublicEndpoints.some((p) => endpoint.startsWith(p));
+      if (response.status === 401 && !isAuthPublic) handleLogout();
 
       // Petakan error code dari backend ke pesan ramah pengguna
       const errorCode = data?.code;
@@ -183,15 +227,26 @@ export async function apiFetch(endpoint, options = {}) {
     return data;
   } catch (err) {
     clearTimeout(timeoutId);
-    console.error("[apiFetch] Error caught:", {
-      errorName: err.name,
-      errorMessage: err.message,
-      endpoint,
-      method: options.method,
-      stack: err.stack,
-    });
 
-    if (err.name === "AbortError") throw new Error("Permintaan gagal: Waktu tunggu habis. Coba lagi dalam beberapa saat.");
+    // [FIX] AbortError dari coalesce/cancel adalah expected — tidak perlu log spam.
+    // Caller (mis. withRetryCoalesce / outboxDrain) sudah handle ini.
+    const isCallerAbort = err.name === "AbortError" && options.signal?.aborted;
+    if (!isCallerAbort) {
+      console.error("[apiFetch] Error caught:", {
+        errorName: err.name,
+        errorMessage: err.message,
+        endpoint,
+        method: options.method,
+        stack: err.stack,
+      });
+    }
+
+    if (err.name === "AbortError") {
+      // Bedakan: kalau caller intentionally cancel (external signal aborted),
+      // propagate AbortError agar withRetryCoalesce bisa membedakan dari timeout.
+      if (options.signal?.aborted) throw err;
+      throw new Error("Permintaan gagal: Waktu tunggu habis. Coba lagi dalam beberapa saat.");
+    }
     if (err.message === "Failed to fetch" || err.message?.includes("fetch failed") || !navigator.onLine) {
       console.error("[apiFetch] Network error detected");
       throw new Error("Koneksi internet terputus atau tidak stabil. Periksa koneksi Anda dan coba lagi.");
@@ -205,8 +260,24 @@ function handleLogout() {
   localStorage.removeItem("wesign_refresh_token");
   localStorage.removeItem("wesign_csrf_token");
   localStorage.removeItem("wesign_user");
+
   // Hindari loop redirect jika sudah di login
-  if (window.location.pathname !== "/login") {
+  if (window.location.pathname === "/login") return;
+
+  // [M-5] Dispatch custom event ke App-level untuk SPA navigation.
+  // Sebelumnya pakai `window.location.href = '/login?expired=true'` yang
+  // cause full page reload (white flash, tear-down semua state). Sekarang:
+  // - App.jsx subscribe ke 'wesign:auth-expired' event dan call navigate()
+  // - Kalau tidak ada listener (mis. service dipanggil sebelum App mount),
+  //   fallback ke window.location.href untuk safety
+  const expiredEvent = new CustomEvent('wesign:auth-expired', {
+    detail: { reason: 'session-expired' },
+  });
+  const dispatched = window.dispatchEvent(expiredEvent);
+
+  // Fallback kalau event tidak di-handle (preventDefault tidak called atau
+  // tidak ada listener yang call event.handled = true)
+  if (!expiredEvent.defaultPrevented) {
     window.location.href = "/login?expired=true";
   }
 }
@@ -237,7 +308,7 @@ function getFriendlyErrorMessage(code, status, originalMessage) {
   // Peta berdasarkan HTTP status jika tidak ada error code spesifik
   const statusMessages = {
     400: originalMessage || "Permintaan tidak valid. Periksa kembali data yang dikirimkan.",
-    401: "Sesi Anda telah berakhir. Silakan login kembali.",
+    401: originalMessage || "Sesi Anda telah berakhir. Silakan login kembali.",
     403: "Anda tidak memiliki izin untuk melakukan aksi ini.",
     404: "Data yang diminta tidak ditemukan.",
     408: "Permintaan gagal: Waktu tunggu habis. Coba lagi dalam beberapa saat.",

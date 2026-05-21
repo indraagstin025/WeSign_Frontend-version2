@@ -9,6 +9,7 @@ import {
   ShieldAlert
 } from 'lucide-react';
 import { useUploadDoc } from '../hooks/useUploadDoc';
+import { useDocumentTypes } from '../hooks/useDocumentTypes';
 
 /**
  * @component UploadDocModal
@@ -16,6 +17,7 @@ import { useUploadDoc } from '../hooks/useUploadDoc';
 const UploadDocModal = ({ isOpen, onClose, onSuccess }) => {
   const fileInputRef = useRef(null);
   const { state, actions } = useUploadDoc(onSuccess, onClose);
+  const documentTypes = useDocumentTypes();
 
   if (!isOpen) return null;
 
@@ -33,7 +35,7 @@ const UploadDocModal = ({ isOpen, onClose, onSuccess }) => {
             </div>
             <div>
               <h3 className="text-lg font-bold text-zinc-900 dark:text-white font-heading tracking-tight text-left">Unggah Dokumen</h3>
-              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 text-left">PDF Digital • Maks 10MB • Aman & Terenkripsi</p>
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 text-left">PDF Digital • Maks 10 MB • Aman & Terenkripsi</p>
             </div>
           </div>
           <button 
@@ -91,9 +93,12 @@ const UploadDocModal = ({ isOpen, onClose, onSuccess }) => {
                        <p className="text-[10px] text-zinc-500 font-medium mt-0.5">{(state.file.size / 1024 / 1024).toFixed(2)} MB • PDF Digital</p>
                     </div>
                     {!state.loading && (
-                      <button 
+                      <button
                         type="button"
-                        onClick={() => actions.setFile(null)}
+                        onClick={() => {
+                          actions.setFile(null);
+                          if (fileInputRef.current) fileInputRef.current.value = '';
+                        }}
                         className="p-1.5 px-3 text-xs font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-lg transition-colors border-none bg-transparent cursor-pointer"
                       >
                         Ganti
@@ -135,15 +140,16 @@ const UploadDocModal = ({ isOpen, onClose, onSuccess }) => {
                 <div className="text-left">
                   <label className="block text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5 ml-1">Kategori / Tipe</label>
                   <select 
-                    disabled={state.loading}
+                    disabled={state.loading || documentTypes.loading}
                     value={state.type}
                     onChange={(e) => actions.setType(e.target.value)}
                     className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 dark:text-white transition-all cursor-pointer font-medium"
                   >
-                    <option value="General">Umum (General)</option>
-                    <option value="Contract">Kontrak / Perjanjian</option>
-                    <option value="Invoice">Invoice / Faktur</option>
-                    <option value="Certificate">Sertifikat / Bukti</option>
+                    {documentTypes.options.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>

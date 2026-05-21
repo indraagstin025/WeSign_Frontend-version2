@@ -1,17 +1,35 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
+import { getStatusLabel as centralGetStatusLabel } from '../constants/documentStatus';
 
 /**
- * Hook for managing the logic of Document Table.
- * Handles dropdown states and display helpers.
+ * @hook useDocumentTable
+ * @description State + helper untuk DocumentTable — kelola dropdown menu
+ * action dan handler proxy ke parent.
+ *
+ * [M-2] Status helper di-delegate ke `constants/documentStatus.js`.
+ * [L-4] `getStatusStyles` dan `menuRef` dihapus karena tidak dipakai
+ * konsumer (DocumentTable.jsx). Konsumer cukup pakai `helpers.getStatusLabel`
+ * dan `state.openMenuId`/`setOpenMenuId`.
+ *
+ * @param {(type: string, doc: object) => void} onAction - Callback action
+ * @returns {{
+ *   state: { openMenuId: string|null, setOpenMenuId: Function },
+ *   helpers: {
+ *     getStatusLabel: (status: string) => string,
+ *     formatDate: (dateString: string) => string,
+ *     handleAction: (type: string, doc: object) => void
+ *   }
+ * }}
  */
 export const useDocumentTable = (onAction) => {
   const [openMenuId, setOpenMenuId] = useState(null);
-  const menuRef = useRef(null);
 
-  // Close menu when clicking outside
+  // Tutup menu saat klik di luar component table
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
+      // Cek via event target. Konsumer bisa stopPropagation di tombol
+      // toggle menu untuk hindari close immediate.
+      if (!event.target.closest('[data-document-menu]')) {
         setOpenMenuId(null);
       }
     };
@@ -19,61 +37,24 @@ export const useDocumentTable = (onAction) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  /**
-   * Helper for status chip CSS classes
-   */
-  const getStatusStyles = (status) => {
-    if (!status) return 'bg-zinc-400 text-white border-transparent';
-    
-    switch (status.toLowerCase()) {
-      case 'completed':
-      case 'selesai':
-        return 'bg-emerald-500 text-white border-transparent shadow-sm';
-      case 'pending':
-        return 'bg-amber-500 text-white border-transparent shadow-sm';
-      case 'action_needed':
-      case 'perlu aksi':
-        return 'bg-blue-500 text-white border-transparent shadow-sm';
-      case 'waiting':
-      case 'menunggu':
-      case 'draft':
-        return 'bg-zinc-400 text-white border-transparent shadow-sm';
-      default:
-        return 'bg-zinc-400 text-white border-transparent';
-    }
-  };
+  // [M-2] Re-export helper dari constants — backward-compat untuk konsumer
+  // yang destructure `helpers.getStatusLabel`.
+  const getStatusLabel = centralGetStatusLabel;
 
   /**
-   * Helper for human-readable status labels
-   */
-  const getStatusLabel = (status) => {
-    if (!status) return '-';
-    
-    const labels = {
-      completed: 'Selesai',
-      pending: 'Pending',
-      action_needed: 'Perlu Aksi',
-      waiting: 'Menunggu',
-      signed: 'Signed',
-      draft: 'Draft'
-    };
-    return labels[status.toLowerCase()] || status;
-  };
-
-  /**
-   * Helper for Indonesian date formatting
+   * Format tanggal ISO ke format Bahasa Indonesia singkat "1 Jan 2026".
    */
   const formatDate = (dateString) => {
     if (!dateString) return '-';
     return new Date(dateString).toLocaleDateString('id-ID', {
       day: 'numeric',
       month: 'short',
-      year: 'numeric'
+      year: 'numeric',
     });
   };
 
   /**
-   * Wrapper for actions that closes the menu after trigger
+   * Wrapper action yang juga close menu setelah trigger.
    */
   const handleAction = (type, doc) => {
     onAction(type, doc);
@@ -84,13 +65,11 @@ export const useDocumentTable = (onAction) => {
     state: {
       openMenuId,
       setOpenMenuId,
-      menuRef
     },
     helpers: {
-      getStatusStyles,
       getStatusLabel,
       formatDate,
-      handleAction
-    }
+      handleAction,
+    },
   };
 };

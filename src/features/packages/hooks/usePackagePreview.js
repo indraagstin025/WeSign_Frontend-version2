@@ -1,10 +1,13 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { getPackageDetails } from '../api/packageService';
 import { getDocumentFile } from '../../documents/api/docService';
+import { apiFetch } from '../../../services/api';
+import { PDF_MAX_RENDER_WIDTH_PX, PDF_MIN_RENDER_WIDTH_PX } from '../constants/layout';
 
 /**
  * @hook usePackagePreview
  * @description Hook khusus untuk pratinjau playlist dokumen dalam paket (Read-only).
+ * Mendukung toggle antara preview dokumen dan preview audit trail.
  */
 export const usePackagePreview = (packageId) => {
   const containerRef = useRef(null);
@@ -24,6 +27,7 @@ export const usePackagePreview = (packageId) => {
   const [containerWidth, setContainerWidth] = useState(0);
   const [isReady, setIsReady] = useState(false);
   const [loadError, setLoadError] = useState(null);
+  const [isAuditTrailMode, setIsAuditTrailMode] = useState(false);
 
   // --- Current Active Document Helper ---
   const activeDoc = documents[currentIndex] || null;
@@ -52,23 +56,33 @@ export const usePackagePreview = (packageId) => {
     fetchPackage();
   }, [fetchPackage]);
 
-  // --- Fetch PDF URL for active document ---
+  // --- Fetch PDF URL for active document (or audit trail) ---
   useEffect(() => {
     const fetchActivePdf = async () => {
       if (!activeDoc || !activeDoc.docVersion?.document?.id) return;
       
       const documentId = activeDoc.docVersion.document.id;
       setPdfLoading(true);
-      // setPdfUrl(''); // REMOVED: Do not clear URL to prevent unmounting & glitch
       setPageNumber(1);
       setLoadError(null);
       
       try {
-        const fileResponse = await getDocumentFile(documentId, 'view');
-        if (fileResponse.status === 'success' && fileResponse.data?.url) {
-          setPdfUrl(fileResponse.data.url);
+        if (isAuditTrailMode && activeDoc.docVersion?.auditTrailUrl) {
+          // Mode audit trail: minta signed URL dari endpoint
+          const res = await apiFetch(`/documents/${documentId}/audit-trail`);
+          if (res?.status === 'success' && res.data?.url) {
+            setPdfUrl(res.data.url);
+          } else {
+            throw new Error('Audit trail tidak tersedia.');
+          }
         } else {
-          throw new Error('Gagal mendapatkan akses file dokumen.');
+          // Mode normal: load dokumen
+          const fileResponse = await getDocumentFile(documentId, 'view');
+          if (fileResponse.status === 'success' && fileResponse.data?.url) {
+            setPdfUrl(fileResponse.data.url);
+          } else {
+            throw new Error('Gagal mendapatkan akses file dokumen.');
+          }
         }
       } catch (err) {
         setLoadError(err.message);
@@ -78,7 +92,7 @@ export const usePackagePreview = (packageId) => {
     };
 
     fetchActivePdf();
-  }, [activeDoc]);
+  }, [activeDoc, isAuditTrailMode]);
 
   // --- Dimension Calculation ---
   const measureContainer = useCallback(() => {
@@ -88,9 +102,8 @@ export const usePackagePreview = (packageId) => {
     if (targetWidth > 0) {
       const paddingAreaHorizontal = 64;
       const availableWidth = targetWidth - paddingAreaHorizontal;
-      const MAX_PDF_WIDTH = 800;
-      let optimalWidth = Math.min(availableWidth, MAX_PDF_WIDTH);
-      setContainerWidth(Math.floor(Math.max(100, optimalWidth)));
+      let optimalWidth = Math.min(availableWidth, PDF_MAX_RENDER_WIDTH_PX);
+      setContainerWidth(Math.floor(Math.max(PDF_MIN_RENDER_WIDTH_PX, optimalWidth)));
       setIsReady(true);
     }
   }, []);
@@ -137,13 +150,16 @@ export const usePackagePreview = (packageId) => {
     setPageNumber,
     setNumPages,
     loadError,
+    setLoadError,
     containerRef,
     containerWidth,
     isReady,
+    isAuditTrailMode,
 
     // Actions
     nextDocument,
     prevDocument,
-    goToDocument: (index) => setCurrentIndex(index)
+    goToDocument: (index) => setCurrentIndex(index),
+    toggleAuditTrail: () => setIsAuditTrailMode(prev => !prev),
   };
 };

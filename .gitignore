@@ -41,3 +41,9 @@ test-results
 *.pkg
 *.zip
 *.rar
+
+# Code review documentation (local-only, tidak ikut commit)
+docs/code-review/
+docs/code-review-feat-*/
+docs/folder-structure.md
+docs/network-handling-improvements.md

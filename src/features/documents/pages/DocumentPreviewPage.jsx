@@ -4,7 +4,8 @@ import {
   Download, 
   AlertCircle,
   ExternalLink,
-  ChevronLeft
+  ChevronLeft,
+  ClipboardList
 } from 'lucide-react';
 import { useDocumentPreview } from '../hooks/useDocumentPreview';
 
@@ -48,6 +49,20 @@ const DocumentPreviewPage = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          {state.doc?.currentVersion?.auditTrailUrl && (
+            <button
+              onClick={actions.toggleAuditTrail}
+              className={`hidden sm:flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition-all border-none bg-transparent cursor-pointer ${
+                state.isAuditTrailMode
+                  ? 'text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                  : 'text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20'
+              }`}
+              title={state.isAuditTrailMode ? 'Lihat Dokumen' : 'Lihat Audit Trail'}
+            >
+              <ClipboardList size={16} />
+              {state.isAuditTrailMode ? 'Dokumen' : 'Audit Trail'}
+            </button>
+          )}
           <button 
             onClick={actions.handleDownload}
             className="hidden sm:flex items-center gap-2 px-4 py-2 text-xs font-bold text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl transition-all border-none bg-transparent cursor-pointer"

@@ -1,160 +1,295 @@
-import React from 'react';
-import { 
-  FileText, 
-  MoreVertical, 
-  Info, 
-  Eye, 
-  Download, 
-  Trash2, 
-  ChevronRight, 
-  PenTool, 
-  FileEdit,
-  History
+import React, { useState } from 'react';
+import {
+  FileText, MoreVertical, Info, Eye, Download,
+  Trash2, PenTool, FileEdit, History, RotateCcw,
 } from 'lucide-react';
 import { useDocumentTable } from '../hooks/useDocumentTable';
+import { getDocumentStatus } from '../constants/documentStatus';
 
-/**
- * @component ActionButton
- * @description Tombol aksi dalam menu dropdown.
- */
-const ActionButton = ({ icon, label, onClick, variant = 'default' }) => (
-  <button 
-    onClick={onClick}
-    className={`w-full flex items-center gap-3.5 px-5 py-3 text-[13px] font-bold transition-all border-none bg-transparent cursor-pointer group/item
-      ${variant === 'danger' 
-        ? 'text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20' 
-        : 'text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50'
-      }`}
-  >
-    <span className="shrink-0 transition-transform group-hover/item:scale-110">{icon}</span>
-    <span className="flex-1 text-left uppercase tracking-wider">{label}</span>
-    <ChevronRight size={14} className="opacity-0 group-hover/item:opacity-40 transition-all -translate-x-2 group-hover/item:translate-x-0" />
-  </button>
-);
-
-/**
- * @component DocumentTable
- * @description Komponen tabel dokumen dengan gaya minimalis (tanpa kartu) dan Smart Dropdown.
- */
-const DocumentTable = ({ documents, onAction, modals = {} }) => {
+const DocumentTable = ({ documents, onAction, modals = {}, isTrashMode = false }) => {
   const { state, helpers } = useDocumentTable(onAction);
+  const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
+
+  const handleOpenMenu = (e, docId) => {
+    e.stopPropagation();
+    if (state.openMenuId === docId) {
+      state.setOpenMenuId(null);
+      return;
+    }
+    const rect = e.currentTarget.getBoundingClientRect();
+    const dropdownHeight = 260;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const showAbove = spaceBelow < dropdownHeight;
+    setMenuPos({
+      top: showAbove ? rect.top - dropdownHeight - 4 : rect.bottom + 4,
+      right: window.innerWidth - rect.right,
+    });
+    state.setOpenMenuId(docId);
+  };
+
+  const activeDoc = state.openMenuId ? documents.find(d => d.id === state.openMenuId) : null;
+
+  if (!documents || documents.length === 0) return null;
 
   return (
-    <div className="w-full relative">
-      
-      {/* A. MOBILE VIEW (Legacy List Style) */}
-      <div className="lg:hidden space-y-0 divide-y divide-zinc-100 dark:divide-zinc-800">
-        {documents.map((doc, index) => (
-          <div 
-            key={doc.id} 
-            className="py-4 px-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors group cursor-pointer" 
-            onClick={() => helpers.handleAction('view', doc)}
-          >
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3 shrink-0 flex-1 min-w-0">
-                <div className="w-10 h-10 bg-red-50 dark:bg-red-900/20 rounded-lg flex items-center justify-center shrink-0 border border-red-100 dark:border-red-900/30">
-                  <FileText size={20} className="text-red-500" />
+    <div className="w-full">
+
+      {/* ── DESKTOP TABLE ─────────────────────────────────────────── */}
+      <div className="hidden lg:block">
+        {/* Header */}
+        <div className="grid grid-cols-[48px_1fr_120px_120px_160px_160px] items-center px-5 py-3 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/30">
+          {['NO.', 'NAMA DOKUMEN', 'STATUS', 'TIPE', 'TANGGAL', 'AKSI'].map((h) => (
+            <div key={h} className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">{h}</div>
+          ))}
+        </div>
+
+        {/* Rows */}
+        {documents.map((doc, index) => {
+          const badge = getDocumentStatus(doc.status);
+          const isCompleted = doc.status?.toLowerCase() === 'completed';
+          return (
+            <div
+              key={doc.id}
+              className="grid grid-cols-[48px_1fr_120px_120px_160px_160px] items-center px-5 py-3.5 border-b border-zinc-50 dark:border-zinc-800/50 hover:bg-zinc-50/50 dark:hover:bg-zinc-800/20 transition-colors group"
+            >
+              {/* No */}
+              <div className="text-[11px] font-semibold text-zinc-400">
+                {String(index + 1).padStart(2, '0')}
+              </div>
+
+              {/* Nama */}
+              <div
+                className="flex items-center gap-3 min-w-0 pr-4 cursor-pointer"
+                onClick={() => helpers.handleAction('view', doc)}
+              >
+                <div className="w-9 h-9 bg-rose-50 dark:bg-rose-500/10 rounded-xl flex items-center justify-center shrink-0">
+                  <FileText size={16} className="text-rose-500" />
                 </div>
-                <div className="truncate">
-                  <h4 className="text-sm font-medium text-zinc-900 dark:text-white truncate mb-0.5">{doc.title}</h4>
-                  <div className="flex items-center gap-2">
-                     <span className="text-[10px] text-zinc-400 font-medium">{helpers.formatDate(doc.createdAt)}</span>
-                     <span className="text-zinc-300 dark:text-zinc-600">·</span>
-                     <span className="text-[10px] text-zinc-400 truncate">{doc.type || 'General'}</span>
-                  </div>
+                <div className="min-w-0">
+                  <p className="text-[12px] font-semibold text-zinc-900 dark:text-white truncate group-hover:text-emerald-600 transition-colors">
+                    {doc.title}
+                  </p>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide shrink-0 ${helpers.getStatusStyles(doc.status)}`}>
-                  {helpers.getStatusLabel(doc.status)}
+
+              {/* Status */}
+              <div>
+                <span className={`px-2.5 py-1 rounded-md text-[10px] font-semibold uppercase tracking-wide ${badge.cls}`}>
+                  {badge.label}
                 </span>
               </div>
+
+              {/* Tipe */}
+              <div>
+                <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
+                  {doc.type || 'General'}
+                </span>
+              </div>
+
+              {/* Tanggal */}
+              <div>
+                <p className="text-[12px] font-medium text-zinc-700 dark:text-zinc-300">
+                  {helpers.formatDate(doc.createdAt)}
+                </p>
+              </div>
+
+              {/* Aksi — Inline icons (primary) + kebab menu (secondary) */}
+              <div className="flex items-center justify-end gap-1">
+                {isTrashMode ? (
+                  // Trash mode hanya tampilkan Restore
+                  <button
+                    onClick={() => helpers.handleAction('restore', doc)}
+                    title="Restore"
+                    className="p-2 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/20 bg-transparent border-none cursor-pointer text-emerald-500 hover:text-emerald-600 transition-all"
+                    aria-label="Restore dokumen"
+                  >
+                    <RotateCcw size={16} />
+                  </button>
+                ) : (
+                  <>
+                    {/* Tanda Tangani — primary action, hidden bila completed */}
+                    {!isCompleted && (
+                      <button
+                        onClick={() => helpers.handleAction('sign', doc)}
+                        title="Tanda Tangani"
+                        className="p-2 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/20 bg-transparent border-none cursor-pointer text-zinc-400 hover:text-emerald-600 transition-all"
+                        aria-label="Tanda tangani dokumen"
+                      >
+                        <PenTool size={16} />
+                      </button>
+                    )}
+
+                    {/* Pratinjau — selalu tampil */}
+                    <button
+                      onClick={() => helpers.handleAction('view', doc)}
+                      title="Pratinjau"
+                      className="p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 bg-transparent border-none cursor-pointer text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-all"
+                      aria-label="Pratinjau dokumen"
+                    >
+                      <Eye size={16} />
+                    </button>
+
+                    {/* Riwayat Versi — bila modal-nya tersedia */}
+                    {modals.version && (
+                      <button
+                        onClick={() => helpers.handleAction('history', doc)}
+                        title="Riwayat Versi"
+                        className="p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 bg-transparent border-none cursor-pointer text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-all"
+                        aria-label="Riwayat versi dokumen"
+                      >
+                        <History size={16} />
+                      </button>
+                    )}
+
+                    {/* Kebab — secondary actions (Info, Edit, Download, Delete) */}
+                    <button
+                      data-document-menu
+                      onClick={(e) => handleOpenMenu(e, doc.id)}
+                      title="Aksi lainnya"
+                      className="p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 bg-transparent border-none cursor-pointer text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-all"
+                      aria-label="Buka menu aksi lainnya"
+                    >
+                      <MoreVertical size={16} />
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      {/* B. DESKTOP VIEW (Flex-based Table) */}
-      <div className="hidden lg:block overflow-visible relative">
-        <div className="flex flex-col" ref={state.menuRef}>
-          {documents.map((doc, index) => {
-            const isNearBottom = index >= documents.length - 2 && documents.length > 2;
-
-            return (
-              <div 
-                key={doc.id} 
-                className="flex items-center px-6 py-4 border-b border-zinc-100 dark:border-zinc-800/50 hover:bg-zinc-200/30 dark:hover:bg-zinc-800/40 transition-all duration-300 group"
+      {/* ── MOBILE LIST ───────────────────────────────────────────── */}
+      <div className="lg:hidden flex flex-col gap-3">
+        {documents.map((doc) => {
+          const badge = getDocumentStatus(doc.status);
+          const isCompleted = doc.status?.toLowerCase() === 'completed';
+          return (
+            <div
+              key={doc.id}
+              className="bg-white dark:bg-zinc-800/40 rounded-xl border border-zinc-100 dark:border-zinc-700/60 overflow-hidden"
+            >
+              {/* TOP SECTION — info dokumen + badge */}
+              <div
+                className="p-4 cursor-pointer hover:bg-zinc-50/50 dark:hover:bg-zinc-800/20 transition-colors"
+                onClick={() => helpers.handleAction('view', doc)}
               >
-                {/* 0. Nomor (5%) */}
-                <div className="w-[5%] text-[11px] font-bold text-zinc-400 dark:text-zinc-600 pl-2">
-                  {String(index + 1).padStart(2, '0')}
-                </div>
-
-                {/* 1. Nama Dokumen (36%) */}
-                <div className="w-[36%] flex items-center gap-4 min-w-0 pr-4">
-                  <div className="w-10 h-10 bg-red-50 dark:bg-red-900/20 rounded-lg flex items-center justify-center shrink-0 border border-red-100 dark:border-red-900/30 transition-transform group-hover:scale-105">
-                    <FileText size={18} className="text-red-500" />
-                  </div>
-                  <div className="flex flex-col min-w-0">
-                    <span className="text-sm font-medium text-zinc-900 dark:text-white truncate transition-colors group-hover:text-primary">
-                      {doc.title}
-                    </span>
-                  </div>
-                </div>
-
-                {/* 2. Status (15%) */}
-                <div className="w-[15%] flex justify-center">
-                  <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide shrink-0 ${helpers.getStatusStyles(doc.status)}`}>
-                    {helpers.getStatusLabel(doc.status)}
-                  </span>
-                </div>
-
-                {/* 3. Tipe (15%) */}
-                <div className="w-[15%] flex justify-center">
-                  <div className="text-[11px] text-zinc-500 dark:text-zinc-400 font-semibold uppercase tracking-tight">
-                    {doc.type || 'General'}
-                  </div>
-                </div>
-
-                {/* 4. Tanggal (18%) */}
-                <div className="w-[18%] flex justify-center">
-                  <div className="text-[11px] text-zinc-500 dark:text-zinc-400 font-semibold uppercase tracking-tight">
-                    {helpers.formatDate(doc.createdAt)}
-                  </div>
-                </div>
-
-                {/* 5. Aksi (11%) */}
-                <div className="w-[11%] flex justify-end items-center relative pr-6">
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      state.setOpenMenuId(state.openMenuId === doc.id ? null : doc.id);
-                    }}
-                    className="p-2.5 rounded-2xl hover:bg-zinc-100 dark:hover:bg-zinc-800 bg-transparent border-none cursor-pointer text-zinc-400 hover:text-zinc-800 dark:hover:text-white transition-all opacity-100 shadow-sm"
-                  >
-                    <MoreVertical size={20} />
-                  </button>
-                  {state.openMenuId === doc.id && (
-                    <div className={`absolute right-0 w-56 bg-white dark:bg-zinc-800 rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.18)] dark:shadow-[0_20px_60px_rgba(0,0,0,0.4)] border border-zinc-100 dark:border-zinc-700 z-[100] overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300 ${isNearBottom ? 'bottom-full mb-3' : 'top-full mt-3'}`}>
-                      <ActionButton icon={<Info size={16} />} label="Info Detail" onClick={() => helpers.handleAction('info', doc)} />
-                      {doc.status.toLowerCase() !== 'completed' && (
-                        <ActionButton icon={<PenTool size={16} className="text-primary" />} label="Tanda Tangani" onClick={() => helpers.handleAction('sign', doc)} />
-                      )}
-                      <ActionButton icon={<Eye size={16} />} label="Pratinjau" onClick={() => helpers.handleAction('view', doc)} />
-                      {modals.version && <ActionButton icon={<History size={16} />} label="Riwayat Versi" onClick={() => helpers.handleAction('history', doc)} />}
-                      <ActionButton icon={<FileEdit size={16} />} label="Ubah Judul" onClick={() => helpers.handleAction('edit', doc)} />
-                      <ActionButton icon={<Download size={16} />} label="Unduh PDF" onClick={() => helpers.handleAction('download', doc)} />
-                      <div className="h-px bg-zinc-50 dark:bg-zinc-700/50 my-1 mx-2" />
-                      <ActionButton icon={<Trash2 size={16} />} label="Hapus" onClick={() => helpers.handleAction('delete', doc)} variant="danger" />
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="w-10 h-10 bg-rose-50 dark:bg-rose-500/10 rounded-xl flex items-center justify-center shrink-0">
+                      <FileText size={18} className="text-rose-500" />
                     </div>
-                  )}
+                    <div className="min-w-0">
+                      <p className="text-[13px] font-semibold text-zinc-900 dark:text-white truncate">{doc.title}</p>
+                      <p className="text-[11px] text-zinc-400 mt-0.5">{helpers.formatDate(doc.createdAt)} · {doc.type || 'General'}</p>
+                    </div>
+                  </div>
+                  <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold shrink-0 ${badge.cls}`}>{badge.label}</span>
                 </div>
               </div>
-            );
-          })}
-        </div>
+
+              {/* DIVIDER */}
+              <div className="h-px bg-zinc-100 dark:bg-zinc-700/60" />
+
+              {/* ACTION ROW — Lihat / Riwayat / [Sign bila pending] / Kebab */}
+              <div className="flex items-center justify-between px-2 py-2">
+                {isTrashMode ? (
+                  // Trash mode: hanya Restore action
+                  <button
+                    onClick={(e) => { e.stopPropagation(); helpers.handleAction('restore', doc); }}
+                    className="flex items-center gap-2 px-3 py-2 text-[12px] font-medium text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 bg-transparent border-none cursor-pointer rounded-lg"
+                  >
+                    <RotateCcw size={15} /> Restore
+                  </button>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-1">
+                      {/* Lihat (Pratinjau) — primary aksi mobile */}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); helpers.handleAction('view', doc); }}
+                        className="flex items-center gap-2 px-3 py-2 text-[12px] font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 bg-transparent border-none cursor-pointer rounded-lg"
+                      >
+                        <Eye size={15} /> Lihat
+                      </button>
+
+                      {/* Riwayat Versi — bila modal-nya tersedia */}
+                      {modals.version && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); helpers.handleAction('history', doc); }}
+                          className="flex items-center gap-2 px-3 py-2 text-[12px] font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 bg-transparent border-none cursor-pointer rounded-lg"
+                        >
+                          <History size={15} /> Riwayat
+                        </button>
+                      )}
+
+                      {/* Tanda Tangani — hanya bila belum completed */}
+                      {!isCompleted && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); helpers.handleAction('sign', doc); }}
+                          className="flex items-center gap-2 px-3 py-2 text-[12px] font-medium text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 bg-transparent border-none cursor-pointer rounded-lg"
+                        >
+                          <PenTool size={15} /> Tanda Tangan
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Kebab — secondary actions (Info, Edit, Download, Delete) */}
+                    <button
+                      data-document-menu
+                      onClick={(e) => { e.stopPropagation(); handleOpenMenu(e, doc.id); }}
+                      title="Aksi lainnya"
+                      className="p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 bg-transparent border-none cursor-pointer text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-all"
+                      aria-label="Buka menu aksi lainnya"
+                    >
+                      <MoreVertical size={16} />
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
 
+      {/* ── FIXED DROPDOWN PORTAL — Secondary actions saja ────────── */}
+      {/*    Aksi primer (Tanda Tangani, Pratinjau, Riwayat) sudah jadi      */}
+      {/*    icon button inline di kolom AKSI. Menu kebab hanya untuk        */}
+      {/*    aksi sekunder yang lebih jarang dipakai.                        */}
+      {activeDoc && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => state.setOpenMenuId(null)} />
+          <div
+            data-document-menu
+            className="fixed z-50 w-52 bg-white dark:bg-zinc-800 rounded-xl shadow-2xl border border-zinc-100 dark:border-zinc-700 py-1 animate-in fade-in zoom-in-95 duration-150"
+            style={{ top: menuPos.top, right: menuPos.right }}
+          >
+            {isTrashMode ? (
+              // Trash: aksi Restore sudah jadi icon inline. Menu kebab tidak
+              // dibuka di trash mode (lihat conditional render di kolom AKSI).
+              // Block ini defensive untuk back-compat.
+              <button onClick={() => helpers.handleAction('restore', activeDoc)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 bg-transparent border-none cursor-pointer text-left">
+                <RotateCcw size={14} /> Restore
+              </button>
+            ) : (
+              <>
+                <button onClick={() => helpers.handleAction('info', activeDoc)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 bg-transparent border-none cursor-pointer text-left">
+                  <Info size={14} /> Info Detail
+                </button>
+                <button onClick={() => helpers.handleAction('edit', activeDoc)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 bg-transparent border-none cursor-pointer text-left">
+                  <FileEdit size={14} /> Ubah Judul
+                </button>
+                <button onClick={() => helpers.handleAction('download', activeDoc)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 bg-transparent border-none cursor-pointer text-left">
+                  <Download size={14} /> Unduh PDF
+                </button>
+                <div className="h-px bg-zinc-100 dark:bg-zinc-700 my-1" />
+                <button onClick={() => helpers.handleAction('delete', activeDoc)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 bg-transparent border-none cursor-pointer text-left">
+                  <Trash2 size={14} /> Hapus
+                </button>
+              </>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 };

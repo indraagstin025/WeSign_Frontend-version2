@@ -1,101 +1,21 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { useSearchParams, useNavigate, Link } from 'react-router-dom';
+import React from 'react';
+import { Link } from 'react-router-dom';
 import { Users, CheckCircle, XCircle, Loader2, LogIn, UserPlus } from 'lucide-react';
-import { useUser } from '../../../context/UserContext';
-import { acceptInvitation } from '../api/groupService';
+import { useJoinGroupPage, SESSION_KEY } from '../hooks/useJoinGroupPage';
+
+// Re-export agar import existing `import { SESSION_KEY } from '.../JoinGroupPage'`
+// (jika ada) tetap bekerja.
+export { SESSION_KEY };
 
 /**
  * @page JoinGroupPage
  * @route /groups/join?token=...
- * @description Halaman publik untuk bergabung ke grup via invitation link.
- *
- * 3 kondisi:
- * 1. Belum login + belum register → tampil tombol Register & Login, simpan token di sessionStorage
- * 2. Belum login + sudah punya akun → tampil tombol Login, simpan token di sessionStorage
- * 3. Sudah login → langsung proses join otomatis
- *
- * Guard: useRef memastikan processJoin hanya dipanggil SEKALI meski React StrictMode
- * double-fires useEffect, atau user redirect balik ke halaman ini.
+ * @description Pure presentation — semua logic di `useJoinGroupPage`.
  */
-
-export const SESSION_KEY = 'wesign_pending_join_token';
-
 const JoinGroupPage = () => {
-  const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
-  const { user, loading: authLoading } = useUser();
+  const { state, actions } = useJoinGroupPage();
+  const { authLoading, status, groupName, errorMsg } = state;
 
-  const token = searchParams.get('token');
-
-  const [status, setStatus] = useState('idle'); // idle | joining | success | error | already_member
-  const [groupName, setGroupName] = useState('');
-  const [errorMsg, setErrorMsg] = useState('');
-
-  // Guard: prevent double-call dari React StrictMode atau multiple renders
-  const hasProcessed = useRef(false);
-
-  // ── Proses join via API ───────────────────────────────────────────────────
-  const processJoin = useCallback(async (joinToken) => {
-    // Prevent double execution
-    if (hasProcessed.current) return;
-    hasProcessed.current = true;
-
-    setStatus('joining');
-    try {
-      const res = await acceptInvitation(joinToken);
-      if (res.status === 'success') {
-        const name = res.data?.group?.name || 'Grup';
-        setGroupName(name);
-        setStatus('success');
-        sessionStorage.removeItem(SESSION_KEY);
-        setTimeout(() => navigate('/dashboard/groups', { replace: true }), 2000);
-      } else {
-        throw new Error(res.message || 'Gagal bergabung ke grup.');
-      }
-    } catch (err) {
-      sessionStorage.removeItem(SESSION_KEY);
-
-      const msg = err.message || '';
-
-      // Jika sudah menjadi member — anggap sukses (idempotent)
-      if (
-        msg.toLowerCase().includes('already') ||
-        msg.toLowerCase().includes('sudah') ||
-        msg.toLowerCase().includes('member') ||
-        err.status === 409
-      ) {
-        setStatus('already_member');
-        setTimeout(() => navigate('/dashboard/groups', { replace: true }), 2000);
-      } else {
-        setErrorMsg(msg || 'Link undangan tidak valid atau sudah kedaluwarsa.');
-        setStatus('error');
-        // Reset guard agar user bisa coba lagi jika mau
-        hasProcessed.current = false;
-      }
-    }
-  }, [navigate]);
-
-  // ── Effect utama ─────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!token) {
-      setErrorMsg('Token undangan tidak ditemukan di URL.');
-      setStatus('error');
-      return;
-    }
-
-    if (authLoading) return; // Tunggu auth selesai
-
-    if (user) {
-      // Kondisi 3: Sudah login → langsung join (guard di dalam processJoin)
-      processJoin(token);
-    } else {
-      // Kondisi 1 & 2: Belum login → simpan token, tampilkan pilihan
-      sessionStorage.setItem(SESSION_KEY, token);
-      setStatus('idle');
-    }
-  }, [token, user, authLoading, processJoin]);
-
-  // ── Loading auth ─────────────────────────────────────────────────────────
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950">
@@ -120,7 +40,6 @@ const JoinGroupPage = () => {
         {/* Card */}
         <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-xl border border-zinc-100 dark:border-white/5 p-8">
 
-          {/* Joining */}
           {status === 'joining' && (
             <div className="text-center py-4">
               <Loader2 size={40} className="animate-spin text-emerald-500 mx-auto mb-4" />
@@ -129,7 +48,6 @@ const JoinGroupPage = () => {
             </div>
           )}
 
-          {/* Success */}
           {status === 'success' && (
             <div className="text-center py-4">
               <CheckCircle size={48} className="text-emerald-500 mx-auto mb-4" />
@@ -141,7 +59,6 @@ const JoinGroupPage = () => {
             </div>
           )}
 
-          {/* Already member — anggap sukses */}
           {status === 'already_member' && (
             <div className="text-center py-4">
               <CheckCircle size={48} className="text-emerald-500 mx-auto mb-4" />
@@ -153,14 +70,13 @@ const JoinGroupPage = () => {
             </div>
           )}
 
-          {/* Error */}
           {status === 'error' && (
             <div className="text-center py-4">
               <XCircle size={48} className="text-rose-500 mx-auto mb-4" />
               <h2 className="text-lg font-bold text-zinc-800 dark:text-white">Undangan Tidak Valid</h2>
               <p className="text-sm text-zinc-500 mt-2">{errorMsg}</p>
               <button
-                onClick={() => navigate('/', { replace: true })}
+                onClick={actions.goHome}
                 className="mt-6 w-full py-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 font-bold text-sm hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all border-none cursor-pointer"
               >
                 Kembali ke Beranda
@@ -168,7 +84,6 @@ const JoinGroupPage = () => {
             </div>
           )}
 
-          {/* Idle: belum login */}
           {status === 'idle' && (
             <div className="text-center">
               <div className="w-14 h-14 rounded-2xl bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center mx-auto mb-5">
@@ -184,7 +99,7 @@ const JoinGroupPage = () => {
 
               <div className="flex flex-col gap-3">
                 <Link
-                  to={`/login`}
+                  to="/login"
                   className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition-all no-underline shadow-lg shadow-emerald-600/20 active:scale-95"
                 >
                   <LogIn size={16} />
@@ -192,7 +107,7 @@ const JoinGroupPage = () => {
                 </Link>
 
                 <Link
-                  to={`/register`}
+                  to="/register"
                   className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-zinc-200 dark:border-white/10 text-zinc-700 dark:text-zinc-200 font-bold text-sm bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-all no-underline active:scale-95"
                 >
                   <UserPlus size={16} />

@@ -5,6 +5,7 @@
  */
 
 import { apiFetch } from '../../../services/api';
+import { withRetryCoalesce } from '../../../services/withRetryCoalesce';
 
 /**
  * Simpan draft tanda tangan awal saat user pertama kali menaruh TTD di PDF.
@@ -20,14 +21,33 @@ export const saveDraft = (documentId, payload) =>
 /**
  * Update posisi/ukuran draft saat user melakukan drag.
  * Dipanggil saat drag selesai (onDragStop / resize end).
+ *
+ * Dibungkus withRetryCoalesce:
+ *   - Retry exponential backoff (3x: 1s, 2s, 4s) untuk transient errors
+ *     (5xx/408/429/network). 4xx tidak di-retry.
+ *   - Coalesce per signatureId: kalau ada PATCH baru sebelum yang lama selesai,
+ *     yang lama di-abort. Mencegah out-of-order writes (mis. drag → drag → drag
+ *     yang ke-2 boleh sampai server lebih dulu dari ke-3).
+ *   - Lapor ke saveStatus store untuk indikator "saving"/"saved" di UI.
+ *
  * @param {string} signatureId
  * @param {{ positionX, positionY, width, height, pageNumber }} payload
  */
 export const updateDraftPosition = (signatureId, payload) =>
-  apiFetch(`/group-signatures/${signatureId}/position`, {
-    method: 'PATCH',
-    body: payload,
-  });
+  withRetryCoalesce(
+    `patch:position:${signatureId}`,
+    (signal) =>
+      apiFetch(`/group-signatures/${signatureId}/position`, {
+        method: 'PATCH',
+        body: payload,
+        signal,
+      }),
+    {
+      // Tier 2: kalau retry habis (terminal failure), enqueue ke outbox
+      // localStorage. Drain otomatis saat user online kembali / reconnect.
+      outbox: { type: 'patch_position', signatureId, payload },
+    }
+  );
 
 /**
  * Hapus draft tanda tangan (sebelum disimpan final).
@@ -47,4 +67,17 @@ export const signDocument = (documentId, payload) =>
   apiFetch(`/group-signatures/${documentId}/sign`, {
     method: 'POST',
     body: payload,
+    timeout: 120000, // 2 menit — signing butuh waktu lama (generate PDF + digital sign + upload)
+  });
+
+/**
+ * Menolak dokumen — signer PENDING bisa reject alih-alih tanda tangan.
+ * @param {string} documentId
+ * @param {string|null} reason - Alasan penolakan (opsional)
+ * @returns {Promise<{ message, documentId, reason }>}
+ */
+export const rejectDocument = (documentId, reason = null) =>
+  apiFetch(`/group-signatures/${documentId}/reject`, {
+    method: 'POST',
+    body: { reason },
   });

@@ -8,31 +8,28 @@ const DashboardHeader = ({ itemVariants }) => {
   const firstName = user?.name?.split(' ')[0] || 'John';
 
   return (
-    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <motion.div variants={itemVariants}>
-        <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight mb-1">
+        <h2 className="text-xl font-bold text-zinc-900 dark:text-white">
           Welcome back, {firstName}! 👋
         </h2>
-        <p className="text-xs font-bold text-zinc-400">
+        <p className="text-[12px] text-zinc-400 mt-0.5">
           Here's what's happening with your documents today.
         </p>
       </motion.div>
-      
-      <motion.div variants={itemVariants} className="flex items-center gap-3">
-        <button className="flex items-center gap-2 px-6 py-3 rounded-full border-2 border-emerald-500 text-emerald-600 font-black text-xs hover:bg-emerald-50 transition-all bg-transparent cursor-pointer">
-          <Plus size={18} />
+
+      <motion.div variants={itemVariants} className="flex items-center gap-2 shrink-0">
+        <button className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-emerald-500 text-emerald-600 font-semibold text-[12px] hover:bg-emerald-50 transition-all bg-transparent cursor-pointer">
+          <Plus size={14} />
           Create Package
         </button>
-        <button className="flex items-center gap-2 px-6 py-3 rounded-full bg-emerald-500 text-white font-black text-xs hover:bg-emerald-600 transition-all shadow-xl shadow-emerald-500/20 border-none cursor-pointer">
-          <Upload size={18} />
+        <button className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-500 text-white font-semibold text-[12px] hover:bg-emerald-600 transition-all shadow-sm border-none cursor-pointer">
+          <Upload size={14} />
           Upload Document
         </button>
       </motion.div>
     </div>
-
   );
 };
 
 export default DashboardHeader;
-
-

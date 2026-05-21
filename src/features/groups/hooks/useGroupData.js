@@ -1,6 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getGroupDetail } from '../api/groupService';
 import { getDocumentFile } from '../../documents/api/docService';
+import { createLogger } from '../../../utils/logger';
+
+// [M-6] Scoped logger.
+const log = createLogger('GroupData');
 
 /**
  * @hook useGroupData
@@ -25,7 +29,10 @@ export const useGroupData = ({ groupId, documentId, currentUserId }) => {
     if (!groupId) return;
     setLoading(true);
     try {
-      const res = await getGroupDetail(groupId);
+      // [BE-5] Signing page butuh base64 signature image untuk render preview
+      // di DraggableSignatureGroup. Pass opt-in supaya backend include
+      // signatureImageUrl di response.
+      const res = await getGroupDetail(groupId, { includeSignatureImages: true });
       if (res.status !== 'success') throw new Error(res.message);
 
       const group = res.data;
@@ -33,7 +40,7 @@ export const useGroupData = ({ groupId, documentId, currentUserId }) => {
 
       const doc = group.documents?.find((d) => String(d.id) === String(documentId));
       if (!doc) {
-        console.error('[useGroupData] Dokumen tidak ditemukan. documentId:', documentId,
+        log.error('Dokumen tidak ditemukan. documentId:', documentId,
           'Available IDs:', group.documents?.map(d => d.id));
         throw new Error('Dokumen tidak ditemukan di grup ini.');
       }

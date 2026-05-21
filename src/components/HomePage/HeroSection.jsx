@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { CheckSquare, Clock, Mail, MessageSquare, Calendar, Feather, ClockCheck, ShieldCheckIcon, ArrowRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/UI/button';
 import { fadeInUp, staggerContainer } from '@/lib/animations';
 
 const HeroSection = () => {

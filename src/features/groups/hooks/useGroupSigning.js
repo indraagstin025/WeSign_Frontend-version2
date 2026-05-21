@@ -2,6 +2,11 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { useGroupData } from './useGroupData';
 import { useGroupSocket } from './useGroupSocket';
 import { useGroupSignatureActions } from './useGroupSignatureActions';
+import { socketService } from '../../../services/socketService';
+import { createLogger } from '../../../utils/logger';
+
+// [M-6] Scoped logger.
+const log = createLogger('GroupSigning');
 
 /**
  * @hook useGroupSigning
@@ -18,6 +23,10 @@ export const useGroupSigning = ({ groupId, documentId, currentUser }) => {
   const [isCanvasOpen, setIsCanvasOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFinalizing, setIsFinalizing] = useState(false);
+  // Penanda bahwa user pada session ini yang menekan tombol finalisasi.
+  // Hanya user dengan flag ini bernilai true yang akan diarahkan ke layar
+  // "Dokumen Telah Difinalisasi". User lain cukup menerima notifikasi.
+  const [iFinalized, setIFinalized] = useState(false);
   const [statusModal, setStatusModal] = useState({
     isOpen: false, type: 'success', title: '', message: '', onConfirm: null,
   });
@@ -103,6 +112,7 @@ export const useGroupSigning = ({ groupId, documentId, currentUser }) => {
     handleDeleteSignature,
     handleSaveMySignature,
     handleFinalizeDocument,
+    handleRejectDocument,
   } = useGroupSignatureActions({
     documentId,
     groupId,
@@ -118,12 +128,44 @@ export const useGroupSigning = ({ groupId, documentId, currentUser }) => {
     setSignatures,
     setHasMyFinalSig,
     setReadyToFinalize,
+    setPendingSigners,
     setDocumentStatus,
     setIsSubmitting,
     setIsFinalizing,
     setStatusModal,
+    setIFinalized,
     fetchGroupData,
   });
+
+  // ── Tier 2: Replay socket emit posisi terakhir saat reconnect ─────────────
+  // Saat socket reconnect (transisi disconnect→connect), kirim ulang posisi
+  // signature milik user ke server lewat `drag_signature` event. Ini memastikan
+  // user lain di room punya state mutakhir tanpa user owner harus menggerakkan
+  // signature lagi.
+  const wasConnectedReplayRef = useRef(socketStatus?.connected || false);
+  useEffect(() => {
+    const isConnected = !!socketStatus?.connected;
+    if (isConnected && !wasConnectedReplayRef.current && Array.isArray(signatures)) {
+      const owned = signatures.filter(
+        (s) => String(s.userId) === String(currentUser?.id) && s.status !== 'final'
+      );
+      if (owned.length > 0 && documentId) {
+        log.info('socket reconnect → replay', owned.length, 'positions');
+        owned.forEach((sig) => {
+          socketService.emitSignatureUpdate({
+            documentId,
+            signatureId: sig.id,
+            positionX: sig.positionX,
+            positionY: sig.positionY,
+            width: sig.width,
+            height: sig.height,
+            pageNumber: sig.pageNumber,
+          });
+        });
+      }
+    }
+    wasConnectedReplayRef.current = isConnected;
+  }, [socketStatus?.connected, signatures, currentUser?.id, documentId]);
 
   // ── Container Width Measurement ───────────────────────────────────────────
   const measureContainer = useCallback(() => {
@@ -148,8 +190,11 @@ export const useGroupSigning = ({ groupId, documentId, currentUser }) => {
     setPageDimensions({ width: page.originalWidth, height: page.originalHeight });
 
   // ── Canvas Handler ────────────────────────────────────────────────────────
-  const handleSaveCanvas = (dataUrl) => {
+  const [currentMethod, setCurrentMethod] = useState('canvas');
+
+  const handleSaveCanvas = (dataUrl, method = 'canvas') => {
     setCurrentSignature(dataUrl);
+    setCurrentMethod(method);
     setIsCanvasOpen(false);
   };
 
@@ -176,16 +221,19 @@ export const useGroupSigning = ({ groupId, documentId, currentUser }) => {
     loading, error,
     isCanvasOpen, setIsCanvasOpen,
     isSubmitting, isFinalizing,
+    iFinalized,
     statusModal, setStatusModal,
 
     // Handlers
     handleSaveCanvas,
+    currentMethod,
     handleAddSignature,
     handleUpdateSignature,
     handleUpdateSize,
     handleDeleteSignature,
     handleSaveMySignature,
     handleFinalizeDocument,
+    handleRejectDocument,
     onDocumentLoadSuccess,
     handlePageLoadSuccess,
     refreshData: fetchGroupData,

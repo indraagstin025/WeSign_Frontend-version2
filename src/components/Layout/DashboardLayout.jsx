@@ -56,61 +56,63 @@ const DashboardLayout = () => {
 
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
         
-        <header className="h-20 flex-shrink-0 bg-white dark:bg-zinc-900 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between px-6 lg:px-10 z-40 transition-all sticky top-0">
+        <header className="h-14 flex-shrink-0 bg-white dark:bg-zinc-900 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between px-5 lg:px-8 z-40 transition-all sticky top-0">
           
-          <div className="flex items-center gap-4 flex-1">
+          <div className="flex items-center gap-3 flex-1">
             <button 
-              className="lg:hidden p-2 rounded-xl text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors border-none bg-transparent cursor-pointer"
+              className="lg:hidden p-2 rounded-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors border-none bg-transparent cursor-pointer"
               onClick={() => setIsSidebarOpen(true)}
+              aria-label="Buka menu navigasi"
             >
-              <Menu size={24} />
+              <Menu size={20} aria-hidden="true" />
             </button>
 
             {/* SEARCH BAR */}
-            <div className="hidden md:flex items-center relative max-w-md w-full group">
-              <div className="absolute left-4 text-zinc-400 group-focus-within:text-emerald-500 transition-colors">
-                <Search size={18} />
+            <div className="hidden md:flex items-center relative max-w-sm w-full group">
+              <div className="absolute left-3 text-zinc-400 group-focus-within:text-emerald-500 transition-colors">
+                <Search size={15} />
               </div>
               <input 
                 type="text" 
                 placeholder="Search documents, packages, groups..." 
-                className="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-700/50 rounded-2xl py-2.5 pl-12 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+                className="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-700/50 rounded-xl py-2 pl-9 pr-4 text-[12px] focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-zinc-700 dark:text-zinc-200"
               />
             </div>
           </div>
 
-          <div className="flex items-center gap-3 sm:gap-6">
-            <div className="flex items-center gap-1 sm:gap-2">
-              <button onClick={toggleTheme} className="p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400 transition-colors border-none bg-transparent cursor-pointer">
-                {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-              </button>
-              
-              <button className="relative p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400 transition-colors border-none bg-transparent cursor-pointer">
-                <Bell size={20} />
-                <span className="absolute top-2 right-2 w-5 h-5 bg-emerald-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-white dark:border-zinc-900 shadow-sm">3</span>
-              </button>
-            </div>
+          <div className="flex items-center gap-2">
+            <button onClick={toggleTheme} className="p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400 transition-colors border-none bg-transparent cursor-pointer" aria-label={theme === 'dark' ? 'Aktifkan mode terang' : 'Aktifkan mode gelap'}>
+              {theme === 'dark' ? <Sun size={17} aria-hidden="true" /> : <Moon size={17} aria-hidden="true" />}
+            </button>
+            
+            <button className="relative p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400 transition-colors border-none bg-transparent cursor-pointer" aria-label="Notifikasi (3 belum dibaca)">
+              <Bell size={17} aria-hidden="true" />
+              <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-emerald-500 text-white text-[8px] font-bold flex items-center justify-center rounded-full border-2 border-white dark:border-zinc-900">3</span>
+            </button>
 
-            {/* Profile Dropdown Container */}
-            <div className="relative" ref={dropdownRef}>
+            {/* Profile */}
+            <div className="relative ml-1" ref={dropdownRef}>
               <button 
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="flex items-center gap-3 p-1.5 rounded-2xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all border border-transparent bg-transparent cursor-pointer group"
+                className="flex items-center gap-2.5 px-2 py-1.5 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all border border-transparent bg-transparent cursor-pointer"
+                aria-label="Buka menu profil"
+                aria-expanded={isDropdownOpen}
+                aria-haspopup="menu"
               >
-                <div className="flex flex-col items-end hidden sm:flex mr-1">
-                  <p className="text-xs font-bold text-zinc-900 dark:text-white leading-none mb-1">{user?.name || 'John Doe'}</p>
-                  <p className="text-[10px] text-zinc-400 leading-none">{user?.email || 'john.doe@email.com'}</p>
-                </div>
-                <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-500/20 border border-emerald-200 dark:border-emerald-500/30 flex items-center justify-center overflow-hidden shadow-sm transition-transform group-hover:scale-105">
+                <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-500/20 border border-emerald-200 dark:border-emerald-500/30 flex items-center justify-center overflow-hidden shadow-sm shrink-0">
                   {user?.profilePictureUrl ? (
                     <img src={user.profilePictureUrl} alt="Me" className="w-full h-full object-cover" />
                   ) : (
-                    <span className="text-emerald-600 dark:text-emerald-400 font-bold text-xs uppercase">
+                    <span className="text-emerald-600 dark:text-emerald-400 font-bold text-[10px] uppercase">
                       {loading ? '...' : getInitials(user?.name)}
                     </span>
                   )}
                 </div>
-                <ChevronDown size={14} className={`text-zinc-400 transition-transform duration-300 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                <div className="hidden sm:flex flex-col items-start">
+                  <p className="text-[12px] font-semibold text-zinc-900 dark:text-white leading-none">{user?.name || 'John Doe'}</p>
+                  <p className="text-[10px] text-zinc-400 leading-none mt-0.5">{user?.email || 'john.doe@email.com'}</p>
+                </div>
+                <ChevronDown size={13} className={`text-zinc-400 transition-transform duration-300 hidden sm:block ${isDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
 
               {/* ACTUAL DROPDOWN MENU */}

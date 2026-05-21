@@ -1,12 +1,43 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { registerUser } from "../api/authService";
 import { sanitizeText, sanitizeEmail, isValidEmail, isValidName, validatePasswordStrength } from "../../../utils/sanitize";
-import { SESSION_KEY } from '../../groups/pages/JoinGroupPage';
+import { AUTH_REGISTER_REDIRECT_DELAY_MS } from "../../../config/timeouts";
 
 /**
  * Hook to manage the logic of the Registration Form.
  * Handles password strength validation, input sanitization, and redirect logic.
+ *
+ * Auto-redirect ke /login setelah register sukses, dengan delay konstanta
+ * dari `config/timeouts.js` (AUTH_REGISTER_REDIRECT_DELAY_MS). Timer
+ * di-cleanup saat unmount agar tidak fire navigate ke route yang sudah
+ * berubah.
+ *
+ * @returns {{
+ *   state: {
+ *     formData: {
+ *       name: string,
+ *       email: string,
+ *       password: string,
+ *       confirmPassword: string,
+ *       isCompany: boolean
+ *     },
+ *     loading: boolean,
+ *     error: string,
+ *     success: string,
+ *     showPassword: boolean,
+ *     showConfirm: boolean,
+ *     passwordErrors: string[],
+ *     isPasswordValid: boolean
+ *   },
+ *   actions: {
+ *     handleFieldChange: (e: import('react').ChangeEvent<HTMLInputElement>) => void,
+ *     setAccountType: (isCompany: boolean) => void,
+ *     handleRegister: (e: import('react').FormEvent) => Promise<void>,
+ *     togglePasswordVisibility: () => void,
+ *     toggleConfirmVisibility: () => void
+ *   }
+ * }}
  */
 export const useRegister = () => {
   const navigate = useNavigate();
@@ -24,6 +55,18 @@ export const useRegister = () => {
     confirmPassword: "",
     isCompany: false,
   });
+
+  // [H-1] Track redirect timer dengan ref supaya bisa cleanup saat unmount
+  const redirectTimerRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (redirectTimerRef.current) {
+        clearTimeout(redirectTimerRef.current);
+        redirectTimerRef.current = null;
+      }
+    };
+  }, []);
 
   const handleFieldChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -83,16 +126,15 @@ export const useRegister = () => {
 
       if (result?.success) {
         setSuccess(result.message || "Registrasi berhasil! Mengarahkan ke halaman login...");
-        // Setelah register, cek pending join token
-        const pendingToken = sessionStorage.getItem(SESSION_KEY);
-        setTimeout(() => {
-          if (pendingToken) {
-            // Token masih ada di sessionStorage, login akan memprosesnya
-            navigate("/login");
-          } else {
-            navigate("/login");
-          }
-        }, 2000);
+        // Setelah register, redirect ke login. Pending join token (kalau ada
+        // di sessionStorage) akan diproses oleh useLogin setelah user login.
+        // Konsumer key ini ada di src/config/sessionKeys.js (PENDING_GROUP_JOIN_KEY).
+        // [H-1] Track timer ID untuk cleanup di unmount.
+        // [L-3] Delay konstanta dari config/timeouts.js, bukan magic number.
+        redirectTimerRef.current = setTimeout(() => {
+          navigate("/login");
+          redirectTimerRef.current = null;
+        }, AUTH_REGISTER_REDIRECT_DELAY_MS);
       }
     } catch (err) {
       setError(err.message || "Registrasi gagal. Silakan coba lagi.");

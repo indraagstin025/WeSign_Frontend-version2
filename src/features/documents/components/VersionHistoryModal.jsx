@@ -8,6 +8,7 @@ import {
   Clock
 } from 'lucide-react';
 import { useVersionHistory } from '../hooks/useVersionHistory';
+import ConfirmModal from '../../../components/ui/ConfirmModal';
 
 /**
  * @component VersionHistoryModal
@@ -146,6 +147,19 @@ const VersionHistoryModal = ({ isOpen, onClose, document, onRollbackSuccess }) =
           )}
         </div>
       </div>
+
+      {/* [H-1] Rollback confirmation — replace blocking window.confirm */}
+      <ConfirmModal
+        isOpen={state.rollbackTarget !== null}
+        onClose={actions.cancelRollback}
+        onConfirm={actions.confirmRollback}
+        title="Batalkan Tanda Tangan?"
+        message="Tindakan ini akan menghapus dokumen final secara permanen beserta file PDF-nya. Dokumen akan kembali menjadi versi asli (kosong). Lanjutkan?"
+        confirmText="Ya, Batalkan"
+        cancelText="Batal"
+        variant="danger"
+        loading={state.isRollingBack}
+      />
     </div>
   );
 };

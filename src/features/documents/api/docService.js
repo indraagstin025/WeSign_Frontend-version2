@@ -38,6 +38,16 @@ export async function getDocumentDetail(id) {
 }
 
 /**
+ * Mengambil daftar tipe dokumen yang boleh dipilih user.
+ * @returns {Promise<object>} Daftar tipe dokumen dari backend
+ */
+export async function getDocumentTypes() {
+  return apiFetch('/documents/types', {
+    method: 'GET',
+  });
+}
+
+/**
  * Menghapus dokumen (Soft/Hard delete ditangani backend).
  * @param {string} id - Document ID
  * @returns {Promise<object>} Pesan konfirmasi
@@ -106,13 +116,53 @@ export async function restoreVersion(id, versionId) {
 }
 
 /**
- * Mendapatkan URL untuk mengunduh versi spesifik.
+ * Mendapatkan URL signed untuk akses file pada versi spesifik.
+ *
+ * Backend (FIX #59) sekarang membedakan dua mode akses lewat query
+ * `?purpose=view|download`:
+ *   - `view`     → signed URL bertanda Content-Disposition `inline` (buka di tab).
+ *   - `download` → signed URL bertanda `attachment` (memicu download di browser).
+ *
+ * Default `'view'` agar sinkron dengan {@link getDocumentFile} dan agar pemanggil
+ * yang ingin tampilkan preview tidak perlu pass argumen tambahan.
+ *
  * @param {string} id - Document ID
  * @param {string} versionId - Version ID (V1 atau V2)
- * @returns {Promise<object>} URL download file PDF versi tersebut
+ * @param {'view'|'download'} [purpose='view'] - Intent akses file
+ * @returns {Promise<object>} Signed URL & metadata (mode, expiresIn, dst.)
  */
-export async function getVersionFile(id, versionId) {
-  return apiFetch(`/documents/${id}/versions/${versionId}/file`, {
+export async function getVersionFile(id, versionId, purpose = 'view') {
+  return apiFetch(`/documents/${id}/versions/${versionId}/file?purpose=${purpose}`, {
     method: 'GET',
   });
 }
+
+// ── Trash Management (Admin Only) ─────────────────────────────────────────
+
+/**
+ * Mengambil daftar dokumen di trash (soft-deleted) milik user sendiri.
+ * @param {object} params - { page, limit }
+ * @returns {Promise<object>} Data dokumen terhapus + metadata paginasi
+ */
+export async function getMyTrashDocuments({ page = 1, limit = 10 } = {}) {
+  const query = new URLSearchParams({ page: page.toString(), limit: limit.toString() }).toString();
+  return apiFetch(`/documents/trash?${query}`, { method: 'GET' });
+}
+
+/**
+ * Restore dokumen milik user dari trash.
+ * @param {string} documentId
+ * @returns {Promise<object>} Dokumen yang di-restore
+ */
+export async function restoreMyDocument(documentId) {
+  return apiFetch(`/documents/trash/${documentId}/restore`, { method: 'POST' });
+}
+
+// NOTE: Admin endpoints (`/admin/trash/*`) sudah dihapus dari user feature
+// karena pollution arsitektural — admin functionality tidak boleh ada di
+// user-facing feature. Kalau perlu admin trash management di masa depan,
+// pindahkan ke `src/features/admin/api/adminService.js` (belum ada).
+//
+// Endpoint backend tetap di-protect oleh `requireAdmin` middleware.
+//
+// Refs: docs/code-review-feat-documents/01-critical.md (CR-2)

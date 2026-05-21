@@ -22,7 +22,6 @@ const CreatePackageModal = ({ isOpen, onClose, onSuccess }) => {
     setCategory,
     loading,
     error,
-    setError,
     success,
     processNewFiles,
     removeFile,
@@ -85,12 +84,20 @@ const CreatePackageModal = ({ isOpen, onClose, onSuccess }) => {
           <form id="createPackageForm" onSubmit={handleSubmit} className="space-y-6">
             {success ? (
               <div className="py-12 flex flex-col items-center justify-center text-center space-y-4 animate-in zoom-in-90 duration-300">
-                <div className="w-24 h-24 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center text-emerald-500">
+                <div className={`w-24 h-24 ${error ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-emerald-100 dark:bg-emerald-900/30'} rounded-full flex items-center justify-center ${error ? 'text-amber-500' : 'text-emerald-500'}`}>
                   <CheckCircle2 size={56} className="animate-bounce" />
                 </div>
                 <div>
-                  <h4 className="text-xl font-bold text-zinc-900 dark:text-white mb-2">Paket Berhasil Dibuat!</h4>
-                  <p className="text-sm text-zinc-500 dark:text-zinc-400">{files.length} dokumen telah masuk ke dalam brankas paket.</p>
+                  <h4 className="text-xl font-bold text-zinc-900 dark:text-white mb-2">
+                    {error ? 'Paket Dibuat (Sebagian Gagal)' : 'Paket Berhasil Dibuat!'}
+                  </h4>
+                  {error ? (
+                    <div className="text-sm text-amber-600 dark:text-amber-400 whitespace-pre-line text-left bg-amber-50 dark:bg-amber-900/20 p-4 rounded-xl border border-amber-200 dark:border-amber-800 max-h-40 overflow-y-auto">
+                      {error}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400">{files.length} dokumen telah masuk ke dalam brankas paket.</p>
+                  )}
                 </div>
               </div>
             ) : (

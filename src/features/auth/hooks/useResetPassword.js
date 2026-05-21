@@ -1,0 +1,126 @@
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { resetPassword } from '../api/authService';
+import { validatePasswordStrength } from '../../../utils/sanitize';
+import { AUTH_RESET_PASSWORD_REDIRECT_DELAY_MS } from '../../../config/timeouts';
+
+/**
+ * Hook untuk mengelola logika form Reset Password.
+ * Token diambil dari URL query param `?token=xxx`.
+ *
+ * Setelah submit sukses, auto-redirect ke /login dengan delay konstanta
+ * dari `config/timeouts.js` (AUTH_RESET_PASSWORD_REDIRECT_DELAY_MS).
+ * Timer di-cleanup saat unmount.
+ *
+ * @returns {{
+ *   state: {
+ *     token: string|null,
+ *     password: string,
+ *     confirmPassword: string,
+ *     showPassword: boolean,
+ *     loading: boolean,
+ *     error: string,
+ *     success: string,
+ *     passwordErrors: string[],
+ *     isPasswordValid: boolean
+ *   },
+ *   actions: {
+ *     setPassword: (value: string) => void,
+ *     setConfirmPassword: (value: string) => void,
+ *     togglePasswordVisibility: () => void,
+ *     handleSubmit: (e: import('react').FormEvent) => Promise<void>
+ *   }
+ * }}
+ */
+export const useResetPassword = () => {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get('token');
+
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  // [H-1] Track redirect timer dengan ref supaya bisa cleanup saat
+  // component unmount sebelum timer fire. Sebelumnya `setTimeout(...)`
+  // tanpa cleanup -> kalau user navigate manual sebelum 3 detik, timer
+  // tetap fire navigate('/login') ke route yang baru.
+  const redirectTimerRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (redirectTimerRef.current) {
+        clearTimeout(redirectTimerRef.current);
+        redirectTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+
+    if (!token) {
+      setError('Token reset password tidak ditemukan. Silakan request ulang dari halaman Lupa Password.');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError('Password dan konfirmasi password tidak cocok.');
+      return;
+    }
+
+    const validation = validatePasswordStrength(password);
+    if (!validation.isValid) {
+      setError(`Password lemah: ${validation.errors.join(', ')}.`);
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const result = await resetPassword(token, password);
+      setSuccess(result?.message || 'Password berhasil direset. Silakan login dengan password baru.');
+      // [H-1] Track timer ID untuk cleanup
+      // [L-3] Delay konstanta dari config/timeouts.js, bukan magic number.
+      redirectTimerRef.current = setTimeout(() => {
+        navigate('/login');
+        redirectTimerRef.current = null;
+      }, AUTH_RESET_PASSWORD_REDIRECT_DELAY_MS);
+    } catch (err) {
+      setError(err.message || 'Gagal mereset password. Link mungkin sudah kadaluarsa.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const togglePasswordVisibility = () => setShowPassword((prev) => !prev);
+
+  // Derived
+  const passwordValidation = password ? validatePasswordStrength(password) : { isValid: false, errors: [] };
+  const isPasswordValid = password.length > 0 && passwordValidation.isValid;
+
+  return {
+    state: {
+      token,
+      password,
+      confirmPassword,
+      showPassword,
+      loading,
+      error,
+      success,
+      passwordErrors: passwordValidation.errors,
+      isPasswordValid,
+    },
+    actions: {
+      setPassword,
+      setConfirmPassword,
+      togglePasswordVisibility,
+      handleSubmit,
+    },
+  };
+};

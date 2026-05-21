@@ -1,5 +1,7 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { toast } from 'react-toastify';
 import { socketService } from '../../../services/socketService';
+import { drainOutbox } from '../../../services/outboxDrain';
 
 /**
  * @hook useGroupSocket
@@ -47,20 +49,62 @@ export const useGroupSocket = ({
   const [activeUsers, setActiveUsers] = useState([]);
   const [socketStatus, setSocketStatus] = useState({ connected: false });
 
-  // Dedup guard: cegah double event dari backend broadcast ke 2 room
-  const lastSavedRef = useRef(new Map());
+  // Dedup guard: cegah double alert/state-update dari backend broadcast
+  // `signature_saved` ke 2 room (document room + group room). Sekali user X
+  // sudah memicu handler, lewati event berikutnya untuk user yang sama —
+  // pakai Set, bukan timestamp, supaya alert (yang blocking) tidak menyebabkan
+  // window dedup expire saat user lambat menutup alert.
+  const alertedSignersRef = useRef(new Set());
+
+  // [H-3] Ref untuk callback agar socket handler selalu pakai versi terbaru.
+  //
+  // Sebelumnya callback (onRefresh, onRefreshSigning, onKicked) di-closure
+  // di useEffect dengan deps `[documentId, groupId, currentUserId, ready]`
+  // saja. Setiap parent component re-render, callback baru tidak masuk —
+  // socket handler tetap pakai versi pertama. Dampak: kalau parent state
+  // berubah (mis. baru di-fetch fresh data), socket-triggered refresh akan
+  // pakai callback yang masih reference ke state lama → stale data.
+  //
+  // Solusi: simpan callback di ref, update di useEffect tanpa deps trick.
+  // Handler tinggal panggil `cbRefs.current.onRefresh?.(...)` — selalu
+  // versi terbaru tanpa perlu re-bind socket listener.
+  const cbRefs = useRef({ onRefresh, onRefreshSigning, onKicked });
+  useEffect(() => {
+    cbRefs.current = { onRefresh, onRefreshSigning, onKicked };
+  }, [onRefresh, onRefreshSigning, onKicked]);
 
   useEffect(() => {
     if (!groupId || !ready) return;
+
+    // [CR-2] Reset dedup tracker saat join document/group baru. Sebelumnya
+    // alertedSignersRef adalah useRef(new Set()) yang di-init SEKALI per
+    // hook instance — kalau user navigasi document A → B, Set dari A masih
+    // ada → signer Bob yang sudah trigger alert di A akan ke-skip di B.
+    alertedSignersRef.current = new Set();
 
     socketService.connect();
     if (documentId) socketService.joinRoom(documentId);
     socketService.joinGroupRoom(groupId);
 
     // ── Status koneksi ────────────────────────────────────────────────────
-    const unsubConn = socketService.onConnectionChange((status) =>
-      setSocketStatus(status)
-    );
+    // Track previous connected state untuk deteksi transisi disconnect→connect
+    // (reconnect). Saat reconnect, kita refetch data agar state lokal sinkron
+    // dengan server — bisa saja selama disconnect ada perubahan signature,
+    // member, atau finalisasi yang event-nya tidak kita terima.
+    let wasConnected = socketService.isConnected();
+    const unsubConn = socketService.onConnectionChange((status) => {
+      setSocketStatus(status);
+      if (status.connected && !wasConnected) {
+        // Reconnect terdeteksi → reconcile state via silent refetch.
+        // [H-3] Pakai cbRefs.current agar selalu versi callback terbaru
+        // (lihat dokumentasi cbRefs di atas).
+        cbRefs.current.onRefresh?.(true);
+        cbRefs.current.onRefreshSigning?.(true);
+        // Tier 2: drain outbox (mutation HTTP yang gagal saat offline)
+        drainOutbox();
+      }
+      wasConnected = !!status.connected;
+    });
 
     // ── User online (document room) ───────────────────────────────────────
     const handleUserJoined = (data) => {
@@ -103,11 +147,15 @@ export const useGroupSocket = ({
       if (!data?.userId) return;
       if (String(data.userId) === String(currentUserId)) return;
 
-      // Dedup: tolak duplicate dalam 2 detik
       const key = String(data.userId);
-      const now = Date.now();
-      if (now - (lastSavedRef.current.get(key) || 0) < 2000) return;
-      lastSavedRef.current.set(key, now);
+      // Dedup berbasis Set: backend broadcast `signature_saved` ke 2 room
+      // (document + group), jadi event ini fire 2x. Cek dulu SEBELUM update
+      // state & alert. `alert` blocking, kalau pakai timestamp window pendek,
+      // event ke-2 yang queued di balik alert bisa lolos saat user lambat
+      // menutup alert pertama. Set di-mutate sync sebelum alert → event ke-2
+      // pasti ter-skip.
+      if (alertedSignersRef.current.has(key)) return;
+      alertedSignersRef.current.add(key);
 
       // Update state lokal jika di signing page
       if (setSignatures) {
@@ -120,17 +168,22 @@ export const useGroupSocket = ({
         );
       }
       if (setPendingSigners) {
-        setPendingSigners((prev) =>
-          prev.filter((s) => String(s.userId) !== String(data.userId))
-        );
+        setPendingSigners((prev) => {
+          const next = prev.filter((s) => String(s.userId) !== String(data.userId));
+          // Sinkronkan readyToFinalize secara realtime: kalau ini signer
+          // terakhir (next.length === 0), admin harus bisa langsung
+          // melihat tombol "Finalisasi Dokumen" tanpa refresh halaman.
+          // Tanpa ini, admin yang tidak ikut menandatangani akan terjebak
+          // di mode 'sign' sampai dia refresh manual.
+          if (next.length === 0 && setReadyToFinalize) {
+            setReadyToFinalize(true);
+          }
+          return next;
+        });
       }
 
-      setStatusModal?.({
-        isOpen: true, type: 'info',
-        title: 'Tanda Tangan Masuk',
-        message: `${data.userName || 'Seseorang'} telah menandatangani dokumen.`,
-        onConfirm: null,
-      });
+      // Tampilkan notifikasi TTD masuk via toast (non-blocking)
+      toast.info(`${data.userName || 'Seseorang'} telah menandatangani dokumen.`);
     };
 
     socketService.on('signature_saved', handleSigSaved);
@@ -144,7 +197,8 @@ export const useGroupSocket = ({
         case 'removed_document':
         case 'signer_update':
           // Silent refresh — tidak ada loading spinner
-          onRefresh?.(true);
+          // [H-3] cbRefs.current pakai callback terbaru.
+          cbRefs.current.onRefresh?.(true);
           break;
 
         case 'finalized':
@@ -156,12 +210,12 @@ export const useGroupSocket = ({
             message: 'Admin telah menyelesaikan dokumen. PDF final sudah tersedia.',
             onConfirm: null,
           });
-          onRefreshSigning?.();
-          onRefresh?.(true);
+          cbRefs.current.onRefreshSigning?.();
+          cbRefs.current.onRefresh?.(true);
           break;
 
         default:
-          onRefresh?.(true);
+          cbRefs.current.onRefresh?.(true);
       }
     };
 
@@ -173,7 +227,8 @@ export const useGroupSocket = ({
 
       switch (data.action) {
         case 'new_member':
-          onRefresh?.(true);
+          // [H-3] cbRefs.current pakai callback terbaru.
+          cbRefs.current.onRefresh?.(true);
           break;
 
         case 'kicked':
@@ -183,16 +238,16 @@ export const useGroupSocket = ({
               title: 'Anda Dikeluarkan',
               message: 'Admin telah mengeluarkan Anda dari grup ini.',
               onConfirm: () => {
-                if (onKicked) onKicked();
+                cbRefs.current.onKicked?.();
               },
             });
           } else {
-            onRefresh?.(true);
+            cbRefs.current.onRefresh?.(true);
           }
           break;
 
         default:
-          onRefresh?.(true);
+          cbRefs.current.onRefresh?.(true);
       }
     };
 
@@ -200,7 +255,8 @@ export const useGroupSocket = ({
 
     // ── Group Info Update ─────────────────────────────────────────────────
     const handleGroupInfoUpdate = () => {
-      onRefresh?.();
+      // [H-3] cbRefs.current pakai callback terbaru.
+      cbRefs.current.onRefresh?.();
     };
 
     socketService.on('group_info_update', handleGroupInfoUpdate);
@@ -218,7 +274,18 @@ export const useGroupSocket = ({
       socketService.off('group_info_update', handleGroupInfoUpdate);
       socketService.offGroupDocumentUpdate(handleGroupDocUpdate);
       if (typeof unsubConn === 'function') unsubConn();
+      // [CR-2] Defense-in-depth: clear Set di cleanup juga, supaya next
+      // mount dimulai dengan tracker bersih (selain reset di setup).
+      alertedSignersRef.current.clear();
     };
+    // [Lint] State setters (setSignatures, setPendingSigners, setReadyToFinalize,
+    // setDocumentStatus, setStatusModal) adalah hasil dari useState di parent
+    // komponen — mereka guaranteed stable identity oleh React (tidak berubah
+    // antar render). Memasukkan ke deps array akan trigger re-bind socket
+    // listener yang tidak perlu (mahal — disconnect/reconnect). Effect ini
+    // intentionally hanya re-bind saat documentId/groupId/currentUserId/ready
+    // berubah.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [documentId, groupId, currentUserId, ready]);
 
   return { activeUsers, socketStatus };

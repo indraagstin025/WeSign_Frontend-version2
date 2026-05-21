@@ -1,6 +1,9 @@
 import { useState, useCallback } from 'react';
 import { uploadPackageDocuments } from '../api/packageService';
 import { pdfjs } from 'react-pdf';
+import { createLogger } from '../../../utils/logger';
+
+const logger = createLogger('CreatePackage');
 
 // Konfigurasi worker pdfjs secara lokal (Vite Compatible)
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -9,8 +12,13 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 ).toString();
 
 /**
- * Hook for managing the logic of creating a new package.
- * Separates file processing, validation, and submission from the UI.
+ * @hook useCreatePackage
+ * @description Hook untuk mengelola logika create paket baru — validasi
+ * file PDF lokal (password protection + scan-only detection), file batch
+ * processing, dan submission ke server.
+ *
+ * @param {() => void} onSuccess - Callback saat upload sukses
+ * @param {() => void} onClose - Callback tutup modal upload
  */
 export const useCreatePackage = (onSuccess, onClose) => {
   const [files, setFiles] = useState([]);
@@ -43,7 +51,10 @@ export const useCreatePackage = (onSuccess, onClose) => {
           
           resolve({ valid: true, hasText });
         } catch (err) {
-          console.error("❌ [Validation Error Trace]:", err.name, err.message);
+          // [L-5] Sebelumnya pakai console.error("❌ ...") dengan emoji.
+          // Pakai createLogger supaya output prefix konsisten + bisa
+          // disilent di production via logger config.
+          logger.error('Validation error trace:', err.name, err.message);
           
           if (err.name === 'PasswordException' || err.name === 'PasswordResponseException' || err.message?.toLowerCase().includes('password')) {
             resolve({ 
@@ -156,12 +167,31 @@ export const useCreatePackage = (onSuccess, onClose) => {
 
     try {
       const response = await uploadPackageDocuments(formData);
+
       if (response?.status === 'success') {
+        // Semua file berhasil
         setSuccess(true);
         setTimeout(() => {
           onSuccess();
           resetAndClose();
         }, 1500);
+      } else if (response?.status === 'partial_success') {
+        // Sebagian file gagal — tampilkan detail
+        const { data } = response;
+        const failedDetails = (data?.failed || [])
+          .map(f => `• ${f.fileName}: ${f.reason}`)
+          .join('\n');
+
+        setSuccess(true);
+        setError(
+          `${data?.summary?.success} dari ${data?.summary?.total} file berhasil diunggah.\n` +
+          `${data?.summary?.failed} file gagal:\n${failedDetails}`
+        );
+        // Tetap anggap sukses (package terbuat), tapi tampilkan warning
+        setTimeout(() => {
+          onSuccess();
+          resetAndClose();
+        }, 4000); // Beri waktu lebih lama untuk baca error detail
       }
     } catch (err) {
       setError(err.message || 'Gagal mengunggah paket. Silakan coba lagi.');

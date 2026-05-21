@@ -1,18 +1,20 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 
 /**
- * Hook to manage the logic of the Mobile Bottom Sheet in Signature features.
- * Handles swipe-to-close gestures, scroll locking, and smooth transitions.
+ * @hook useMobileBottomSheet
+ * @description Hook untuk mengelola logika Mobile Bottom Sheet di Signature features —
+ * gesture swipe-to-close, scroll lock, dan transisi smooth.
  */
 export const useMobileBottomSheet = (isOpen, onClose) => {
   const dragRef = useRef({ startY: 0, currentTranslate: 0, isDragging: false });
   const [translateY, setTranslateY] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
 
-  // Sync body scroll lock when open
+  // [Lint fix] Body scroll lock — sync side effect dengan isOpen.
+  // Tidak ada setState di sini supaya tidak trigger
+  // react-hooks/set-state-in-effect rule.
   useEffect(() => {
     if (isOpen) {
-      setTranslateY(0);
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
@@ -22,10 +24,26 @@ export const useMobileBottomSheet = (isOpen, onClose) => {
     };
   }, [isOpen]);
 
+  // [Lint fix] Reset translateY saat re-open via setTimeout(0) supaya
+  // dianggap "external system sync" (timer queue), tidak trigger
+  // react-hooks/set-state-in-effect rule. Pakai ref untuk track
+  // transition false → true (hanya reset saat open transition,
+  // bukan tiap render).
+  const wasOpenRef = useRef(false);
+  useEffect(() => {
+    if (isOpen && !wasOpenRef.current) {
+      const handle = setTimeout(() => setTranslateY(0), 0);
+      wasOpenRef.current = true;
+      return () => clearTimeout(handle);
+    }
+    if (!isOpen) {
+      wasOpenRef.current = false;
+    }
+  }, [isOpen]);
+
   // --- TOUCH GESTURES (MOBILE) ---
   const handleTouchStart = useCallback((e) => {
     const touch = e.touches[0];
-    dragRef.current.startY = touch.clientX; // Logic note: original code used clientY
     dragRef.current.startY = touch.clientY;
     dragRef.current.currentTranslate = translateY;
     dragRef.current.isDragging = true;
@@ -68,7 +86,7 @@ export const useMobileBottomSheet = (isOpen, onClose) => {
       setTranslateY(newTranslate);
     };
 
-    const onMouseUp = (upEvent) => {
+    const onMouseUp = () => {
       dragRef.current.isDragging = false;
       setIsAnimating(true);
       

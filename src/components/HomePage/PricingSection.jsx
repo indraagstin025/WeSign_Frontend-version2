@@ -1,9 +1,9 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { CheckCircle2, XCircle, Star, Server, KeyRound } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/UI/button';
+import { Badge } from '@/components/UI/badge';
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/UI/card';
 import { fadeInUp, staggerContainer, scaleUp } from '@/lib/animations';
 
 const PricingSection = () => {

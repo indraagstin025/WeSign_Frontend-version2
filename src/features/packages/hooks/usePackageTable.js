@@ -1,8 +1,24 @@
 import { useState, useRef, useEffect } from 'react';
+import { formatDate } from '../../../utils/formatDate';
 
 /**
- * Hook for managing the logic of the Package Table.
- * Handles dropdown menus, click outside detection, and display formatting.
+ * @hook usePackageTable
+ * @description Hook untuk mengelola logika tabel paket — dropdown menu
+ * row action, deteksi click outside, dan formatting tanggal.
+ *
+ * [L-2] formatDate sekarang import dari `utils/formatDate.js` (centralized)
+ * supaya konsisten dengan formatter di feature lain.
+ *
+ * [Bug fix] Sebelumnya `handleClickOutside` cek `menuRef.current.contains(target)`,
+ * tapi dropdown di-render via fixed portal di luar wrapper PackageTable. Akibatnya
+ * setiap mousedown di dropdown button = "outside" → setOpenMenuId(null) fire
+ * sebelum click handler, action tidak ke-trigger.
+ *
+ * Fix: pakai attribute selector `[data-package-menu]` pada trigger button + dropdown
+ * wrapper. Kalau target click berada di element yang punya attribute itu (atau
+ * descendant-nya), tidak fire close handler.
+ *
+ * @param {(type: string, pkg: object) => void} onAction - Callback row action
  */
 export const usePackageTable = (onAction) => {
   const [openMenuId, setOpenMenuId] = useState(null);
@@ -13,42 +29,17 @@ export const usePackageTable = (onAction) => {
    */
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
+      // Cek via attribute selector — dropdown render via fixed portal di luar
+      // wrapper, jadi `menuRef.contains()` selalu return false untuk klik di
+      // dropdown. Pakai `closest('[data-package-menu]')` untuk detect klik
+      // di trigger button atau dropdown wrapper.
+      if (!event.target.closest('[data-package-menu]')) {
         setOpenMenuId(null);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  /**
-   * Helper to get CSS classes based on signature status
-   */
-  const getStatusStyles = (status) => {
-    if (!status) return 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800';
-    
-    switch (status.toLowerCase()) {
-      case 'completed':
-        return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400';
-      case 'draft':
-      case 'pending':
-        return 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400';
-      default:
-        return 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800';
-    }
-  };
-
-  /**
-   * Helper for Indonesian date formatting
-   */
-  const formatDate = (dateString) => {
-    if (!dateString) return '-';
-    return new Date(dateString).toLocaleDateString('id-ID', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric'
-    });
-  };
 
   /**
    * Handle dropdown actions with auto-close
@@ -63,7 +54,6 @@ export const usePackageTable = (onAction) => {
     setOpenMenuId,
     menuRef,
     helpers: {
-      getStatusStyles,
       formatDate
     },
     handleActionClick

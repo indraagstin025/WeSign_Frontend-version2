@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
 import { getMyProfile } from "../features/user/api/userService";
 import { getMe } from "../features/auth/api/authService";
 
@@ -88,26 +88,33 @@ export const UserProvider = ({ children }) => {
    * @function refreshUser
    * @description Memaksa update data user (misal setelah edit profil/avatar).
    */
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async () => {
     await fetchUser();
-  };
+  }, [fetchUser]);
 
   /**
    * @function clearUser
    * @description Membersihkan state user (saat logout).
    */
-  const clearUser = () => {
+  const clearUser = useCallback(() => {
     setUser(null);
-  };
+  }, []);
 
-  const value = {
-    user,
-    setUser, // Untuk update manual jika diperlukan
-    loading,
-    error,
-    refreshUser,
-    clearUser,
-  };
+  // [M-3] Wrap value dengan useMemo supaya consumer tidak re-render setiap
+  // kali UserProvider re-render. Sebelumnya `value` adalah object literal
+  // baru di setiap render -> Object.is(prev, next) selalu false -> semua
+  // useUser() consumer trigger re-render meski user data tidak berubah.
+  const value = useMemo(
+    () => ({
+      user,
+      setUser, // Untuk update manual jika diperlukan (state setter sudah stable)
+      loading,
+      error,
+      refreshUser,
+      clearUser,
+    }),
+    [user, loading, error, refreshUser, clearUser]
+  );
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;
 };

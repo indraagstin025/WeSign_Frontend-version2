@@ -1,6 +1,7 @@
 import React from 'react';
-import { X, FileEdit, Save, AlertCircle, Tag } from 'lucide-react';
+import { X, FileEdit, Save, AlertCircle, Tag, Loader2 } from 'lucide-react';
 import { useEditDoc } from '../hooks/useEditDoc';
+import { useDocumentTypes } from '../hooks/useDocumentTypes';
 
 /**
  * @component EditDocModal
@@ -13,6 +14,7 @@ const EditDocModal = ({
   loading 
 }) => {
   const { state, actions } = useEditDoc(document, onUpdate, onClose);
+  const documentTypes = useDocumentTypes();
 
   if (!isOpen || !document) return null;
 
@@ -73,14 +75,15 @@ const EditDocModal = ({
             <div className="relative">
               <select 
                 value={state.type}
-                disabled={loading}
+                disabled={loading || documentTypes.loading}
                 onChange={(e) => actions.setType(e.target.value)}
                 className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/20 dark:text-white transition-all appearance-none cursor-pointer"
               >
-                <option value="General">Umum (General)</option>
-                <option value="Contract">Kontrak / Perjanjian</option>
-                <option value="Invoice">Invoice / Faktur</option>
-                <option value="Certificate">Sertifikat / Bukti</option>
+                {documentTypes.options.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
               <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-400">
                 <Tag size={16} />
@@ -115,9 +118,5 @@ const EditDocModal = ({
     </div>
   );
 };
-
-const Loader2 = ({ size, className }) => (
-  <div className={`w-${size/4} h-${size/4} border-2 border-white/20 border-t-white rounded-full animate-spin ${className}`} style={{ width: size, height: size }} />
-);
 
 export default EditDocModal;

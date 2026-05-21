@@ -1,11 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import { 
   getUserDocuments, 
   getDocumentFile, 
   getDocumentDetail, 
   deleteDocument,
-  updateDocument 
+  updateDocument,
+  getMyTrashDocuments,
+  restoreMyDocument,
 } from '../api/docService';
 
 /**
@@ -15,17 +18,53 @@ import {
  */
 export const useDocuments = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // --- STATE DATA ---
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [meta, setMeta] = useState({ total: 0, page: 1, limit: 10, totalPages: 1 });
+  const [trashCount, setTrashCount] = useState(0);
+  const [statusCounts, setStatusCounts] = useState({ all: 0, draft: 0, pending: 0, completed: 0 });
   
-  // --- STATE FILTER ---
-  const [status, setStatus] = useState(''); // '', 'draft', 'pending', 'completed', 'archived'
+  // --- STATE FILTER ─────────────────────────────────────────────────────
+  // [H-4] Status sync 2-way dengan URL `?status=`:
+  //
+  // Sebelumnya: `useState(() => searchParams.get('status'))` lazy init —
+  // hanya sync URL → state SEKALI saat mount. Setelah itu state-only,
+  // perubahan URL eksternal (mis. user click link, browser back/forward,
+  // toast deeplink) tidak ter-react ke state.
+  //
+  // Fix: useState dengan default kosong, lalu useEffect read URL → state
+  // setiap kali searchParams berubah. Sync state → URL juga via useEffect
+  // terpisah supaya tidak race (URL → state useEffect bisa fire setelah
+  // state → URL useEffect saat user toggle filter, tapi guard "kalau
+  // sama, skip" mencegah infinite loop).
+  const [status, setStatus] = useState(() => searchParams.get('status') || '');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+
+  // [H-4] URL → state: ikuti perubahan URL eksternal.
+  useEffect(() => {
+    const urlStatus = searchParams.get('status') || '';
+    if (urlStatus !== status) {
+      setStatus(urlStatus);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  // [H-4] state → URL: replace agar tidak menambah history entry per filter
+  // change. Guard "kalau sama, skip" untuk hindari loop dengan effect di atas.
+  useEffect(() => {
+    const urlStatus = searchParams.get('status') || '';
+    if (urlStatus === status) return;
+    const params = new URLSearchParams(searchParams);
+    if (status) params.set('status', status);
+    else params.delete('status');
+    setSearchParams(params, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]);
 
   // --- STATE MODAL & DETAIL ---
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -44,10 +83,15 @@ export const useDocuments = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await getUserDocuments({ page, status, search, limit: 10 });
+      let response;
+      if (status === 'trash') {
+        response = await getMyTrashDocuments({ page, limit: 10 });
+      } else {
+        response = await getUserDocuments({ page, status, search, limit: 10 });
+      }
       if (response?.status === 'success') {
-        setDocuments(response.data);
-        setMeta(response.meta);
+        setDocuments(response.data?.data || response.data || []);
+        setMeta(response.data?.meta || response.meta || { total: 0, page: 1, limit: 10, totalPages: 1 });
       }
     } catch (err) {
       console.error('Failed to fetch documents:', err);
@@ -57,9 +101,71 @@ export const useDocuments = () => {
     }
   }, [page, status, search]);
 
+  // Fetch trash count secara terpisah (untuk badge di tab)
+  const fetchTrashCount = useCallback(async () => {
+    try {
+      const res = await getMyTrashDocuments({ page: 1, limit: 1 });
+      if (res?.status === 'success') {
+        const m = res.data?.meta || res.meta;
+        setTrashCount(m?.total || 0);
+      }
+    } catch { /* silent */ }
+  }, []);
+
+  // Fetch count per status (independen dari view aktif)
+  const fetchStatusCounts = useCallback(async () => {
+    try {
+      const [all, draft, pending, completed] = await Promise.all([
+        getUserDocuments({ page: 1, limit: 1 }),
+        getUserDocuments({ page: 1, limit: 1, status: 'draft' }),
+        getUserDocuments({ page: 1, limit: 1, status: 'pending' }),
+        getUserDocuments({ page: 1, limit: 1, status: 'completed' }),
+      ]);
+      setStatusCounts({
+        all: all?.data?.meta?.total ?? all?.meta?.total ?? 0,
+        draft: draft?.data?.meta?.total ?? draft?.meta?.total ?? 0,
+        pending: pending?.data?.meta?.total ?? pending?.meta?.total ?? 0,
+        completed: completed?.data?.meta?.total ?? completed?.meta?.total ?? 0,
+      });
+    } catch { /* silent */ }
+  }, []);
+
+  // ── Optimistic Counters ──────────────────────────────────────────────────
+  /**
+   * [FE-8] Update statusCounts secara lokal tanpa hit endpoint counts ulang.
+   *
+   * Sebelumnya setiap delete/restore = 4× round-trip ke `/documents?status=`
+   * untuk recount (all/draft/pending/completed). Sekarang langsung adjust
+   * counter berdasarkan dokumen yang di-affect — saving 4 request per action.
+   *
+   * @param {string} docStatus - 'draft' | 'pending' | 'completed' | dll
+   * @param {number} delta - +1 untuk add, -1 untuk remove
+   */
+  const adjustStatusCounts = useCallback((docStatus, delta) => {
+    const key = docStatus?.toLowerCase();
+    setStatusCounts((prev) => ({
+      all: Math.max(0, (prev.all || 0) + delta),
+      draft: key === 'draft' ? Math.max(0, (prev.draft || 0) + delta) : (prev.draft || 0),
+      pending: key === 'pending' ? Math.max(0, (prev.pending || 0) + delta) : (prev.pending || 0),
+      completed: key === 'completed' ? Math.max(0, (prev.completed || 0) + delta) : (prev.completed || 0),
+    }));
+  }, []);
+
+  /**
+   * [FE-8] Adjust trashCount lokal.
+   */
+  const adjustTrashCount = useCallback((delta) => {
+    setTrashCount((prev) => Math.max(0, (prev || 0) + delta));
+  }, []);
+
   useEffect(() => {
     fetchDocuments();
   }, [fetchDocuments]);
+
+  useEffect(() => {
+    fetchTrashCount();
+    fetchStatusCounts();
+  }, [fetchTrashCount, fetchStatusCounts]);
 
   // --- HANDLERS ---
   const handleStatusChange = (newStatus) => {
@@ -83,7 +189,7 @@ export const useDocuments = () => {
           }
         } catch (err) {
           console.error("Gagal mengambil detail dokumen:", err);
-          alert("Gagal memuat detail dokumen.");
+          toast.error("Gagal memuat detail dokumen.");
         } finally {
           setIsInfoLoading(false);
         }
@@ -103,7 +209,7 @@ export const useDocuments = () => {
 
       case 'sign':
         if (doc.status?.toLowerCase() === 'completed') {
-          alert('Dokumen ini sudah ditandatangani dan tidak dapat ditandatangani ulang.');
+          toast.warning('Dokumen ini sudah ditandatangani dan tidak dapat ditandatangani ulang.');
           return;
         }
         navigate(`/dashboard/documents/sign/${doc.id}`);
@@ -117,12 +223,28 @@ export const useDocuments = () => {
           }
         } catch (err) {
           console.error(`Gagal mengunduh dokumen:`, err);
-          alert(`Gagal mengunduh dokumen.`);
+          toast.error('Gagal mengunduh dokumen.');
         }
         break;
 
       case 'delete':
         setDeleteDoc(doc);
+        break;
+
+      case 'restore':
+        try {
+          await restoreMyDocument(doc.id);
+          toast.success(`Dokumen "${doc.title}" berhasil di-restore.`);
+
+          // [FE-8] Optimistic — dokumen pindah dari trash ke list aktif.
+          //   Sebelumnya 6× round-trip (fetchDocuments + trashCount + 4× statusCounts).
+          //   Sekarang adjust counter lokal dan re-fetch list page saat ini saja.
+          adjustTrashCount(-1);
+          adjustStatusCounts(doc.status, +1);
+          fetchDocuments();
+        } catch (err) {
+          toast.error(err.message || 'Gagal me-restore dokumen.');
+        }
         break;
 
       default:
@@ -135,11 +257,22 @@ export const useDocuments = () => {
     setIsDeleting(true);
     try {
       await deleteDocument(deleteDoc.id);
+      const deletedTitle = deleteDoc.title;
+      const deletedStatus = deleteDoc.status;
       setDeleteDoc(null);
-      fetchDocuments(); // Refresh
+
+      // [FE-8] Optimistic — dokumen pindah ke trash.
+      //   Sebelumnya 6× round-trip per delete. Sekarang adjust counter
+      //   lokal + 1× re-fetch list page (wajib supaya item hilang).
+      adjustStatusCounts(deletedStatus, -1);
+      adjustTrashCount(+1);
+      fetchDocuments();
+
+      // Toast dengan info bahwa dokumen bisa di-restore via admin
+      toast.success(`Dokumen "${deletedTitle}" berhasil dihapus.`, { autoClose: 4000 });
     } catch (err) {
       console.error("Gagal menghapus dokumen:", err);
-      alert("Gagal menghapus dokumen.");
+      toast.error(err.message || "Gagal menghapus dokumen.");
     } finally {
       setIsDeleting(false);
     }
@@ -155,7 +288,7 @@ export const useDocuments = () => {
       }
     } catch (err) {
       console.error("Gagal mengupdate dokumen:", err);
-      alert(err.message || "Gagal memperbarui judul dokumen.");
+      toast.error(err.message || "Gagal memperbarui judul dokumen.");
     } finally {
       setIsUpdating(false);
     }
@@ -208,6 +341,8 @@ export const useDocuments = () => {
     loading,
     error,
     meta,
+    trashCount,
+    statusCounts,
     filters: {
       status, setStatus: handleStatusChange,
       search, setSearch,

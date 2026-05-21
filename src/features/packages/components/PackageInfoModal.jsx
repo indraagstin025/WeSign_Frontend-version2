@@ -9,7 +9,8 @@ import {
   Loader2, 
   Save, 
   XOctagon,
-  Eye
+  Eye,
+  ClipboardList
 } from 'lucide-react';
 import ConfirmModal from '../../../components/ui/ConfirmModal';
 import { usePackageInfo } from '../hooks/usePackageInfo';
@@ -206,12 +207,26 @@ const PackageInfoModal = ({ isOpen, pkg, onClose, onRefresh, onDelete }) => {
               >
                  <Trash2 size={16} /> Hapus Paket
               </button>
-              <button 
-                 onClick={handleClose}
-                 className="px-6 py-2.5 bg-primary hover:bg-primary-dark text-white text-sm font-bold rounded-xl shadow-md transition-colors border-none cursor-pointer"
-              >
-                 Tutup
-              </button>
+              <div className="flex items-center gap-2">
+                {/* Tombol Audit Trail — muncul jika ada dokumen completed dengan auditTrailUrl */}
+                {details?.status === 'completed' && details?.documents?.some(d => d.docVersion?.auditTrailUrl) && (
+                  <button
+                    onClick={() => {
+                      handleClose();
+                      navigate(`/dashboard/packages/preview/${pkg.id}`);
+                    }}
+                    className="px-4 py-2.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 text-sm font-bold rounded-xl hover:bg-emerald-100 transition-colors flex items-center gap-2 border-none cursor-pointer"
+                  >
+                    <ClipboardList size={16} /> Audit Trail
+                  </button>
+                )}
+                <button 
+                   onClick={handleClose}
+                   className="px-6 py-2.5 bg-primary hover:bg-primary-dark text-white text-sm font-bold rounded-xl shadow-md transition-colors border-none cursor-pointer"
+                >
+                   Tutup
+                </button>
+              </div>
           </div>
 
         </div>

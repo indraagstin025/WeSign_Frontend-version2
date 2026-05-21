@@ -14,13 +14,16 @@ export const useSignatureCanvas = (isOpen, onSave, onClose) => {
   const dprRef = useRef(window.devicePixelRatio || 1);
 
   // --- INTERNAL: Sync context styles ---
-  const syncContextStyles = (ctx, dpr) => {
+  // [Lint fix] Pakai useCallback dengan deps eksplisit supaya inferred
+  // dependencies match dengan source dependencies di resizeCanvas
+  // (tidak trigger react-hooks/preserve-manual-memoization).
+  const syncContextStyles = useCallback((ctx, dpr) => {
     if (!ctx) return;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.strokeStyle = color;
     ctx.lineWidth = lineWidth * dpr;
-  };
+  }, [color, lineWidth]);
 
   // --- INTERNAL: Resize & DPR Logic ---
   const resizeCanvas = useCallback(() => {
@@ -40,7 +43,7 @@ export const useSignatureCanvas = (isOpen, onSave, onClose) => {
     ctx.scale(dpr, dpr);
     syncContextStyles(ctx, dpr);
     setIsEmpty(true);
-  }, [color, lineWidth]);
+  }, [syncContextStyles]);
 
   // Lifecycle for Resize & Scroll Lock
   useEffect(() => {
@@ -128,7 +131,7 @@ export const useSignatureCanvas = (isOpen, onSave, onClose) => {
       ctx.stroke();
     };
 
-    const handleTouchEnd = (e) => {
+    const handleTouchEnd = () => {
       if (isDrawingRef.current) {
         isDrawingRef.current = false;
         setIsDrawing(false);
