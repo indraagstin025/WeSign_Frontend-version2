@@ -160,26 +160,91 @@ const DocumentTable = ({ documents, onAction, modals = {}, isTrashMode = false }
       </div>
 
       {/* ── MOBILE LIST ───────────────────────────────────────────── */}
-      <div className="lg:hidden divide-y divide-zinc-50 dark:divide-zinc-800">
+      <div className="lg:hidden flex flex-col gap-3">
         {documents.map((doc) => {
           const badge = getDocumentStatus(doc.status);
+          const isCompleted = doc.status?.toLowerCase() === 'completed';
           return (
             <div
               key={doc.id}
-              className="p-4 hover:bg-zinc-50/50 dark:hover:bg-zinc-800/20 transition-colors cursor-pointer"
-              onClick={() => helpers.handleAction('view', doc)}
+              className="bg-white dark:bg-zinc-800/40 rounded-xl border border-zinc-100 dark:border-zinc-700/60 overflow-hidden"
             >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <div className="w-10 h-10 bg-rose-50 dark:bg-rose-500/10 rounded-xl flex items-center justify-center shrink-0">
-                    <FileText size={18} className="text-rose-500" />
+              {/* TOP SECTION — info dokumen + badge */}
+              <div
+                className="p-4 cursor-pointer hover:bg-zinc-50/50 dark:hover:bg-zinc-800/20 transition-colors"
+                onClick={() => helpers.handleAction('view', doc)}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="w-10 h-10 bg-rose-50 dark:bg-rose-500/10 rounded-xl flex items-center justify-center shrink-0">
+                      <FileText size={18} className="text-rose-500" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[13px] font-semibold text-zinc-900 dark:text-white truncate">{doc.title}</p>
+                      <p className="text-[11px] text-zinc-400 mt-0.5">{helpers.formatDate(doc.createdAt)} · {doc.type || 'General'}</p>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-[13px] font-semibold text-zinc-900 dark:text-white truncate">{doc.title}</p>
-                    <p className="text-[10px] text-zinc-400">{helpers.formatDate(doc.createdAt)} · {doc.type || 'General'}</p>
-                  </div>
+                  <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold shrink-0 ${badge.cls}`}>{badge.label}</span>
                 </div>
-                <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold shrink-0 ${badge.cls}`}>{badge.label}</span>
+              </div>
+
+              {/* DIVIDER */}
+              <div className="h-px bg-zinc-100 dark:bg-zinc-700/60" />
+
+              {/* ACTION ROW — Lihat / Riwayat / [Sign bila pending] / Kebab */}
+              <div className="flex items-center justify-between px-2 py-2">
+                {isTrashMode ? (
+                  // Trash mode: hanya Restore action
+                  <button
+                    onClick={(e) => { e.stopPropagation(); helpers.handleAction('restore', doc); }}
+                    className="flex items-center gap-2 px-3 py-2 text-[12px] font-medium text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 bg-transparent border-none cursor-pointer rounded-lg"
+                  >
+                    <RotateCcw size={15} /> Restore
+                  </button>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-1">
+                      {/* Lihat (Pratinjau) — primary aksi mobile */}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); helpers.handleAction('view', doc); }}
+                        className="flex items-center gap-2 px-3 py-2 text-[12px] font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 bg-transparent border-none cursor-pointer rounded-lg"
+                      >
+                        <Eye size={15} /> Lihat
+                      </button>
+
+                      {/* Riwayat Versi — bila modal-nya tersedia */}
+                      {modals.version && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); helpers.handleAction('history', doc); }}
+                          className="flex items-center gap-2 px-3 py-2 text-[12px] font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 bg-transparent border-none cursor-pointer rounded-lg"
+                        >
+                          <History size={15} /> Riwayat
+                        </button>
+                      )}
+
+                      {/* Tanda Tangani — hanya bila belum completed */}
+                      {!isCompleted && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); helpers.handleAction('sign', doc); }}
+                          className="flex items-center gap-2 px-3 py-2 text-[12px] font-medium text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 bg-transparent border-none cursor-pointer rounded-lg"
+                        >
+                          <PenTool size={15} /> Tanda Tangan
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Kebab — secondary actions (Info, Edit, Download, Delete) */}
+                    <button
+                      data-document-menu
+                      onClick={(e) => { e.stopPropagation(); handleOpenMenu(e, doc.id); }}
+                      title="Aksi lainnya"
+                      className="p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 bg-transparent border-none cursor-pointer text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-all"
+                      aria-label="Buka menu aksi lainnya"
+                    >
+                      <MoreVertical size={16} />
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           );
