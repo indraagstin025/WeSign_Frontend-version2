@@ -367,23 +367,25 @@ const GroupSigningPage = () => {
         />
       )}
 
-      {/* 4. MOBILE BOTTOM BAR */}
-      {!isSheetOpen && (
-        <SigningMobileBar
-          pageNumber={pageNumber}
-          numPages={numPages}
-          setPageNumber={setPageNumber}
-          onOpenSheet={actions.openSheet}
-          onOpenCanvas={actions.openCanvas}
-          onFinalize={actions.finalizeAction}
-          signatureCount={mySignatureCount}
-          isSubmitting={submittingAny}
-          showPlacementHint={canSign && !!currentSignature && mySignatureCount === 0}
-          isFinalizeMode={isFinalizeMode}
-          finalizeText={finalizeText}
-          disabled={disableFinalizeAction}
-        />
-      )}
+      {/* 4. MOBILE BOTTOM BAR — selalu visible (juga saat sheet open).
+          Sebelumnya ada guard `!isSheetOpen` yang sembunyikan action bar
+          saat sheet terbuka, tapi mockup user mau action bar tetap visible
+          di paling bawah supaya user bisa langsung Tanda Tangan / Finalisasi
+          tanpa close sheet dulu. Z-index ActionBar (130) > Sheet (101), jadi
+          tetap muncul di atas backdrop. */}
+      <SigningMobileBar
+        pageNumber={pageNumber}
+        numPages={numPages}
+        setPageNumber={setPageNumber}
+        onOpenSheet={actions.openSheet}
+        onOpenCanvas={actions.openCanvas}
+        onFinalize={actions.finalizeAction}
+        signatureCount={mySignatureCount}
+        isSubmitting={submittingAny}
+        isFinalizeMode={isFinalizeMode}
+        finalizeText={finalizeText}
+        disabled={disableFinalizeAction}
+      />
 
       {/* 5. MODALS */}
       <SigningModals
