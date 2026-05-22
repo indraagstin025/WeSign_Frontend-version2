@@ -50,13 +50,13 @@ export const SIGNATURE_SOCKET_THROTTLE_MS = 30;
  * Drag realtime boleh lebih rapat dari resize karena drag hanya mengubah
  * transform (murah di compositor), sementara resize menyentuh layout box.
  */
-export const SIGNATURE_DRAG_SOCKET_THROTTLE_MS = 20;
+export const SIGNATURE_DRAG_SOCKET_THROTTLE_MS = 16;
 
 /**
  * Delay visual untuk observer remote. Nilai kecil membuat gerak tetap halus
  * tanpa terasa "mengejar terlalu jauh" seperti transition fixed 120ms.
  */
-export const REMOTE_SIGNATURE_DRAG_INTERPOLATION_MS = 22;
+export const REMOTE_SIGNATURE_DRAG_INTERPOLATION_MS = 45;
 
 /**
  * Resize tetap boleh sedikit lebih smooth karena width/height update lebih

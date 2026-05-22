@@ -250,8 +250,8 @@ export function useDraggableSignatureGroup({
       if (typeof data.seq === 'number' && data.seq <= lastRemoteSeqRef.current) return;
       if (typeof data.seq === 'number') lastRemoteSeqRef.current = data.seq;
 
-      const outerX = Math.round(data.positionX * containerWidth - VISUAL_PADDING);
-      const outerY = Math.round(data.positionY * containerHeight - VISUAL_PADDING);
+      const outerX = data.positionX * containerWidth - VISUAL_PADDING;
+      const outerY = data.positionY * containerHeight - VISUAL_PADDING;
       let outerW, outerH;
       let hasRemoteSize = false;
       if (data.width !== undefined && data.height !== undefined) {

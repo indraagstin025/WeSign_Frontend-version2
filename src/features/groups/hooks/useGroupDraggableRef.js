@@ -97,7 +97,7 @@ export const useGroupDraggableRef = (
     const node = nodeRef.current;
     if (!node) return;
     const { x, y, w, h } = positionRef.current;
-    node.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
+    node.style.transform = `translate3d(${x.toFixed(2)}px, ${y.toFixed(2)}px, 0)`;
     if (options.includeSize !== false) {
       node.style.width = `${Math.round(w)}px`;
       node.style.height = `${Math.round(h)}px`;
