@@ -88,7 +88,13 @@ const InteractSignatureGroup = ({
   // ratio (signature tidak distorsi) sama seperti DraggableSignature pattern.
   // Default 2:1 sebelum image load, akan di-update saat image natural ratio
   // ke-detect via onLoad handler.
-  const aspectRatioRef = useRef(2);
+  const aspectRatioRef = useRef(null);
+
+  const updateAspectRatioFromBox = (outerW, outerH) => {
+    const innerW = Math.max(1, outerW - TOTAL_REDUCTION);
+    const innerH = Math.max(1, outerH - TOTAL_REDUCTION);
+    aspectRatioRef.current = innerW / innerH;
+  };
 
   // ── 3. INTERACTION STATE ─────────────────────────────────────────────────
   const [isActive, setIsActive] = useState(false);
@@ -139,6 +145,7 @@ const InteractSignatureGroup = ({
       element.style.height = `${calcH}px`;
 
       positionRef.current = { x: calcX, y: calcY, w: calcW, h: calcH };
+      updateAspectRatioFromBox(calcW, calcH);
 
       // Visual feedback (toast "user X sedang edit")
       setIsRemoteActive(true);
@@ -181,6 +188,7 @@ const InteractSignatureGroup = ({
         const calcH = sig.height * parentRect.height + TOTAL_REDUCTION;
 
         positionRef.current = { x: calcX, y: calcY, w: calcW, h: calcH };
+        updateAspectRatioFromBox(calcW, calcH);
         element.style.transform = `translate3d(${calcX}px, ${calcY}px, 0)`;
         element.style.width = `${calcW}px`;
         element.style.height = `${calcH}px`;
@@ -318,7 +326,8 @@ const InteractSignatureGroup = ({
             //   2. Hitung newH = newW / ratio (lock aspect)
             //   3. Adjust posisi x/y kalau resize dari edge kiri/atas
             //   4. Math.round() semua nilai pixel — hindari subpixel blur
-            const ratio = aspectRatioRef.current || (oldW / oldH);
+            const boxRatio = Math.max(1, oldW - TOTAL_REDUCTION) / Math.max(1, oldH - TOTAL_REDUCTION);
+            const ratio = aspectRatioRef.current || boxRatio;
 
             // Hitung perubahan width dari delta horizontal saja (left atau right edge)
             const dW = (deltaRect.right || 0) - (deltaRect.left || 0);
@@ -355,6 +364,7 @@ const InteractSignatureGroup = ({
             const finalY = Math.round(y);
 
             positionRef.current = { x: finalX, y: finalY, w: finalW, h: finalH };
+            updateAspectRatioFromBox(finalW, finalH);
             element.style.width = `${finalW}px`;
             element.style.height = `${finalH}px`;
             element.style.transform = `translate3d(${finalX}px, ${finalY}px, 0)`;
@@ -538,8 +548,13 @@ const InteractSignatureGroup = ({
                   // image ratio supaya resize lock proporsional ke gambar
                   // asli (signature canvas biasanya 2:1, tapi varies).
                   const { naturalWidth, naturalHeight } = e.target;
-                  if (naturalWidth > 0 && naturalHeight > 0) {
-                    aspectRatioRef.current = naturalWidth / naturalHeight;
+                  if (!aspectRatioRef.current && naturalWidth > 0 && naturalHeight > 0) {
+                    const current = positionRef.current;
+                    if (current.w > TOTAL_REDUCTION && current.h > TOTAL_REDUCTION) {
+                      updateAspectRatioFromBox(current.w, current.h);
+                    } else {
+                      aspectRatioRef.current = naturalWidth / naturalHeight;
+                    }
                   }
                 }}
                 style={{
