@@ -81,10 +81,7 @@ export function useDraggableSignatureGroup({
     () =>
       throttle((posData) => {
         if (documentId) {
-          socketService.emitSignatureUpdate(
-            { documentId, signatureId: sig.id, ...posData },
-            { volatile: true }
-          );
+          socketService.emitSignatureUpdate({ documentId, signatureId: sig.id, ...posData });
         }
       }, SOCKET_THROTTLE_MS),
     [documentId, sig.id]
@@ -266,7 +263,7 @@ export function useDraggableSignatureGroup({
   //     panjang untuk visual blend antar emit.
   // Browser compositor menghaluskan preview observer di antara socket frame.
   const transitionStyle = isRemoteActive && !state.isDragging
-    ? 'transform 100ms linear'
+    ? 'transform 45ms linear'
     : 'none';
 
   return {
