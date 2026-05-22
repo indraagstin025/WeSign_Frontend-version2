@@ -266,7 +266,7 @@ export function useDraggableSignatureGroup({
   //     panjang untuk visual blend antar emit.
   // Browser compositor menghaluskan preview observer di antara socket frame.
   const transitionStyle = isRemoteActive && !state.isDragging
-    ? 'transform 30ms linear'
+    ? 'transform 100ms linear'
     : 'none';
 
   return {
