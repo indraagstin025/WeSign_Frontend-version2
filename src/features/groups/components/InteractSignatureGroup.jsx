@@ -82,6 +82,7 @@ const InteractSignatureGroup = ({
   // di tiap move event (force layout reflow di browser, mahal saat 60fps).
   // Reset ke null di drag/resize end.
   const cachedParentRectRef = useRef(null);
+  const resizingFromHandleRef = useRef(false);
 
   // [RESIZE-PRECISION] Aspect ratio dari image natural — supaya resize lock
   // ratio (signature tidak distorsi) sama seperti DraggableSignature pattern.
@@ -214,8 +215,10 @@ const InteractSignatureGroup = ({
 
     const interactable = interact(element)
       .draggable({
+        ignoreFrom: '.resize-handle, .delete-btn',
         listeners: {
           start() {
+            if (resizingFromHandleRef.current) return false;
             setIsDragging(true);
             setIsActive(true);
             element.style.cursor = 'grabbing';
@@ -288,10 +291,17 @@ const InteractSignatureGroup = ({
       .resizable({
         // [RESIZE-PRECISION] Boolean true semua — kita handle aspect ratio
         // lock di move handler, bukan via edges class mapping. Lebih reliable.
-        edges: { left: true, right: true, bottom: true, top: true },
+        edges: {
+          left: '.resize-nw, .resize-sw',
+          right: '.resize-ne, .resize-se',
+          top: '.resize-nw, .resize-ne',
+          bottom: '.resize-sw, .resize-se',
+        },
         listeners: {
           start() {
+            resizingFromHandleRef.current = true;
             setIsResizing(true);
+            setIsActive(true);
             // [PERF] Cache parentRect saat resize start — hindari
             // getBoundingClientRect() per move event (force layout reflow
             // setiap call, expensive saat di tengah resize 60fps).
@@ -365,6 +375,7 @@ const InteractSignatureGroup = ({
             }
           },
           end() {
+            resizingFromHandleRef.current = false;
             setIsResizing(false);
             const parentRect = cachedParentRectRef.current;
             cachedParentRectRef.current = null;
@@ -414,7 +425,7 @@ const InteractSignatureGroup = ({
   else if (canInteract) borderClass = 'hover:border hover:border-blue-300 hover:border-dashed';
 
   const handleStyle =
-    'absolute w-3 h-3 bg-white border-2 border-blue-500 rounded-full z-[60] pointer-events-auto';
+    'resize-handle absolute z-[60] pointer-events-auto flex items-center justify-center w-7 h-7 sm:w-5 sm:h-5 touch-none';
 
   return (
     <div
@@ -464,7 +475,7 @@ const InteractSignatureGroup = ({
                 onRemove?.(sig.id);
               }}
               onMouseDown={(e) => e.stopPropagation()}
-              className="w-7 h-7 bg-rose-500 text-white rounded-md flex items-center justify-center shadow-md hover:bg-rose-600 transition-colors border-none cursor-pointer"
+              className="delete-btn w-7 h-7 bg-rose-500 text-white rounded-md flex items-center justify-center shadow-md hover:bg-rose-600 transition-colors border-none cursor-pointer"
               title="Hapus tanda tangan"
             >
               <X size={14} strokeWidth={3} />
@@ -478,10 +489,18 @@ const InteractSignatureGroup = ({
             selalu 2-axis dengan aspect ratio lock. */}
         {isActive && canInteract && !isLockedByRemote && (
           <>
-            <div className={`${handleStyle} resize-nw -top-1.5 -left-1.5 cursor-nw-resize`} />
-            <div className={`${handleStyle} resize-ne -top-1.5 -right-1.5 cursor-ne-resize`} />
-            <div className={`${handleStyle} resize-sw -bottom-1.5 -left-1.5 cursor-sw-resize`} />
-            <div className={`${handleStyle} resize-se -bottom-1.5 -right-1.5 cursor-se-resize`} />
+            <div className={`${handleStyle} resize-nw -top-3.5 -left-3.5 sm:-top-2.5 sm:-left-2.5 cursor-nw-resize`}>
+              <span className="block w-3 h-3 rounded-full bg-white border-2 border-blue-500 shadow-sm pointer-events-none" />
+            </div>
+            <div className={`${handleStyle} resize-ne -top-3.5 -right-3.5 sm:-top-2.5 sm:-right-2.5 cursor-ne-resize`}>
+              <span className="block w-3 h-3 rounded-full bg-white border-2 border-blue-500 shadow-sm pointer-events-none" />
+            </div>
+            <div className={`${handleStyle} resize-sw -bottom-3.5 -left-3.5 sm:-bottom-2.5 sm:-left-2.5 cursor-sw-resize`}>
+              <span className="block w-3 h-3 rounded-full bg-white border-2 border-blue-500 shadow-sm pointer-events-none" />
+            </div>
+            <div className={`${handleStyle} resize-se -bottom-3.5 -right-3.5 sm:-bottom-2.5 sm:-right-2.5 cursor-se-resize`}>
+              <span className="block w-3 h-3 rounded-full bg-white border-2 border-blue-500 shadow-sm pointer-events-none" />
+            </div>
           </>
         )}
 

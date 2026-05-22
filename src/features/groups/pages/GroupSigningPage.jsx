@@ -13,13 +13,10 @@ import 'react-pdf/dist/Page/TextLayer.css';
 import { useGroupSigningPage } from '../hooks/useGroupSigningPage';
 import { useSignatureAssets } from '../../signature/hooks/useSignatureAssets';
 import { useInteractionMode } from '../../signature/hooks/useInteractionMode';
-// Kembali pakai DraggableSignatureGroup (react-draggable). Pattern ini lebih
-// stabil dan presisi di resize karena lock aspect ratio dari image natural
-// + integer pixel rounding. InteractSignatureGroup (pakai interact.js)
-// disimpan sebagai referensi/eksperimen di
-// `src/features/groups/components/InteractSignatureGroup.jsx` tapi tidak
-// dipakai untuk sekarang.
-import DraggableSignatureGroup from '../components/DraggableSignatureGroup';
+// Pakai InteractSignatureGroup untuk mengejar feel project lama: drag/resize
+// direct DOM via interact.js. DraggableSignatureGroup tetap disimpan sebagai
+// fallback di `src/features/groups/components/DraggableSignatureGroup.jsx`.
+import InteractSignatureGroup from '../components/InteractSignatureGroup';
 import GroupSignerProgress from '../components/GroupSignerProgress';
 import GroupInfoMobileCard from '../components/GroupInfoMobileCard';
 import RejectReasonModal from '../components/RejectReasonModal';
@@ -328,7 +325,7 @@ const GroupSigningPage = () => {
                       const dynamicHeight = containerWidth * aspectRatio;
 
                       return (
-                        <DraggableSignatureGroup
+                        <InteractSignatureGroup
                           key={sig._clientKey || sig.id}
                           sig={sig}
                           onRemove={handleDeleteSignature}
