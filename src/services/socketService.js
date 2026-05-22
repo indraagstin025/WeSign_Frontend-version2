@@ -200,7 +200,10 @@ export const socketService = {
   emitSignatureUpdate: (data, options = {}) => {
     if (!socket?.connected) return;
     const emitter = options.volatile ? socket.volatile : socket;
-    emitter.emit('drag_signature', data);
+    emitter.emit('drag_signature', {
+      sentAt: Date.now(),
+      ...data,
+    });
   },
 
   /**
@@ -208,7 +211,12 @@ export const socketService = {
    * drag + resize. Method ini tetap ada untuk backward compat caller lama.
    */
   emitDrag: (data) => {
-    if (socket?.connected) socket.emit('drag_signature', data);
+    if (socket?.connected) {
+      socket.emit('drag_signature', {
+        sentAt: Date.now(),
+        ...data,
+      });
+    }
   },
 
   emitAddSignature: (documentId, signature) => {
@@ -299,6 +307,8 @@ export const socketService = {
   // ── Status Helpers ────────────────────────────────────────────────────────
 
   isConnected: () => !!(socket?.connected),
+
+  getTransport: () => socket?.io?.engine?.transport?.name || null,
 
   onConnectionChange: (cb) => {
     connectionCallbacks.add(cb);

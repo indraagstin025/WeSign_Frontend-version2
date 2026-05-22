@@ -77,6 +77,13 @@ export function useDraggableSignatureGroup({
   const remoteActiveRef = useRef(false);
   const remoteResizeTimerRef = useRef(null);
   const [isRemoteResizing, setIsRemoteResizing] = useState(false);
+  const remoteDiagnosticsRef = useRef({
+    count: 0,
+    lastAt: 0,
+    totalInterval: 0,
+    totalLatency: 0,
+    lastLogAt: 0,
+  });
 
   // ── Throttled Socket Drag Emit ───────────────────────────────────────────
   const emitDragThrottled = useMemo(
@@ -218,6 +225,31 @@ export function useDraggableSignatureGroup({
         hasRemoteSize ? outerW : undefined,
         hasRemoteSize ? outerH : undefined
       );
+
+      const now = Date.now();
+      const diag = remoteDiagnosticsRef.current;
+      if (diag.lastAt) diag.totalInterval += now - diag.lastAt;
+      if (typeof data.sentAt === 'number') {
+        diag.totalLatency += Math.max(0, now - data.sentAt);
+      }
+      diag.lastAt = now;
+      diag.count += 1;
+      if (diag.count >= 30 && now - diag.lastLogAt > 5000) {
+        const avgInterval = diag.totalInterval / Math.max(1, diag.count - 1);
+        const avgLatency = typeof data.sentAt === 'number'
+          ? diag.totalLatency / diag.count
+          : 0;
+        console.debug(
+          `[GroupSignatureRemote] ${sig.id} interval=${avgInterval.toFixed(1)}ms latency=${avgLatency.toFixed(1)}ms transport=${socketService.getTransport?.() || 'unknown'}`
+        );
+        remoteDiagnosticsRef.current = {
+          count: 0,
+          lastAt: now,
+          totalInterval: 0,
+          totalLatency: 0,
+          lastLogAt: now,
+        };
+      }
 
       // Visual feedback cukup toggle saat idle -> aktif. Jangan setState di
       // setiap socket frame karena itu membuat observer re-render terus.
