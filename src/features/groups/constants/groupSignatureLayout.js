@@ -59,6 +59,18 @@ export const SIGNATURE_DRAG_SOCKET_THROTTLE_MS = 16;
 export const REMOTE_SIGNATURE_DRAG_INTERPOLATION_MS = 45;
 
 /**
+ * Buffer playback kecil untuk remote drag. Receiver menggambar posisi sedikit
+ * di belakang event terbaru supaya jitter socket tidak tampak sebagai patahan.
+ */
+export const REMOTE_SIGNATURE_DRAG_BUFFER_MS = 45;
+
+/**
+ * Batas sample remote drag yang disimpan per signature. Cukup untuk beberapa
+ * frame terakhir tanpa membuat memory tumbuh saat drag panjang.
+ */
+export const REMOTE_SIGNATURE_DRAG_BUFFER_MAX = 8;
+
+/**
  * Resize tetap boleh sedikit lebih smooth karena width/height update lebih
  * berat dan secara visual memang lebih enak kalau tidak terlalu snap.
  */

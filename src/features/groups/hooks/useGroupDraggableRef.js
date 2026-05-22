@@ -1,10 +1,17 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { VISUAL_PADDING, TOTAL_PADDING, MIN_INNER_WIDTH } from '../../signature/constants/signatureLayout';
 import {
+  REMOTE_SIGNATURE_DRAG_BUFFER_MAX,
+  REMOTE_SIGNATURE_DRAG_BUFFER_MS,
   REMOTE_SIGNATURE_DRAG_INTERPOLATION_MS,
   REMOTE_SIGNATURE_RESIZE_INTERPOLATION_MS,
   REMOTE_SIGNATURE_SNAP_DISTANCE_PX,
 } from '../constants/groupSignatureLayout';
+
+const isRemoteDragDebugEnabled = () => {
+  if (typeof window === 'undefined') return false;
+  return window.localStorage?.getItem('wesign_debug_drag') === '1';
+};
 
 /**
  * @file useGroupDraggableRef.js
@@ -62,7 +69,19 @@ export const useGroupDraggableRef = (
   const resizeFrameRef = useRef(null);
   const remoteFrameRef = useRef(null);
   const remoteTargetRef = useRef(null);
+  const remoteDragSamplesRef = useRef([]);
   const remoteLastFrameAtRef = useRef(0);
+  const remoteDragDebugRef = useRef({
+    frames: 0,
+    snaps: 0,
+    underflows: 0,
+    fallbackFrames: 0,
+    totalDt: 0,
+    maxDt: 0,
+    totalDistance: 0,
+    maxDistance: 0,
+    lastLogAt: 0,
+  });
 
   // Position + size di REF — sumber kebenaran tunggal yang tidak trigger
   // React render saat berubah.
@@ -116,8 +135,106 @@ export const useGroupDraggableRef = (
 
   const animateRemoteToTarget = useCallback((now) => {
     const target = remoteTargetRef.current;
-    if (!target) {
+    const dragSamples = remoteDragSamplesRef.current;
+    if (!target && dragSamples.length === 0) {
       stopRemoteAnimation();
+      return;
+    }
+
+    if (!target && dragSamples.length > 0) {
+      const renderAt = now - REMOTE_SIGNATURE_DRAG_BUFFER_MS;
+      const debug = remoteDragDebugRef.current;
+      const previousAt = remoteLastFrameAtRef.current || now;
+      const frameDt = Math.max(0, now - previousAt);
+
+      while (dragSamples.length > 2 && dragSamples[1].time <= renderAt) {
+        dragSamples.shift();
+      }
+
+      const current = positionRef.current;
+      let nextX;
+      let nextY;
+      let shouldClearSamples = false;
+      let usedFallback = false;
+
+      if (dragSamples.length >= 2 && dragSamples[0].time <= renderAt && dragSamples[1].time >= renderAt) {
+        const a = dragSamples[0];
+        const b = dragSamples[1];
+        const span = Math.max(1, b.time - a.time);
+        const t = Math.max(0, Math.min(1, (renderAt - a.time) / span));
+        nextX = a.x + (b.x - a.x) * t;
+        nextY = a.y + (b.y - a.y) * t;
+      } else {
+        usedFallback = true;
+        const latest = dragSamples[dragSamples.length - 1];
+        const dt = Math.max(8, now - previousAt);
+        const alpha = 1 - Math.exp(-dt / REMOTE_SIGNATURE_DRAG_INTERPOLATION_MS);
+        nextX = current.x + (latest.x - current.x) * alpha;
+        nextY = current.y + (latest.y - current.y) * alpha;
+
+        shouldClearSamples = Math.hypot(latest.x - nextX, latest.y - nextY) < 0.4 && dragSamples.length === 1;
+      }
+
+      remoteLastFrameAtRef.current = now;
+      const distance = Math.hypot(nextX - current.x, nextY - current.y);
+      const didSnap = distance > REMOTE_SIGNATURE_SNAP_DISTANCE_PX;
+
+      if (didSnap) {
+        const latest = dragSamples[dragSamples.length - 1];
+        positionRef.current = { ...current, x: latest.x, y: latest.y };
+      } else {
+        positionRef.current = { ...current, x: nextX, y: nextY };
+      }
+      if (shouldClearSamples) {
+        dragSamples.length = 0;
+      }
+
+      applyPositionToDom({ includeSize: false });
+
+      if (isRemoteDragDebugEnabled()) {
+        debug.frames += 1;
+        debug.snaps += didSnap ? 1 : 0;
+        debug.underflows += dragSamples.length < 2 ? 1 : 0;
+        debug.fallbackFrames += usedFallback ? 1 : 0;
+        debug.totalDt += frameDt;
+        debug.maxDt = Math.max(debug.maxDt, frameDt);
+        debug.totalDistance += distance;
+        debug.maxDistance = Math.max(debug.maxDistance, distance);
+
+        if (now - debug.lastLogAt > 2000 && debug.frames > 0) {
+          const sampleSpan = dragSamples.length >= 2
+            ? dragSamples[dragSamples.length - 1].time - dragSamples[0].time
+            : 0;
+          console.debug(
+            '[RemoteDragBuffer]',
+            {
+              avgFrameMs: Number((debug.totalDt / debug.frames).toFixed(1)),
+              maxFrameMs: Number(debug.maxDt.toFixed(1)),
+              avgMovePx: Number((debug.totalDistance / debug.frames).toFixed(1)),
+              maxMovePx: Number(debug.maxDistance.toFixed(1)),
+              samples: dragSamples.length,
+              sampleSpanMs: Number(sampleSpan.toFixed(1)),
+              renderDelayMs: REMOTE_SIGNATURE_DRAG_BUFFER_MS,
+              fallbackFrames: debug.fallbackFrames,
+              underflows: debug.underflows,
+              snaps: debug.snaps,
+            }
+          );
+          remoteDragDebugRef.current = {
+            frames: 0,
+            snaps: 0,
+            underflows: 0,
+            fallbackFrames: 0,
+            totalDt: 0,
+            maxDt: 0,
+            totalDistance: 0,
+            maxDistance: 0,
+            lastLogAt: now,
+          };
+        }
+      }
+
+      remoteFrameRef.current = requestAnimationFrame(animateRemoteToTarget);
       return;
     }
 
@@ -147,6 +264,7 @@ export const useGroupDraggableRef = (
       };
       applyPositionToDom({ includeSize: hasSize });
       remoteTargetRef.current = null;
+      if (!hasSize) remoteDragSamplesRef.current.length = 0;
       stopRemoteAnimation();
       return;
     }
@@ -354,6 +472,25 @@ export const useGroupDraggableRef = (
   // 'update_signature_position' dari peer.
   const setPositionFromRemote = useCallback((outerX, outerY, outerW, outerH, options = {}) => {
     const mode = outerW !== undefined && outerH !== undefined ? 'resize' : 'drag';
+    if (mode === 'drag' && !options.immediate) {
+      remoteTargetRef.current = null;
+      const samples = remoteDragSamplesRef.current;
+      samples.push({
+        x: outerX,
+        y: outerY,
+        time: performance.now(),
+      });
+      if (samples.length > REMOTE_SIGNATURE_DRAG_BUFFER_MAX) {
+        samples.splice(0, samples.length - REMOTE_SIGNATURE_DRAG_BUFFER_MAX);
+      }
+
+      if (!remoteFrameRef.current) {
+        remoteFrameRef.current = requestAnimationFrame(animateRemoteToTarget);
+      }
+      return;
+    }
+
+    remoteDragSamplesRef.current.length = 0;
     remoteTargetRef.current = {
       x: outerX,
       y: outerY,
