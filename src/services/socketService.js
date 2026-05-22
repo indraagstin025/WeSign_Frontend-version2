@@ -55,8 +55,9 @@ export const socketService = {
       //   3. Setelah handshake polling sukses, browser auto-upgrade ke WS
       //      yang persist untuk subsequent traffic — latency tetap rendah
       //      setelah upgrade selesai (~1-2 detik di awal).
-      transports: ['polling', 'websocket'],
+      transports: ['websocket', 'polling'],
       upgrade: true,
+      rememberUpgrade: true,
       reconnection: true,
       reconnectionAttempts: Infinity,
       reconnectionDelay: SOCKET_RECONNECT_DELAY_MS,
@@ -68,6 +69,7 @@ export const socketService = {
     // ── Event: Connected ──────────────────────────────────────────────────────
     socket.on('connect', () => {
       console.log('[Socket] Connected:', socket.id);
+      console.log('[Socket] Transport:', socket.io.engine.transport.name);
 
       // Auto-rejoin document room
       if (currentDocumentRoom) {
@@ -81,6 +83,13 @@ export const socketService = {
 
       connectionCallbacks.forEach((cb) =>
         cb({ connected: true, transport: socket.io.engine.transport.name })
+      );
+    });
+
+    socket.io.engine.on('upgrade', (transport) => {
+      console.log('[Socket] Transport upgraded:', transport.name);
+      connectionCallbacks.forEach((cb) =>
+        cb({ connected: socket.connected, transport: transport.name })
       );
     });
 
