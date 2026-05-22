@@ -56,7 +56,13 @@ export const SIGNATURE_DRAG_SOCKET_THROTTLE_MS = 20;
  * Delay visual untuk observer remote. Nilai kecil membuat gerak tetap halus
  * tanpa terasa "mengejar terlalu jauh" seperti transition fixed 120ms.
  */
-export const REMOTE_SIGNATURE_INTERPOLATION_MS = 65;
+export const REMOTE_SIGNATURE_DRAG_INTERPOLATION_MS = 22;
+
+/**
+ * Resize tetap boleh sedikit lebih smooth karena width/height update lebih
+ * berat dan secara visual memang lebih enak kalau tidak terlalu snap.
+ */
+export const REMOTE_SIGNATURE_RESIZE_INTERPOLATION_MS = 65;
 
 /**
  * Kalau jarak target remote sudah terlalu jauh, snap langsung. Ini mencegah

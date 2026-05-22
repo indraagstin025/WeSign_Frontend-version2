@@ -332,8 +332,6 @@ export function useDraggableSignatureGroup({
     emitDragThrottled({
       positionX: innerX,
       positionY: innerY,
-      width: sig.width,
-      height: sig.height,
       pageNumber: sig.pageNumber,
     });
   };

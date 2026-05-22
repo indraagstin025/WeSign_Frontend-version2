@@ -1,7 +1,8 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { VISUAL_PADDING, TOTAL_PADDING, MIN_INNER_WIDTH } from '../../signature/constants/signatureLayout';
 import {
-  REMOTE_SIGNATURE_INTERPOLATION_MS,
+  REMOTE_SIGNATURE_DRAG_INTERPOLATION_MS,
+  REMOTE_SIGNATURE_RESIZE_INTERPOLATION_MS,
   REMOTE_SIGNATURE_SNAP_DISTANCE_PX,
 } from '../constants/groupSignatureLayout';
 
@@ -92,13 +93,15 @@ export const useGroupDraggableRef = (
 
   // ── Helper: write positionRef ke DOM ─────────────────────────────────────
   // Single source of write — supaya consistency.
-  const applyPositionToDom = useCallback(() => {
+  const applyPositionToDom = useCallback((options = {}) => {
     const node = nodeRef.current;
     if (!node) return;
     const { x, y, w, h } = positionRef.current;
     node.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
-    node.style.width = `${Math.round(w)}px`;
-    node.style.height = `${Math.round(h)}px`;
+    if (options.includeSize !== false) {
+      node.style.width = `${Math.round(w)}px`;
+      node.style.height = `${Math.round(h)}px`;
+    }
   }, []);
 
   const stopRemoteAnimation = useCallback(() => {
@@ -125,8 +128,9 @@ export const useGroupDraggableRef = (
 
     const dx = target.x - current.x;
     const dy = target.y - current.y;
-    const dw = target.w - current.w;
-    const dh = target.h - current.h;
+    const hasSize = target.mode === 'resize';
+    const dw = hasSize ? target.w - current.w : 0;
+    const dh = hasSize ? target.h - current.h : 0;
     const distance = Math.hypot(dx, dy);
     const sizeDelta = Math.max(Math.abs(dw), Math.abs(dh));
 
@@ -138,23 +142,26 @@ export const useGroupDraggableRef = (
       positionRef.current = {
         x: target.x,
         y: target.y,
-        w: target.w,
-        h: target.h,
+        w: hasSize ? target.w : current.w,
+        h: hasSize ? target.h : current.h,
       };
-      applyPositionToDom();
+      applyPositionToDom({ includeSize: hasSize });
       remoteTargetRef.current = null;
       stopRemoteAnimation();
       return;
     }
 
-    const alpha = 1 - Math.exp(-dt / REMOTE_SIGNATURE_INTERPOLATION_MS);
+    const interpolationMs = hasSize
+      ? REMOTE_SIGNATURE_RESIZE_INTERPOLATION_MS
+      : REMOTE_SIGNATURE_DRAG_INTERPOLATION_MS;
+    const alpha = 1 - Math.exp(-dt / interpolationMs);
     positionRef.current = {
       x: current.x + dx * alpha,
       y: current.y + dy * alpha,
-      w: current.w + dw * alpha,
-      h: current.h + dh * alpha,
+      w: hasSize ? current.w + dw * alpha : current.w,
+      h: hasSize ? current.h + dh * alpha : current.h,
     };
-    applyPositionToDom();
+    applyPositionToDom({ includeSize: hasSize });
     remoteFrameRef.current = requestAnimationFrame(animateRemoteToTarget);
   }, [applyPositionToDom, stopRemoteAnimation]);
 
@@ -346,12 +353,14 @@ export const useGroupDraggableRef = (
   // Dipanggil oleh useGroupDraggable handler saat dapat event
   // 'update_signature_position' dari peer.
   const setPositionFromRemote = useCallback((outerX, outerY, outerW, outerH, options = {}) => {
+    const mode = outerW !== undefined && outerH !== undefined ? 'resize' : 'drag';
     remoteTargetRef.current = {
       x: outerX,
       y: outerY,
       w: outerW !== undefined ? outerW : positionRef.current.w,
       h: outerH !== undefined ? outerH : positionRef.current.h,
       immediate: !!options.immediate,
+      mode,
     };
 
     if (!remoteFrameRef.current) {
