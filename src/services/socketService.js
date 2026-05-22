@@ -300,6 +300,8 @@ export const socketService = {
 
   isConnected: () => !!(socket?.connected),
 
+  getTransport: () => socket?.io?.engine?.transport?.name || null,
+
   onConnectionChange: (cb) => {
     connectionCallbacks.add(cb);
     if (socket) cb({ connected: socket.connected });

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useGroupDraggableRef } from './useGroupDraggableRef';
 import { socketService } from '../../../services/socketService';
 import {
+  SIGNATURE_DRAG_SOCKET_THROTTLE_MS,
   SIGNATURE_VISUAL_PADDING,
   SIGNATURE_SOCKET_THROTTLE_MS,
 } from '../constants/groupSignatureLayout';
@@ -10,7 +11,8 @@ import {
 // tidak perlu massive rename. Konsumer baru pakai konstanta dari import.
 const VISUAL_PADDING = SIGNATURE_VISUAL_PADDING;
 const TOTAL_PADDING = VISUAL_PADDING * 2;
-const SOCKET_THROTTLE_MS = SIGNATURE_SOCKET_THROTTLE_MS;
+const DRAG_SOCKET_THROTTLE_MS = SIGNATURE_DRAG_SOCKET_THROTTLE_MS;
+const RESIZE_SOCKET_THROTTLE_MS = SIGNATURE_SOCKET_THROTTLE_MS;
 
 // Throttle leading-only — sama dengan implementasi yang work smooth di
 // repo lama (utils/throttle.js). Trailing call tidak diperlukan karena:
@@ -27,6 +29,18 @@ function throttle(func, limit) {
       func.apply(this, args);
       inThrottle = true;
       setTimeout(() => (inThrottle = false), limit);
+    }
+  };
+}
+
+function adaptiveThrottle(func, getLimit) {
+  let lastRun = 0;
+  return function (...args) {
+    const now = Date.now();
+    const limit = getLimit();
+    if (now - lastRun >= limit) {
+      lastRun = now;
+      func.apply(this, args);
     }
   };
 }
@@ -76,20 +90,44 @@ export function useDraggableSignatureGroup({
   const remoteTimerRef = useRef(null);
   const remoteActiveRef = useRef(false);
   const remoteResizeTimerRef = useRef(null);
-  const [isRemoteResizing, setIsRemoteResizing] = useState(false);
+  const [, setIsRemoteResizing] = useState(false);
+  const socketSeqRef = useRef(0);
+  const lastRemoteSeqRef = useRef(0);
+  const remoteDiagnosticsRef = useRef({
+    count: 0,
+    lastAt: 0,
+    totalInterval: 0,
+    totalLatency: 0,
+    lastLogAt: 0,
+  });
+
+  const createSocketPayload = useMemo(
+    () => (kind, payload) => ({
+      documentId,
+      signatureId: sig.id,
+      ...payload,
+      kind,
+      seq: ++socketSeqRef.current,
+      sentAt: Date.now(),
+    }),
+    [documentId, sig.id]
+  );
 
   // ── Throttled Socket Drag Emit ───────────────────────────────────────────
   const emitDragThrottled = useMemo(
     () =>
-      throttle((posData) => {
+      adaptiveThrottle((posData) => {
         if (documentId) {
           socketService.emitSignatureUpdate(
-            { documentId, signatureId: sig.id, ...posData },
+            createSocketPayload('drag', posData),
             { volatile: true }
           );
         }
-      }, SOCKET_THROTTLE_MS),
-    [documentId, sig.id]
+      }, () => {
+        const transport = socketService.getTransport?.();
+        return transport === 'websocket' ? DRAG_SOCKET_THROTTLE_MS : RESIZE_SOCKET_THROTTLE_MS;
+      }),
+    [documentId, createSocketPayload]
   );
 
   // ── Throttled Socket Resize Emit ──────────────────────────────────────
@@ -98,20 +136,18 @@ export function useDraggableSignatureGroup({
       throttle((w, h) => {
         if (documentId) {
           socketService.emitSignatureUpdate(
-            {
-              documentId,
-              signatureId: sig.id,
+            createSocketPayload('resize', {
               positionX: sig.positionX,
               positionY: sig.positionY,
               width: w,
               height: h,
               pageNumber: sig.pageNumber,
-            },
+            }),
             { volatile: true }
           );
         }
-      }, SOCKET_THROTTLE_MS),
-    [documentId, sig.id, sig.positionX, sig.positionY, sig.pageNumber]
+      }, RESIZE_SOCKET_THROTTLE_MS),
+    [documentId, sig.positionX, sig.positionY, sig.pageNumber, createSocketPayload]
   );
 
   // Wrap onUpdatePosition dengan guard ownership + status.
@@ -123,18 +159,17 @@ export function useDraggableSignatureGroup({
       if (!isOwner || isFinal) return;
       onUpdatePosition(id, x, y);
       if (documentId) {
-        socketService.emitSignatureUpdate({
-          documentId,
+        socketService.emitSignatureUpdate(createSocketPayload('drag-end', {
           signatureId: id,
           positionX: x,
           positionY: y,
           width: sig.width,
           height: sig.height,
           pageNumber: sig.pageNumber,
-        });
+        }));
       }
     },
-    [onUpdatePosition, documentId, sig.width, sig.height, sig.pageNumber, isOwner, isFinal]
+    [onUpdatePosition, documentId, sig.width, sig.height, sig.pageNumber, isOwner, isFinal, createSocketPayload]
   );
 
   // Wrap onUpdateSize dengan guard ownership + status (sama alasan).
@@ -153,19 +188,33 @@ export function useDraggableSignatureGroup({
       throttle((w, h, x, y) => {
         if (!documentId || !isOwner) return;
         socketService.emitSignatureUpdate(
-          {
-            documentId,
-            signatureId: sig.id,
+          createSocketPayload('resize', {
             positionX: x,
             positionY: y,
             width: w,
             height: h,
             pageNumber: sig.pageNumber,
-          },
+          }),
           { volatile: true }
         );
-      }, SOCKET_THROTTLE_MS),
-    [documentId, sig.id, sig.pageNumber, isOwner]
+      }, RESIZE_SOCKET_THROTTLE_MS),
+    [documentId, sig.pageNumber, isOwner, createSocketPayload]
+  );
+
+  const onResizeEnd = useMemo(
+    () => (w, h, x, y) => {
+      if (!documentId || !isOwner) return;
+      socketService.emitSignatureUpdate(
+        createSocketPayload('resize-end', {
+          positionX: x,
+          positionY: y,
+          width: w,
+          height: h,
+          pageNumber: sig.pageNumber,
+        })
+      );
+    },
+    [documentId, sig.pageNumber, isOwner, createSocketPayload]
   );
 
   // ── useGroupDraggableRef (lower-level, ref-based, no setState per drag) ──
@@ -175,7 +224,8 @@ export function useDraggableSignatureGroup({
     containerHeight,
     wrappedOnUpdatePosition,
     wrappedOnUpdateSize,
-    onResizeMove
+    onResizeMove,
+    onResizeEnd
   );
 
   // Capture remote setter via ref agar useEffect socket di bawah tidak
@@ -197,6 +247,8 @@ export function useDraggableSignatureGroup({
     const handleRemoteMove = (data) => {
       if (data.signatureId !== sig.id) return;
       if (isOwner) return; // Jangan override posisi milik sendiri
+      if (typeof data.seq === 'number' && data.seq <= lastRemoteSeqRef.current) return;
+      if (typeof data.seq === 'number') lastRemoteSeqRef.current = data.seq;
 
       const outerX = Math.round(data.positionX * containerWidth - VISUAL_PADDING);
       const outerY = Math.round(data.positionY * containerHeight - VISUAL_PADDING);
@@ -216,8 +268,30 @@ export function useDraggableSignatureGroup({
         outerX,
         outerY,
         hasRemoteSize ? outerW : undefined,
-        hasRemoteSize ? outerH : undefined
+        hasRemoteSize ? outerH : undefined,
+        { immediate: data.kind === 'drag-end' || data.kind === 'resize-end' }
       );
+
+      const now = Date.now();
+      const diag = remoteDiagnosticsRef.current;
+      if (diag.lastAt) diag.totalInterval += now - diag.lastAt;
+      if (typeof data.sentAt === 'number') diag.totalLatency += Math.max(0, now - data.sentAt);
+      diag.lastAt = now;
+      diag.count += 1;
+      if (diag.count >= 30 && now - diag.lastLogAt > 5000) {
+        const avgInterval = diag.totalInterval / Math.max(1, diag.count - 1);
+        const avgLatency = diag.totalLatency / diag.count;
+        console.debug(
+          `[GroupSignatureRemote] ${sig.id} interval=${avgInterval.toFixed(1)}ms latency=${avgLatency.toFixed(1)}ms transport=${socketService.getTransport?.() || 'unknown'}`
+        );
+        remoteDiagnosticsRef.current = {
+          count: 0,
+          lastAt: now,
+          totalInterval: 0,
+          totalLatency: 0,
+          lastLogAt: now,
+        };
+      }
 
       // Visual feedback cukup toggle saat idle -> aktif. Jangan setState di
       // setiap socket frame karena itu membuat observer re-render terus.
@@ -285,11 +359,7 @@ export function useDraggableSignatureGroup({
   //     event throttled 30ms. Cukup pendek untuk responsive, cukup
   //     panjang untuk visual blend antar emit.
   // Browser compositor menghaluskan preview observer di antara socket frame.
-  const transitionStyle = isRemoteResizing
-    ? 'transform 120ms linear, width 120ms linear, height 120ms linear'
-    : isRemoteActive && !state.isDragging
-      ? 'transform 120ms linear'
-      : 'none';
+  const transitionStyle = 'none';
 
   return {
     state: {

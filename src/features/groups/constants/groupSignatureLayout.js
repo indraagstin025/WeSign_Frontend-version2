@@ -45,3 +45,21 @@ export const SIGNATURE_VISUAL_PADDING = 18;
  * di sini untuk eksplisit per-feature, tapi nilai harus sama agar UX konsisten.
  */
 export const SIGNATURE_SOCKET_THROTTLE_MS = 30;
+
+/**
+ * Drag realtime boleh lebih rapat dari resize karena drag hanya mengubah
+ * transform (murah di compositor), sementara resize menyentuh layout box.
+ */
+export const SIGNATURE_DRAG_SOCKET_THROTTLE_MS = 20;
+
+/**
+ * Delay visual untuk observer remote. Nilai kecil membuat gerak tetap halus
+ * tanpa terasa "mengejar terlalu jauh" seperti transition fixed 120ms.
+ */
+export const REMOTE_SIGNATURE_INTERPOLATION_MS = 65;
+
+/**
+ * Kalau jarak target remote sudah terlalu jauh, snap langsung. Ini mencegah
+ * backlog visual saat network hiccup atau tab receiver sempat freeze.
+ */
+export const REMOTE_SIGNATURE_SNAP_DISTANCE_PX = 180;
