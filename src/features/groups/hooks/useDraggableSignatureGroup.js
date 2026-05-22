@@ -74,12 +74,25 @@ export function useDraggableSignatureGroup({
   const [isRemoteActive, setIsRemoteActive] = useState(false);
   const [isLockedByRemote, setIsLockedByRemote] = useState(false);
   const remoteTimerRef = useRef(null);
+  const remoteActiveRef = useRef(false);
+  const remoteFrameRef = useRef(null);
+  const remoteAnimRef = useRef({
+    current: null,
+    from: null,
+    target: null,
+    start: 0,
+  });
 
   // ── Throttled Socket Drag Emit ───────────────────────────────────────────
   const emitDragThrottled = useMemo(
     () =>
       throttle((posData) => {
-        if (documentId) socketService.emitSignatureUpdate({ documentId, signatureId: sig.id, ...posData });
+        if (documentId) {
+          socketService.emitSignatureUpdate(
+            { documentId, signatureId: sig.id, ...posData },
+            { volatile: true }
+          );
+        }
       }, SOCKET_THROTTLE_MS),
     [documentId, sig.id]
   );
@@ -89,15 +102,18 @@ export function useDraggableSignatureGroup({
     () =>
       throttle((w, h) => {
         if (documentId) {
-          socketService.emitSignatureUpdate({
-            documentId,
-            signatureId: sig.id,
-            positionX: sig.positionX,
-            positionY: sig.positionY,
-            width: w,
-            height: h,
-            pageNumber: sig.pageNumber,
-          });
+          socketService.emitSignatureUpdate(
+            {
+              documentId,
+              signatureId: sig.id,
+              positionX: sig.positionX,
+              positionY: sig.positionY,
+              width: w,
+              height: h,
+              pageNumber: sig.pageNumber,
+            },
+            { volatile: true }
+          );
         }
       }, SOCKET_THROTTLE_MS),
     [documentId, sig.id, sig.positionX, sig.positionY, sig.pageNumber]
@@ -141,15 +157,18 @@ export function useDraggableSignatureGroup({
     () =>
       throttle((w, h, x, y) => {
         if (!documentId || !isOwner) return;
-        socketService.emitSignatureUpdate({
-          documentId,
-          signatureId: sig.id,
-          positionX: x,
-          positionY: y,
-          width: w,
-          height: h,
-          pageNumber: sig.pageNumber,
-        });
+        socketService.emitSignatureUpdate(
+          {
+            documentId,
+            signatureId: sig.id,
+            positionX: x,
+            positionY: y,
+            width: w,
+            height: h,
+            pageNumber: sig.pageNumber,
+          },
+          { volatile: true }
+        );
       }, SOCKET_THROTTLE_MS),
     [documentId, sig.id, sig.pageNumber, isOwner]
   );
@@ -194,13 +213,69 @@ export function useDraggableSignatureGroup({
 
       // Direct DOM update — bypass React render. Native compositor handle
       // smooth 60fps di GPU thread.
-      setPositionFromRemoteRef.current(outerX, outerY, outerW, outerH);
+      const target = {
+        x: outerX,
+        y: outerY,
+        w: outerW !== undefined ? outerW : state.positionRef.current.w,
+        h: outerH !== undefined ? outerH : state.positionRef.current.h,
+      };
+      const anim = remoteAnimRef.current;
+      const current = anim.current || {
+        x: state.positionRef.current.x,
+        y: state.positionRef.current.y,
+        w: state.positionRef.current.w,
+        h: state.positionRef.current.h,
+      };
 
-      // Visual feedback (toast/ring) — pakai state karena cuma flag boolean
-      setIsRemoteActive(true);
-      setIsLockedByRemote(true);
+      anim.from = current;
+      anim.target = target;
+      anim.start = performance.now();
+
+      if (!remoteFrameRef.current) {
+        const tick = (now) => {
+          const frameAnim = remoteAnimRef.current;
+          const duration = 45;
+          const t = Math.min(1, (now - frameAnim.start) / duration);
+          const ease = 1 - Math.pow(1 - t, 3);
+          const from = frameAnim.from || frameAnim.target;
+          const nextTarget = frameAnim.target;
+
+          if (!nextTarget) {
+            remoteFrameRef.current = null;
+            return;
+          }
+
+          const next = {
+            x: from.x + (nextTarget.x - from.x) * ease,
+            y: from.y + (nextTarget.y - from.y) * ease,
+            w: from.w + (nextTarget.w - from.w) * ease,
+            h: from.h + (nextTarget.h - from.h) * ease,
+          };
+
+          frameAnim.current = next;
+          setPositionFromRemoteRef.current(next.x, next.y, next.w, next.h);
+
+          if (t < 1) {
+            remoteFrameRef.current = requestAnimationFrame(tick);
+          } else {
+            frameAnim.current = nextTarget;
+            remoteFrameRef.current = null;
+          }
+        };
+
+        remoteFrameRef.current = requestAnimationFrame(tick);
+      }
+
+      // Visual feedback cukup toggle saat idle -> aktif. Jangan setState di
+      // setiap socket frame karena itu membuat observer re-render terus.
+      if (!remoteActiveRef.current) {
+        remoteActiveRef.current = true;
+        setIsRemoteActive(true);
+        setIsLockedByRemote(true);
+      }
       if (remoteTimerRef.current) clearTimeout(remoteTimerRef.current);
       remoteTimerRef.current = setTimeout(() => {
+        remoteActiveRef.current = false;
         setIsRemoteActive(false);
         setIsLockedByRemote(false);
       }, 800);
@@ -210,8 +285,10 @@ export function useDraggableSignatureGroup({
     return () => {
       socketService.off('update_signature_position', handleRemoteMove);
       if (remoteTimerRef.current) clearTimeout(remoteTimerRef.current);
+      if (remoteFrameRef.current) cancelAnimationFrame(remoteFrameRef.current);
+      remoteFrameRef.current = null;
     };
-  }, [sig.id, isOwner, containerWidth, containerHeight]);
+  }, [sig.id, isOwner, containerWidth, containerHeight, state.positionRef]);
 
   // ── Drag handler (emit throttled) ────────────────────────────────────────
   const handleDrag = (e, data) => {

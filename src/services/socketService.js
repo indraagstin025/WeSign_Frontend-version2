@@ -188,8 +188,10 @@ export const socketService = {
    *   pageNumber?: number
    * }} data
    */
-  emitSignatureUpdate: (data) => {
-    if (socket?.connected) socket.emit('drag_signature', data);
+  emitSignatureUpdate: (data, options = {}) => {
+    if (!socket?.connected) return;
+    const emitter = options.volatile ? socket.volatile : socket;
+    emitter.emit('drag_signature', data);
   },
 
   /**
