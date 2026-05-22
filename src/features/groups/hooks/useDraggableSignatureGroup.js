@@ -201,15 +201,23 @@ export function useDraggableSignatureGroup({
       const outerX = Math.round(data.positionX * containerWidth - VISUAL_PADDING);
       const outerY = Math.round(data.positionY * containerHeight - VISUAL_PADDING);
       let outerW, outerH;
-      const hasRemoteSize = data.width !== undefined && data.height !== undefined;
-      if (hasRemoteSize) {
+      let hasRemoteSize = false;
+      if (data.width !== undefined && data.height !== undefined) {
         outerW = Math.round(data.width * containerWidth + TOTAL_PADDING);
         outerH = Math.round(data.height * containerHeight + TOTAL_PADDING);
+        hasRemoteSize =
+          Math.abs(outerW - state.positionRef.current.w) > 1 ||
+          Math.abs(outerH - state.positionRef.current.h) > 1;
       }
 
       // Direct DOM update — bypass React render. Native compositor handle
       // smooth 60fps di GPU thread.
-      setPositionFromRemoteRef.current(outerX, outerY, outerW, outerH);
+      setPositionFromRemoteRef.current(
+        outerX,
+        outerY,
+        hasRemoteSize ? outerW : undefined,
+        hasRemoteSize ? outerH : undefined
+      );
 
       // Visual feedback cukup toggle saat idle -> aktif. Jangan setState di
       // setiap socket frame karena itu membuat observer re-render terus.
