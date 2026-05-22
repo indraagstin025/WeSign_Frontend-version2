@@ -285,9 +285,11 @@ export function useDraggableSignatureGroup({
   //     event throttled 30ms. Cukup pendek untuk responsive, cukup
   //     panjang untuk visual blend antar emit.
   // Browser compositor menghaluskan preview observer di antara socket frame.
-  const transitionStyle = isRemoteActive && !state.isDragging && !isRemoteResizing
-    ? 'transform 120ms linear'
-    : 'none';
+  const transitionStyle = isRemoteResizing
+    ? 'transform 120ms linear, width 120ms linear, height 120ms linear'
+    : isRemoteActive && !state.isDragging
+      ? 'transform 120ms linear'
+      : 'none';
 
   return {
     state: {
