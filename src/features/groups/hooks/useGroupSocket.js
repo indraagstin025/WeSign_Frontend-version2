@@ -152,6 +152,7 @@ export const useGroupSocket = ({
               positionY: existing.positionY ?? rest.positionY,
               width: existing.width ?? rest.width,
               height: existing.height ?? rest.height,
+              _clientKey: existing._clientKey || existing.id,
             };
             return next;
           }

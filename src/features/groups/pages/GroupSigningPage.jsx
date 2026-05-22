@@ -329,7 +329,7 @@ const GroupSigningPage = () => {
 
                       return (
                         <DraggableSignatureGroup
-                          key={sig.id}
+                          key={sig._clientKey || sig.id}
                           sig={sig}
                           onRemove={handleDeleteSignature}
                           onUpdatePosition={handleUpdateSignature}

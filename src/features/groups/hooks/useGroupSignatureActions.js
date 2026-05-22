@@ -107,6 +107,7 @@ export const useGroupSignatureActions = ({
         width: dropData.width,
         height: dropData.height,
         method: dropData.method || 'canvas',
+        _clientKey: tempId,
         // [FIX] Flag optimistic — handleUpdateSize/Position akan skip PATCH
         // selama flag ini true. Mencegah race condition dengan handleImageLoad
         // yang fire INSTANT sebelum saveDraft response (yang bawa server-generated
@@ -177,6 +178,7 @@ export const useGroupSignatureActions = ({
               width: s.width,
               height: s.height,
               pageNumber: s.pageNumber,
+              _clientKey: s._clientKey || tempId,
               // [FIX] Hapus flag — signature kini ter-persist, PATCH boleh.
               _pending: false,
             };
