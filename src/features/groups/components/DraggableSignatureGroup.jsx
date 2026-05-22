@@ -110,6 +110,8 @@ const DraggableSignatureGroup = ({
           touchAction: 'none',
           pointerEvents: (isFinal || isLockedByRemote) ? 'none' : 'auto',
           transition: transitionStyle,
+          willChange: 'transform',
+          backfaceVisibility: 'hidden',
         }}
       >
         {/* ── Nama pemilik TTD ── */}
@@ -184,7 +186,6 @@ const DraggableSignatureGroup = ({
             onLoad={actions.handleImageLoad}
             className="w-full h-full object-contain pointer-events-none select-none block"
             draggable={false}
-            style={{ imageRendering: 'high-quality' }}
           />
         </div>
       </div>

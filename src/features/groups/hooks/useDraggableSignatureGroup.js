@@ -75,13 +75,6 @@ export function useDraggableSignatureGroup({
   const [isLockedByRemote, setIsLockedByRemote] = useState(false);
   const remoteTimerRef = useRef(null);
   const remoteActiveRef = useRef(false);
-  const remoteFrameRef = useRef(null);
-  const remoteAnimRef = useRef({
-    current: null,
-    from: null,
-    target: null,
-    start: 0,
-  });
 
   // ── Throttled Socket Drag Emit ───────────────────────────────────────────
   const emitDragThrottled = useMemo(
@@ -213,58 +206,7 @@ export function useDraggableSignatureGroup({
 
       // Direct DOM update — bypass React render. Native compositor handle
       // smooth 60fps di GPU thread.
-      const target = {
-        x: outerX,
-        y: outerY,
-        w: outerW !== undefined ? outerW : state.positionRef.current.w,
-        h: outerH !== undefined ? outerH : state.positionRef.current.h,
-      };
-      const anim = remoteAnimRef.current;
-      const current = anim.current || {
-        x: state.positionRef.current.x,
-        y: state.positionRef.current.y,
-        w: state.positionRef.current.w,
-        h: state.positionRef.current.h,
-      };
-
-      anim.from = current;
-      anim.target = target;
-      anim.start = performance.now();
-
-      if (!remoteFrameRef.current) {
-        const tick = (now) => {
-          const frameAnim = remoteAnimRef.current;
-          const duration = 45;
-          const t = Math.min(1, (now - frameAnim.start) / duration);
-          const ease = 1 - Math.pow(1 - t, 3);
-          const from = frameAnim.from || frameAnim.target;
-          const nextTarget = frameAnim.target;
-
-          if (!nextTarget) {
-            remoteFrameRef.current = null;
-            return;
-          }
-
-          const next = {
-            x: from.x + (nextTarget.x - from.x) * ease,
-            y: from.y + (nextTarget.y - from.y) * ease,
-            w: from.w + (nextTarget.w - from.w) * ease,
-            h: from.h + (nextTarget.h - from.h) * ease,
-          };
-
-          frameAnim.current = next;
-          setPositionFromRemoteRef.current(next.x, next.y, next.w, next.h);
-
-          if (t < 1) {
-            remoteFrameRef.current = requestAnimationFrame(tick);
-          } else {
-            frameAnim.current = nextTarget;
-            remoteFrameRef.current = null;
-          }
-        };
-
-        remoteFrameRef.current = requestAnimationFrame(tick);
-      }
+      setPositionFromRemoteRef.current(outerX, outerY, outerW, outerH);
 
       // Visual feedback cukup toggle saat idle -> aktif. Jangan setState di
       // setiap socket frame karena itu membuat observer re-render terus.
@@ -285,8 +227,6 @@ export function useDraggableSignatureGroup({
     return () => {
       socketService.off('update_signature_position', handleRemoteMove);
       if (remoteTimerRef.current) clearTimeout(remoteTimerRef.current);
-      if (remoteFrameRef.current) cancelAnimationFrame(remoteFrameRef.current);
-      remoteFrameRef.current = null;
     };
   }, [sig.id, isOwner, containerWidth, containerHeight, state.positionRef]);
 
@@ -318,17 +258,16 @@ export function useDraggableSignatureGroup({
       ? 'border border-blue-500 bg-white/40 shadow-sm'
       : 'border border-transparent';
 
-  // Pattern transition sama dengan repo lama:
+  // Pattern transition sama dengan project lama:
   //   - Saat owner drag/resize sendiri: NO transition (lihat
   //     DraggableSignatureGroup.jsx, react-draggable handle native)
   //   - Saat remote update: 100ms linear → smooth interpolation antar
   //     event throttled 30ms. Cukup pendek untuk responsive, cukup
   //     panjang untuk visual blend antar emit.
-  // [REALTIME-PERF] Tidak ada CSS transition untuk transform.
-  // useGroupDraggableRef pakai positionRef + manipulasi DOM langsung.
-  // Native compositor 60fps smooth tanpa transition. Transition justru
-  // bikin animation "kabur" karena setiap event override animasi sebelumnya.
-  const transitionStyle = 'none';
+  // Browser compositor menghaluskan preview observer di antara socket frame.
+  const transitionStyle = isRemoteActive && !state.isDragging
+    ? 'transform 100ms linear'
+    : 'none';
 
   return {
     state: {
