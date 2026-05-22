@@ -75,6 +75,8 @@ export function useDraggableSignatureGroup({
   const [isLockedByRemote, setIsLockedByRemote] = useState(false);
   const remoteTimerRef = useRef(null);
   const remoteActiveRef = useRef(false);
+  const remoteResizeTimerRef = useRef(null);
+  const [isRemoteResizing, setIsRemoteResizing] = useState(false);
 
   // ── Throttled Socket Drag Emit ───────────────────────────────────────────
   const emitDragThrottled = useMemo(
@@ -199,7 +201,8 @@ export function useDraggableSignatureGroup({
       const outerX = Math.round(data.positionX * containerWidth - VISUAL_PADDING);
       const outerY = Math.round(data.positionY * containerHeight - VISUAL_PADDING);
       let outerW, outerH;
-      if (data.width !== undefined && data.height !== undefined) {
+      const hasRemoteSize = data.width !== undefined && data.height !== undefined;
+      if (hasRemoteSize) {
         outerW = Math.round(data.width * containerWidth + TOTAL_PADDING);
         outerH = Math.round(data.height * containerHeight + TOTAL_PADDING);
       }
@@ -221,12 +224,21 @@ export function useDraggableSignatureGroup({
         setIsRemoteActive(false);
         setIsLockedByRemote(false);
       }, 800);
+
+      if (hasRemoteSize) {
+        setIsRemoteResizing(true);
+        if (remoteResizeTimerRef.current) clearTimeout(remoteResizeTimerRef.current);
+        remoteResizeTimerRef.current = setTimeout(() => {
+          setIsRemoteResizing(false);
+        }, 160);
+      }
     };
 
     socketService.on('update_signature_position', handleRemoteMove);
     return () => {
       socketService.off('update_signature_position', handleRemoteMove);
       if (remoteTimerRef.current) clearTimeout(remoteTimerRef.current);
+      if (remoteResizeTimerRef.current) clearTimeout(remoteResizeTimerRef.current);
     };
   }, [sig.id, isOwner, containerWidth, containerHeight, state.positionRef]);
 
@@ -265,8 +277,8 @@ export function useDraggableSignatureGroup({
   //     event throttled 30ms. Cukup pendek untuk responsive, cukup
   //     panjang untuk visual blend antar emit.
   // Browser compositor menghaluskan preview observer di antara socket frame.
-  const transitionStyle = isRemoteActive && !state.isDragging
-    ? 'transform 100ms linear'
+  const transitionStyle = isRemoteActive && !state.isDragging && !isRemoteResizing
+    ? 'transform 120ms linear'
     : 'none';
 
   return {

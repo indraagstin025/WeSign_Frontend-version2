@@ -53,6 +53,7 @@ export const useGroupDraggableRef = (
   const isResizingRef = useRef(false);
   const isReadyRef = useRef(false);
   const aspectRatioRef = useRef(null);
+  const resizeFrameRef = useRef(null);
 
   // Position + size di REF — sumber kebenaran tunggal yang tidak trigger
   // React render saat berubah.
@@ -208,9 +209,15 @@ export const useGroupDraggableRef = (
           newPosX = Math.max(0, Math.min(cw - newW, newPosX));
           newPosY = Math.max(0, Math.min(ch - newH, newPosY));
 
-          // Update REF (no setState) + DOM langsung
+          // Update REF setiap event agar posisi final akurat, tapi DOM write
+          // dibatasi ke frame browser supaya resize tidak stutter.
           positionRef.current = { x: newPosX, y: newPosY, w: newW, h: newH };
-          applyPositionToDom();
+          if (!resizeFrameRef.current) {
+            resizeFrameRef.current = requestAnimationFrame(() => {
+              resizeFrameRef.current = null;
+              applyPositionToDom();
+            });
+          }
 
           // Emit realtime resize ke socket (throttled dari parent)
           if (onResizeMove) {
@@ -224,6 +231,11 @@ export const useGroupDraggableRef = (
 
         const onEnd = () => {
           isResizingRef.current = false;
+          if (resizeFrameRef.current) {
+            cancelAnimationFrame(resizeFrameRef.current);
+            resizeFrameRef.current = null;
+          }
+          applyPositionToDom();
           const { x, y, w, h } = positionRef.current;
           const cw = containerWidthRef.current;
           const ch = containerHeightRef.current;
@@ -252,7 +264,13 @@ export const useGroupDraggableRef = (
         el.removeEventListener('touchstart', onStart);
       });
     });
-    return () => cleanups.forEach((fn) => fn());
+    return () => {
+      if (resizeFrameRef.current) {
+        cancelAnimationFrame(resizeFrameRef.current);
+        resizeFrameRef.current = null;
+      }
+      cleanups.forEach((fn) => fn());
+    };
   }, [isActive, onUpdatePosition, onUpdateSize, onResizeMove, applyPositionToDom]);
 
   // ── External setter: update posisi dari socket remote ────────────────────
