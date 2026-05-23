@@ -88,6 +88,9 @@ const InteractSignatureGroup = ({
   // Reset ke null di drag/resize end.
   const cachedParentRectRef = useRef(null);
   const resizingFromHandleRef = useRef(false);
+  const resizeBaseBoxRef = useRef(null);
+  const remoteResizeBaseBoxRef = useRef(null);
+  const remoteLatestBoxRef = useRef(null);
 
   // [RESIZE-PRECISION] Aspect ratio dari image natural — supaya resize lock
   // ratio (signature tidak distorsi) sama seperti DraggableSignature pattern.
@@ -154,10 +157,29 @@ const InteractSignatureGroup = ({
       const calcW = data.width * parentRect.width + TOTAL_REDUCTION;
       const calcH = data.height * parentRect.height + TOTAL_REDUCTION;
 
-      // Direct DOM update — bypass React render
-      element.style.transform = `translate(${calcX}px, ${calcY}px)`;
-      element.style.width = `${calcW}px`;
-      element.style.height = `${calcH}px`;
+      const widthChanged = Math.abs(calcW - positionRef.current.w) > 0.5;
+      const heightChanged = Math.abs(calcH - positionRef.current.h) > 0.5;
+
+      // Direct DOM update — bypass React render.
+      // Untuk resize remote, gunakan transform scale selama stream event
+      // supaya browser tidak layout/repaint width/height setiap frame.
+      if (widthChanged || heightChanged) {
+        if (!remoteResizeBaseBoxRef.current) {
+          remoteResizeBaseBoxRef.current = {
+            w: Math.max(1, positionRef.current.w || calcW),
+            h: Math.max(1, positionRef.current.h || calcH),
+          };
+        }
+        const base = remoteResizeBaseBoxRef.current;
+        const scaleX = calcW / base.w;
+        const scaleY = calcH / base.h;
+        element.style.transformOrigin = 'top left';
+        element.style.transform = `translate(${calcX}px, ${calcY}px) scale(${scaleX}, ${scaleY})`;
+        remoteLatestBoxRef.current = { x: calcX, y: calcY, w: calcW, h: calcH };
+      } else {
+        element.style.transformOrigin = 'top left';
+        element.style.transform = `translate(${calcX}px, ${calcY}px)`;
+      }
 
       positionRef.current = { x: calcX, y: calcY, w: calcW, h: calcH };
       updateAspectRatioFromBox(calcW, calcH);
@@ -170,6 +192,14 @@ const InteractSignatureGroup = ({
       const timerKey = `__sig_remote_timer_${sig.id}`;
       if (window[timerKey]) clearTimeout(window[timerKey]);
       window[timerKey] = setTimeout(() => {
+        if (remoteLatestBoxRef.current) {
+          const box = remoteLatestBoxRef.current;
+          element.style.width = `${box.w}px`;
+          element.style.height = `${box.h}px`;
+          element.style.transform = `translate(${box.x}px, ${box.y}px)`;
+          remoteLatestBoxRef.current = null;
+          remoteResizeBaseBoxRef.current = null;
+        }
         setIsRemoteActive(false);
         setIsLockedByRemote(false);
       }, 500);
@@ -326,6 +356,10 @@ const InteractSignatureGroup = ({
             setIsResizing(true);
             setIsActive(true);
             updateAspectRatioFromBox(positionRef.current.w, positionRef.current.h);
+            resizeBaseBoxRef.current = {
+              w: Math.max(1, positionRef.current.w),
+              h: Math.max(1, positionRef.current.h),
+            };
             // [PERF] Cache parentRect saat resize start — hindari
             // getBoundingClientRect() per move event (force layout reflow
             // setiap call, expensive saat di tengah resize 60fps).
@@ -389,9 +423,11 @@ const InteractSignatureGroup = ({
             const finalY = Math.round(y);
 
             positionRef.current = { x: finalX, y: finalY, w: finalW, h: finalH };
-            element.style.width = `${finalW}px`;
-            element.style.height = `${finalH}px`;
-            element.style.transform = `translate(${finalX}px, ${finalY}px)`;
+            const base = resizeBaseBoxRef.current || { w: finalW, h: finalH };
+            const scaleX = finalW / base.w;
+            const scaleY = finalH / base.h;
+            element.style.transformOrigin = 'top left';
+            element.style.transform = `translate(${finalX}px, ${finalY}px) scale(${scaleX}, ${scaleY})`;
 
             if (documentId) {
               // [PERF] Pakai cached parentRect, bukan re-calc per move.
@@ -411,10 +447,15 @@ const InteractSignatureGroup = ({
           end() {
             resizingFromHandleRef.current = false;
             setIsResizing(false);
+            resizeBaseBoxRef.current = null;
             const parentRect = cachedParentRectRef.current;
             cachedParentRectRef.current = null;
             if (!parentRect) return;
             const { x, y, w, h } = positionRef.current;
+            element.style.width = `${w}px`;
+            element.style.height = `${h}px`;
+            element.style.transform = `translate(${x}px, ${y}px)`;
+            element.style.transformOrigin = 'top left';
 
             const realX = (x + CONTENT_OFFSET) / parentRect.width;
             const realY = (y + CONTENT_OFFSET) / parentRect.height;
