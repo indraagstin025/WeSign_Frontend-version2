@@ -88,9 +88,7 @@ const InteractSignatureGroup = ({
   // Reset ke null di drag/resize end.
   const cachedParentRectRef = useRef(null);
   const resizingFromHandleRef = useRef(false);
-  const resizeFrameRef = useRef(null);
   const remoteFrameRef = useRef(null);
-  const pendingResizeBoxRef = useRef(null);
   const pendingRemoteBoxRef = useRef(null);
   const remoteVisibleBoxRef = useRef(null);
 
@@ -120,17 +118,6 @@ const InteractSignatureGroup = ({
     element.style.width = `${box.w}px`;
     element.style.height = `${box.h}px`;
     element.style.transform = `translate(${box.x}px, ${box.y}px)`;
-  };
-
-  const scheduleBoxWrite = (frameRef, pendingRef, element, box) => {
-    pendingRef.current = box;
-    if (frameRef.current) return;
-    frameRef.current = requestAnimationFrame(() => {
-      frameRef.current = null;
-      const nextBox = pendingRef.current;
-      pendingRef.current = null;
-      if (nextBox) writeBoxToDom(element, nextBox);
-    });
   };
 
   const lerp = (from, to, amount) => from + (to - from) * amount;
@@ -472,12 +459,7 @@ const InteractSignatureGroup = ({
             const finalY = Math.round(y);
 
             positionRef.current = { x: finalX, y: finalY, w: finalW, h: finalH };
-            scheduleBoxWrite(resizeFrameRef, pendingResizeBoxRef, element, {
-              x: finalX,
-              y: finalY,
-              w: finalW,
-              h: finalH,
-            });
+            writeBoxToDom(element, { x: finalX, y: finalY, w: finalW, h: finalH });
 
             if (documentId) {
               // [PERF] Pakai cached parentRect, bukan re-calc per move.
@@ -497,11 +479,6 @@ const InteractSignatureGroup = ({
           end() {
             resizingFromHandleRef.current = false;
             setIsResizing(false);
-            if (resizeFrameRef.current) {
-              cancelAnimationFrame(resizeFrameRef.current);
-              resizeFrameRef.current = null;
-            }
-            pendingResizeBoxRef.current = null;
             const parentRect = cachedParentRectRef.current;
             cachedParentRectRef.current = null;
             if (!parentRect) return;
@@ -538,11 +515,6 @@ const InteractSignatureGroup = ({
       });
 
     return () => {
-      if (resizeFrameRef.current) {
-        cancelAnimationFrame(resizeFrameRef.current);
-        resizeFrameRef.current = null;
-      }
-      pendingResizeBoxRef.current = null;
       interactable.unset();
     };
   }, [canInteract, isLockedByRemote, documentId, sig.id, sig.pageNumber, emitSocketDrag, onUpdatePosition, onUpdateSize]);
@@ -589,7 +561,7 @@ const InteractSignatureGroup = ({
     >
       <div
         style={{ padding: `${CSS_PADDING}px` }}
-        className={`relative w-full h-full transition-all duration-200 ${
+        className={`relative w-full h-full transition-[background-color,box-shadow,border-color] duration-150 ${
           isActive || isRemoteActive ? 'bg-white/80 shadow-lg' : ''
         } ${borderClass}`}
       >
@@ -650,7 +622,7 @@ const InteractSignatureGroup = ({
         {/* Signature image */}
         <div className="w-full h-full p-1 box-border flex items-center justify-center">
           <div
-            className={`w-full h-full overflow-hidden transition-all duration-200 ${
+            className={`w-full h-full overflow-hidden transition-[background-color,box-shadow,border-color] duration-150 ${
               isActive && canInteract ? 'bg-white/80 shadow-lg border-rose-400 border' : 'border-transparent'
             }`}
           >
