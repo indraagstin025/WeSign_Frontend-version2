@@ -14,7 +14,6 @@ import {
   lerp,
   outerBoxToFraction,
   outerHeightFromOuterWidth,
-  scheduleBoxWrite,
   throttle,
   writeBoxToDom,
 } from '../utils/signatureBoxGeometry';
@@ -64,9 +63,7 @@ export function useInteractSignatureGroup({
   // di tiap move event (force layout reflow di browser, mahal saat 60fps).
   const cachedParentRectRef = useRef(null);
   const resizingFromHandleRef = useRef(false);
-  const resizeFrameRef = useRef(null);
   const remoteFrameRef = useRef(null);
-  const pendingResizeBoxRef = useRef(null);
   const pendingRemoteBoxRef = useRef(null);
   const remoteVisibleBoxRef = useRef(null);
 
@@ -331,8 +328,10 @@ export function useInteractSignatureGroup({
             // Lock height ke inner aspect ratio (padding-aware via helper).
             // Kalau langsung `newW / ratio`, padding TOTAL_REDUCTION ikut
             // masuk rasio dan box bisa drift saat resize berkali-kali.
-            let newH = Math.max(outerHeightFromOuterWidth(newW, ratio), 50);
-            if (outerHeightFromOuterWidth(newW, ratio) < 50) {
+            // [PERF] Compute sekali, reuse — sebelumnya helper dipanggil 2x
+            // (sekali untuk value, sekali untuk min check).
+            let newH = outerHeightFromOuterWidth(newW, ratio);
+            if (newH < 50) {
               newH = 50;
               newW = ((newH - TOTAL_REDUCTION) * ratio) + TOTAL_REDUCTION;
             }
@@ -351,16 +350,18 @@ export function useInteractSignatureGroup({
               y = Math.max(0, Math.min(parentRect.height - newH, y));
             }
 
-            // Round ke integer pixel — hindari subpixel rendering blur.
-            const finalBox = {
-              x: Math.round(x),
-              y: Math.round(y),
-              w: Math.round(newW),
-              h: Math.round(newH),
-            };
+            // [SMOOTH-RESIZE] Sub-pixel nilai TANPA Math.round. Pixel
+            // rounding nyata bikin micro-jitter saat mouse bergerak slow
+            // (pos visual "snap" tiap kali floor angka berubah). GPU layer
+            // sudah handle sub-pixel rendering smooth via transform 3D.
+            const finalBox = { x, y, w: newW, h: newH };
 
+            // [SMOOTH-RESIZE] Direct DOM write, BUKAN rAF schedule. Drag
+            // path juga sync — kita match polanya supaya resize feel
+            // sama smooth. rAF coalesce-nya add 1 frame latency yang
+            // perceptible terutama di display 120Hz+.
             positionRef.current = finalBox;
-            scheduleBoxWrite(resizeFrameRef, pendingResizeBoxRef, element, finalBox);
+            writeBoxToDom(element, finalBox);
 
             if (documentId && parentRect) {
               const frac = outerBoxToFraction(finalBox, parentRect);
@@ -375,11 +376,6 @@ export function useInteractSignatureGroup({
           end() {
             resizingFromHandleRef.current = false;
             setIsResizing(false);
-            if (resizeFrameRef.current) {
-              cancelAnimationFrame(resizeFrameRef.current);
-              resizeFrameRef.current = null;
-            }
-            pendingResizeBoxRef.current = null;
             const parentRect = cachedParentRectRef.current;
             cachedParentRectRef.current = null;
             if (!parentRect) return;
@@ -407,11 +403,6 @@ export function useInteractSignatureGroup({
       });
 
     return () => {
-      if (resizeFrameRef.current) {
-        cancelAnimationFrame(resizeFrameRef.current);
-        resizeFrameRef.current = null;
-      }
-      pendingResizeBoxRef.current = null;
       interactable.unset();
     };
   }, [canInteract, isLockedByRemote, documentId, sig.id, sig.pageNumber, emitSocketDrag, onUpdatePosition, onUpdateSize]);

@@ -89,6 +89,17 @@ const InteractSignatureGroup = ({
         cursor: !canInteract ? 'default' : isDragging ? 'grabbing' : 'grab',
         pointerEvents: isLockedByRemote || isFinal ? 'none' : 'auto',
         touchAction: 'none',
+        // [SMOOTH-RESIZE] Saat user aktif drag/resize/active atau peer
+        // sedang ber-edit (animateRemoteBox aktif), hint browser untuk
+        // pre-allocate compositor layer dengan dimensi. Tanpa ini, perubahan
+        // width/height per frame trigger main thread reflow → stutter.
+        // Saat idle balik ke 'transform' atau 'auto' supaya tidak waste GPU.
+        willChange:
+          (canInteract && (isDragging || isResizing || isActive)) || isRemoteActive
+            ? 'transform, width, height'
+            : canInteract
+              ? 'transform'
+              : 'auto',
       }}
       data-id={sig.id}
       onMouseDown={(e) => {
@@ -100,7 +111,12 @@ const InteractSignatureGroup = ({
     >
       <div
         style={{ padding: `${CSS_PADDING}px` }}
-        className={`relative w-full h-full transition-all duration-200 ${
+        className={`relative w-full h-full ${
+          // [SMOOTH-RESIZE] Disable transition saat owner drag/resize atau
+          // peer remote-active. transition-all me-restart animation queue
+          // tiap perubahan width/height parent → cumulative stutter.
+          isDragging || isResizing || isRemoteActive ? '' : 'transition-all duration-200'
+        } ${
           isActive || isRemoteActive ? 'bg-white/80 shadow-lg' : ''
         } ${borderClass}`}
       >
@@ -161,7 +177,11 @@ const InteractSignatureGroup = ({
         {/* Signature image */}
         <div className="w-full h-full p-1 box-border flex items-center justify-center">
           <div
-            className={`w-full h-full overflow-hidden transition-all duration-200 ${
+            className={`w-full h-full overflow-hidden ${
+              // [SMOOTH-RESIZE] Sama dengan parent — disable transition saat
+              // user aktif atau peer remote-edit.
+              isDragging || isResizing || isRemoteActive ? '' : 'transition-all duration-200'
+            } ${
               isActive && canInteract ? 'bg-white/80 shadow-lg border-rose-400 border' : 'border-transparent'
             }`}
           >
