@@ -117,7 +117,7 @@ const InteractSignatureGroup = ({
   const writeBoxToDom = (element, box) => {
     element.style.width = `${box.w}px`;
     element.style.height = `${box.h}px`;
-    element.style.transform = `translate(${box.x}px, ${box.y}px)`;
+    element.style.transform = `translate3d(${box.x}px, ${box.y}px, 0)`;
   };
 
   const lerp = (from, to, amount) => from + (to - from) * amount;
@@ -274,7 +274,7 @@ const InteractSignatureGroup = ({
 
         positionRef.current = { x: calcX, y: calcY, w: calcW, h: calcH };
         updateAspectRatioFromBox(calcW, calcH);
-        element.style.transform = `translate(${calcX}px, ${calcY}px)`;
+        element.style.transform = `translate3d(${calcX}px, ${calcY}px, 0)`;
         element.style.width = `${calcW}px`;
         element.style.height = `${calcH}px`;
       }
@@ -322,7 +322,7 @@ const InteractSignatureGroup = ({
           move(event) {
             positionRef.current.x += event.dx;
             positionRef.current.y += event.dy;
-            element.style.transform = `translate(${positionRef.current.x}px, ${positionRef.current.y}px)`;
+            element.style.transform = `translate3d(${positionRef.current.x}px, ${positionRef.current.y}px, 0)`;
 
             // Emit socket throttled
             if (documentId) {
@@ -412,27 +412,20 @@ const InteractSignatureGroup = ({
             //   2. Hitung newH = newW / ratio (lock aspect)
             //   3. Adjust posisi x/y kalau resize dari edge kiri/atas
             //   4. Math.round() semua nilai pixel — hindari subpixel blur
-            const ratio = aspectRatioRef.current ||
-              (Math.max(1, oldW - TOTAL_REDUCTION) / Math.max(1, oldH - TOTAL_REDUCTION));
+            const boxRatio = Math.max(1, oldW - TOTAL_REDUCTION) / Math.max(1, oldH - TOTAL_REDUCTION);
+            const ratio = aspectRatioRef.current || boxRatio;
 
-            // Hitung perubahan ukuran dari horizontal ATAU vertical movement.
-            // Sebelumnya hanya pakai delta horizontal, jadi saat resize dari
-            // NW/NE/SW dengan gerakan dominan vertikal, peer terlihat tidak
-            // terkunci aspect ratio. Delta vertical dikonversi ke width
-            // equivalent agar semua corner terasa sama.
-            const dWFromX = (deltaRect.right || 0) - (deltaRect.left || 0);
-            const dHFromY = (deltaRect.bottom || 0) - (deltaRect.top || 0);
-            const dWFromY = dHFromY * ratio;
-            const dW = Math.abs(dWFromX) >= Math.abs(dWFromY) ? dWFromX : dWFromY;
+            // Restore pola dari commit c33b3fc: resize dikunci dari delta
+            // horizontal corner handle. Interact.js memberi delta left/right
+            // yang lebih stabil untuk menjaga pivot corner dibanding memilih
+            // delta vertikal terbesar.
+            const dW = (deltaRect.right || 0) - (deltaRect.left || 0);
             let newW = Math.max(oldW + dW, 80);
-            // Lock height ke ratio inner signature. Outer box punya padding,
-            // jadi width perlu dikurangi TOTAL_REDUCTION dulu, lalu height
-            // ditambah lagi. Kalau langsung `newW / ratio`, padding ikut
-            // masuk rasio dan box bisa memanjang/geser saat resize.
-            let newH = Math.max(outerHeightFromOuterWidth(newW, ratio), 50);
-            if (outerHeightFromOuterWidth(newW, ratio) < 50) {
+            // Lock height ke ratio image (tidak independent dari deltaRect.top/bottom).
+            let newH = Math.max(newW / ratio, 50);
+            if (newW / ratio < 50) {
               newH = 50;
-              newW = ((newH - TOTAL_REDUCTION) * ratio) + TOTAL_REDUCTION;
+              newW = newH * ratio;
             }
 
             // Adjust posisi: kalau resize dari edge kiri (NW/SW), pivot di kanan;
@@ -459,7 +452,10 @@ const InteractSignatureGroup = ({
             const finalY = Math.round(y);
 
             positionRef.current = { x: finalX, y: finalY, w: finalW, h: finalH };
-            writeBoxToDom(element, { x: finalX, y: finalY, w: finalW, h: finalH });
+            updateAspectRatioFromBox(finalW, finalH);
+            element.style.width = `${finalW}px`;
+            element.style.height = `${finalH}px`;
+            element.style.transform = `translate3d(${finalX}px, ${finalY}px, 0)`;
 
             if (documentId) {
               // [PERF] Pakai cached parentRect, bukan re-calc per move.
@@ -544,12 +540,13 @@ const InteractSignatureGroup = ({
         left: 0,
         top: 0,
         // Init transform — useEffect calculatePosition akan replace.
-        transform: `translate(0px, 0px)`,
+        transform: `translate3d(0px, 0px, 0px)`,
         // Transition smooth saat REMOTE update; kosong saat owner drag/resize.
         transition: isDragging || isResizing ? 'none' : 'transform 0.1s linear',
         cursor: !canInteract ? 'default' : isDragging ? 'grabbing' : 'grab',
         pointerEvents: isLockedByRemote || isFinal ? 'none' : 'auto',
         touchAction: 'none',
+        willChange: canInteract ? 'transform' : 'auto',
       }}
       data-id={sig.id}
       onMouseDown={(e) => {
@@ -561,7 +558,7 @@ const InteractSignatureGroup = ({
     >
       <div
         style={{ padding: `${CSS_PADDING}px` }}
-        className={`relative w-full h-full transition-[background-color,box-shadow,border-color] duration-150 ${
+        className={`relative w-full h-full transition-all duration-200 ${
           isActive || isRemoteActive ? 'bg-white/80 shadow-lg' : ''
         } ${borderClass}`}
       >
@@ -622,7 +619,7 @@ const InteractSignatureGroup = ({
         {/* Signature image */}
         <div className="w-full h-full p-1 box-border flex items-center justify-center">
           <div
-            className={`w-full h-full overflow-hidden transition-[background-color,box-shadow,border-color] duration-150 ${
+            className={`w-full h-full overflow-hidden transition-all duration-200 ${
               isActive && canInteract ? 'bg-white/80 shadow-lg border-rose-400 border' : 'border-transparent'
             }`}
           >
@@ -662,7 +659,7 @@ const InteractSignatureGroup = ({
                     const nextY = Math.max(0, Math.min(parentRect.height - nextH, current.y));
                     positionRef.current = { ...current, y: nextY, h: nextH };
                     elementRef.current.style.height = `${nextH}px`;
-                    elementRef.current.style.transform = `translate(${current.x}px, ${nextY}px)`;
+                    elementRef.current.style.transform = `translate3d(${current.x}px, ${nextY}px, 0)`;
                     aspectRatioRef.current = naturalRatio;
                     naturalSizeAppliedRef.current = true;
 
@@ -688,6 +685,11 @@ const InteractSignatureGroup = ({
                   if (!aspectRatioRef.current && current.w > TOTAL_REDUCTION && current.h > TOTAL_REDUCTION) {
                     updateAspectRatioFromBox(current.w, current.h);
                   }
+                }}
+                style={{
+                  transform: 'translateZ(0)',
+                  imageRendering: isResizing ? 'pixelated' : 'auto',
+                  willChange: isDragging || isResizing ? 'transform, width, height' : 'auto',
                 }}
               />
             ) : (
