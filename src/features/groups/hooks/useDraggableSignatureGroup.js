@@ -314,7 +314,7 @@ export function useDraggableSignatureGroup({
   //   - Saat owner drag/resize sendiri: NO transition (lihat
   //     DraggableSignatureGroup.jsx, react-draggable handle native)
   //   - Saat remote update: 100ms linear → smooth interpolation antar
-  //     event throttled 30ms. Cukup pendek untuk responsive, cukup
+  //     event throttled via SIGNATURE_SOCKET_THROTTLE_MS. Cukup pendek untuk responsive, cukup
   //     panjang untuk visual blend antar emit.
   // Browser compositor menghaluskan preview observer di antara socket frame.
   const transitionStyle = isRemoteResizing

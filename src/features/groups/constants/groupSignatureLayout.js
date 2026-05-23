@@ -32,16 +32,15 @@ export const SIGNATURE_VISUAL_PADDING = 18;
 
 /**
  * Throttle interval (ms) untuk emit drag/resize ke socket.
- * 30ms = ~33 emit/detik, balance smoothness untuk peer dan bandwidth/CPU server.
+ * 50ms = ~20 emit/detik, mengikuti pola realtime collaboration:
+ * local movement instant, peer menerima snapshot realtime, database save final.
  *
- * Nilai ini sama dengan implementasi lama (PlacedSignatureGroup) yang
- * terbukti smooth. Sempat saya turunkan ke 16ms (60fps) untuk "lebih
- * smooth", tapi ternyata pattern repo lama dengan 30ms work better
- * karena server tidak overwhelmed dengan emit dan browser receiver
- * tidak ke-dispatch event terlalu sering.
+ * Jangan samakan emit socket dengan frame rate UI. Local drag/resize tetap
+ * direct DOM 60fps; socket hanya preview untuk user lain agar tidak terjadi
+ * backlog event saat network production naik.
  *
  * Catatan: ada konstanta serupa di config/timeouts.js
  * (`SOCKET_EMIT_THROTTLE_MS`) untuk personal signing. Sengaja duplikat
  * di sini untuk eksplisit per-feature, tapi nilai harus sama agar UX konsisten.
  */
-export const SIGNATURE_SOCKET_THROTTLE_MS = 30;
+export const SIGNATURE_SOCKET_THROTTLE_MS = 50;
