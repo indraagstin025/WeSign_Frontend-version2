@@ -55,7 +55,7 @@ export const socketService = {
       //   3. Setelah handshake polling sukses, browser auto-upgrade ke WS
       //      yang persist untuk subsequent traffic — latency tetap rendah
       //      setelah upgrade selesai (~1-2 detik di awal).
-      transports: ['websocket', 'polling'],
+      transports: ['polling', 'websocket'],
       upgrade: true,
       rememberUpgrade: true,
       reconnection: true,

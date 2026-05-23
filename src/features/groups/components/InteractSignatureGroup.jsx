@@ -123,7 +123,7 @@ const InteractSignatureGroup = ({
     () =>
       throttle((data) => {
         if (documentId && socketService.emitSignatureUpdate) {
-          socketService.emitSignatureUpdate(data);
+          socketService.emitSignatureUpdate(data, { volatile: true });
         } else if (documentId) {
           // fallback ke alias lama
           socketService.emitDrag?.(data);
@@ -478,7 +478,7 @@ const InteractSignatureGroup = ({
         // CPU thread. Native compositor handle smooth dengan GPU.
         transform: `translate3d(0px, 0px, 0px)`,
         // Transition smooth saat REMOTE update; kosong saat owner drag/resize.
-        transition: isDragging || isResizing ? 'none' : 'transform 0.1s linear, width 0.1s linear, height 0.1s linear',
+        transition: isDragging || isResizing ? 'none' : 'transform 0.1s linear',
         cursor: !canInteract ? 'default' : isDragging ? 'grabbing' : 'grab',
         pointerEvents: isLockedByRemote || isFinal ? 'none' : 'auto',
         touchAction: 'none',
