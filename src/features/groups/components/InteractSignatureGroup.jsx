@@ -92,6 +92,7 @@ const InteractSignatureGroup = ({
   const remoteFrameRef = useRef(null);
   const pendingResizeBoxRef = useRef(null);
   const pendingRemoteBoxRef = useRef(null);
+  const remoteVisibleBoxRef = useRef(null);
 
   // [RESIZE-PRECISION] Aspect ratio dari image natural — supaya resize lock
   // ratio (signature tidak distorsi) sama seperti DraggableSignature pattern.
@@ -130,6 +131,49 @@ const InteractSignatureGroup = ({
       pendingRef.current = null;
       if (nextBox) writeBoxToDom(element, nextBox);
     });
+  };
+
+  const lerp = (from, to, amount) => from + (to - from) * amount;
+
+  const animateRemoteBox = (element) => {
+    const target = pendingRemoteBoxRef.current;
+    if (!target) {
+      remoteFrameRef.current = null;
+      return;
+    }
+
+    const current = remoteVisibleBoxRef.current || positionRef.current || target;
+    const maxDelta = Math.max(
+      Math.abs(target.x - current.x),
+      Math.abs(target.y - current.y),
+      Math.abs(target.w - current.w),
+      Math.abs(target.h - current.h)
+    );
+
+    if (maxDelta > 180) {
+      remoteVisibleBoxRef.current = target;
+      writeBoxToDom(element, target);
+      remoteFrameRef.current = null;
+      return;
+    }
+
+    if (maxDelta < 0.4) {
+      remoteVisibleBoxRef.current = target;
+      writeBoxToDom(element, target);
+      remoteFrameRef.current = null;
+      return;
+    }
+
+    const next = {
+      x: lerp(current.x, target.x, 0.42),
+      y: lerp(current.y, target.y, 0.42),
+      w: lerp(current.w, target.w, 0.42),
+      h: lerp(current.h, target.h, 0.42),
+    };
+
+    remoteVisibleBoxRef.current = next;
+    writeBoxToDom(element, next);
+    remoteFrameRef.current = requestAnimationFrame(() => animateRemoteBox(element));
   };
 
   // ── 3. INTERACTION STATE ─────────────────────────────────────────────────
@@ -175,12 +219,22 @@ const InteractSignatureGroup = ({
       const calcW = data.width * parentRect.width + TOTAL_REDUCTION;
       const calcH = data.height * parentRect.height + TOTAL_REDUCTION;
 
-      scheduleBoxWrite(remoteFrameRef, pendingRemoteBoxRef, element, {
+      pendingRemoteBoxRef.current = {
         x: calcX,
         y: calcY,
         w: calcW,
         h: calcH,
-      });
+      };
+
+      if (!remoteVisibleBoxRef.current) {
+        remoteVisibleBoxRef.current = positionRef.current.w > 0
+          ? { ...positionRef.current }
+          : { ...pendingRemoteBoxRef.current };
+      }
+
+      if (!remoteFrameRef.current) {
+        remoteFrameRef.current = requestAnimationFrame(() => animateRemoteBox(element));
+      }
 
       positionRef.current = { x: calcX, y: calcY, w: calcW, h: calcH };
       updateAspectRatioFromBox(calcW, calcH);
@@ -206,6 +260,7 @@ const InteractSignatureGroup = ({
         remoteFrameRef.current = null;
       }
       pendingRemoteBoxRef.current = null;
+      remoteVisibleBoxRef.current = null;
     };
   }, [sig.id, isDragging, isResizing, isOwner]);
 
