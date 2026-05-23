@@ -7,6 +7,23 @@
 import { apiFetch } from '../../../services/api';
 import { withRetryCoalesce } from '../../../services/withRetryCoalesce';
 
+const shouldLogPositionUpdate = () => {
+  if (import.meta.env.DEV) return true;
+  if (typeof localStorage === 'undefined') return false;
+  return localStorage.getItem('debug:group-signature-position') === '1';
+};
+
+const logPositionUpdate = (signatureId, payload) => {
+  if (!shouldLogPositionUpdate()) return;
+  const fields = Object.keys(payload || {}).filter((key) => payload[key] !== undefined);
+  console.debug('[GroupSignatureAPI] updateDraftPosition', {
+    signatureId,
+    fields,
+    payload,
+    at: new Date().toISOString(),
+  });
+};
+
 /**
  * Simpan draft tanda tangan awal saat user pertama kali menaruh TTD di PDF.
  * @param {string} documentId
@@ -33,8 +50,9 @@ export const saveDraft = (documentId, payload) =>
  * @param {string} signatureId
  * @param {{ positionX, positionY, width, height, pageNumber }} payload
  */
-export const updateDraftPosition = (signatureId, payload) =>
-  withRetryCoalesce(
+export const updateDraftPosition = (signatureId, payload) => {
+  logPositionUpdate(signatureId, payload);
+  return withRetryCoalesce(
     `patch:position:${signatureId}`,
     (signal) =>
       apiFetch(`/group-signatures/${signatureId}/position`, {
@@ -48,6 +66,7 @@ export const updateDraftPosition = (signatureId, payload) =>
       outbox: { type: 'patch_position', signatureId, payload },
     }
   );
+};
 
 /**
  * Hapus draft tanda tangan (sebelum disimpan final).
