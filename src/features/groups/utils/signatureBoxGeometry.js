@@ -94,16 +94,51 @@ export const outerBoxToFraction = (box, parentRect) => ({
 });
 
 /**
- * Throttle leading-only — sama dengan utils/throttle.js project lama yang
- * terbukti work smooth.
+ * Throttle leading + trailing.
+ *
+ * Versi lama (leading-only) hanya fire call PERTAMA per window, sisanya
+ * di-drop. Untuk realtime preview ke peer (drag/resize emit socket), drop
+ * call terakhir = peer tidak dapat posisi terbaru di akhir window. Hasilnya
+ * preview di peer terlihat "lag" atau "patah" karena posisi yang diterima
+ * basi 1 throttle window.
+ *
+ * Versi trailing memastikan call TERAKHIR dalam window selalu di-fire setelah
+ * delay sisa. Combined dengan leading: call pertama langsung, call berikutnya
+ * di-coalesce dan fire di akhir window dengan args terbaru. Pattern standar
+ * untuk realtime emit (sama dengan lodash throttle default).
  */
 export function throttle(func, limit) {
-  let inThrottle;
+  let lastRun = 0;
+  let timeout = null;
+  let lastArgs = null;
+  let lastThis = null;
+
   return function (...args) {
-    if (!inThrottle) {
-      func.apply(this, args);
-      inThrottle = true;
-      setTimeout(() => (inThrottle = false), limit);
+    const now = Date.now();
+    const remaining = limit - (now - lastRun);
+
+    lastArgs = args;
+    lastThis = this;
+
+    if (remaining <= 0) {
+      if (timeout) {
+        clearTimeout(timeout);
+        timeout = null;
+      }
+      lastRun = now;
+      func.apply(lastThis, lastArgs);
+      lastArgs = null;
+      lastThis = null;
+    } else if (!timeout) {
+      timeout = setTimeout(() => {
+        lastRun = Date.now();
+        timeout = null;
+        if (lastArgs) {
+          func.apply(lastThis, lastArgs);
+          lastArgs = null;
+          lastThis = null;
+        }
+      }, remaining);
     }
   };
 }

@@ -111,20 +111,30 @@ export function useInteractSignatureGroup({
       Math.abs(target.h - current.h)
     );
 
-    // Snap kalau jump terlalu jauh (mis. user lain teleport / window resize),
-    // atau sudah cukup dekat (hindari oscillating sub-pixel).
-    if (maxDelta > 180 || maxDelta < 0.4) {
+    // [REMOTE-SMOOTH] Snap HANYA kalau sudah cukup dekat (hindari oscillating
+    // sub-pixel). Sebelumnya juga snap kalau maxDelta > 180 untuk handle
+    // jump/teleport, tapi resize legitimate sering melebihi 180px (mis.
+    // user lain drag corner cepat) → preview terlihat patah/teleport.
+    // Lebih baik tetap interpolate — kalau emang teleport, lerp 0.25 cukup
+    // cepat ke target dalam ~3-4 frame dan visual feel-nya tetap natural.
+    if (maxDelta < 0.4) {
       remoteVisibleBoxRef.current = target;
       writeBoxToDom(element, target);
       remoteFrameRef.current = null;
       return;
     }
 
+    // [REMOTE-SMOOTH] Lerp factor diturunkan dari 0.42 → 0.25. Sebelumnya
+    // 0.42 = 42% jarak per frame, jadi target tercapai dalam ~3 frame
+    // tapi overshoot di awal terlihat "menyentak". 0.25 = 25% per frame =
+    // ~6 frame ease-out yang lebih halus. Combined dengan throttle
+    // trailing (yang fire posisi terbaru di akhir window), preview peer
+    // akan smooth match owner movement.
     const next = {
-      x: lerp(current.x, target.x, 0.42),
-      y: lerp(current.y, target.y, 0.42),
-      w: lerp(current.w, target.w, 0.42),
-      h: lerp(current.h, target.h, 0.42),
+      x: lerp(current.x, target.x, 0.25),
+      y: lerp(current.y, target.y, 0.25),
+      w: lerp(current.w, target.w, 0.25),
+      h: lerp(current.h, target.h, 0.25),
     };
     remoteVisibleBoxRef.current = next;
     writeBoxToDom(element, next);
