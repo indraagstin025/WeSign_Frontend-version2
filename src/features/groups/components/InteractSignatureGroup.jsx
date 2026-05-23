@@ -155,7 +155,7 @@ const InteractSignatureGroup = ({
       const calcH = data.height * parentRect.height + TOTAL_REDUCTION;
 
       // Direct DOM update — bypass React render
-      element.style.transform = `translate3d(${calcX}px, ${calcY}px, 0)`;
+      element.style.transform = `translate(${calcX}px, ${calcY}px)`;
       element.style.width = `${calcW}px`;
       element.style.height = `${calcH}px`;
 
@@ -204,7 +204,7 @@ const InteractSignatureGroup = ({
 
         positionRef.current = { x: calcX, y: calcY, w: calcW, h: calcH };
         updateAspectRatioFromBox(calcW, calcH);
-        element.style.transform = `translate3d(${calcX}px, ${calcY}px, 0)`;
+        element.style.transform = `translate(${calcX}px, ${calcY}px)`;
         element.style.width = `${calcW}px`;
         element.style.height = `${calcH}px`;
       }
@@ -252,7 +252,7 @@ const InteractSignatureGroup = ({
           move(event) {
             positionRef.current.x += event.dx;
             positionRef.current.y += event.dy;
-            element.style.transform = `translate3d(${positionRef.current.x}px, ${positionRef.current.y}px, 0)`;
+            element.style.transform = `translate(${positionRef.current.x}px, ${positionRef.current.y}px)`;
 
             // Emit socket throttled
             if (documentId) {
@@ -391,7 +391,7 @@ const InteractSignatureGroup = ({
             positionRef.current = { x: finalX, y: finalY, w: finalW, h: finalH };
             element.style.width = `${finalW}px`;
             element.style.height = `${finalH}px`;
-            element.style.transform = `translate3d(${finalX}px, ${finalY}px, 0)`;
+            element.style.transform = `translate(${finalX}px, ${finalY}px)`;
 
             if (documentId) {
               // [PERF] Pakai cached parentRect, bukan re-calc per move.
@@ -473,18 +473,12 @@ const InteractSignatureGroup = ({
         left: 0,
         top: 0,
         // Init transform — useEffect calculatePosition akan replace.
-        // [PERF] translateZ(0) promote ke GPU layer (composited), supaya
-        // perubahan transform/width/height tidak trigger paint+layout di
-        // CPU thread. Native compositor handle smooth dengan GPU.
-        transform: `translate3d(0px, 0px, 0px)`,
+        transform: `translate(0px, 0px)`,
         // Transition smooth saat REMOTE update; kosong saat owner drag/resize.
         transition: isDragging || isResizing ? 'none' : 'transform 0.1s linear',
         cursor: !canInteract ? 'default' : isDragging ? 'grabbing' : 'grab',
         pointerEvents: isLockedByRemote || isFinal ? 'none' : 'auto',
         touchAction: 'none',
-        // [PERF] Tell browser kita akan animate transform + dimensions.
-        // Browser akan optimize dengan layer compositing.
-        willChange: canInteract ? 'transform' : 'auto',
       }}
       data-id={sig.id}
       onMouseDown={(e) => {
@@ -597,7 +591,7 @@ const InteractSignatureGroup = ({
                     const nextY = Math.max(0, Math.min(parentRect.height - nextH, current.y));
                     positionRef.current = { ...current, y: nextY, h: nextH };
                     elementRef.current.style.height = `${nextH}px`;
-                    elementRef.current.style.transform = `translate3d(${current.x}px, ${nextY}px, 0)`;
+                    elementRef.current.style.transform = `translate(${current.x}px, ${nextY}px)`;
                     aspectRatioRef.current = naturalRatio;
                     naturalSizeAppliedRef.current = true;
 
@@ -623,18 +617,6 @@ const InteractSignatureGroup = ({
                   if (!aspectRatioRef.current && current.w > TOTAL_REDUCTION && current.h > TOTAL_REDUCTION) {
                     updateAspectRatioFromBox(current.w, current.h);
                   }
-                }}
-                style={{
-                  // [PERF] Promote ke GPU layer supaya resize tidak trigger
-                  // CPU re-rasterize tiap frame. transform: translateZ(0) bikin
-                  // browser cache image di GPU texture, scaling jadi murah.
-                  transform: 'translateZ(0)',
-                  // Saat user drag/resize, gunakan crisp pixel scaling supaya
-                  // image tidak blur saat ukuran berubah cepat. Setelah idle,
-                  // bisa kembali ke high-quality tapi untuk realtime pakai
-                  // hint yang lebih cepat di GPU.
-                  imageRendering: isResizing ? 'pixelated' : 'auto',
-                  willChange: isDragging || isResizing ? 'transform, width, height' : 'auto',
                 }}
               />
             ) : (

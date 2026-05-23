@@ -301,7 +301,7 @@ const GroupSigningPage = () => {
                 onLoadSuccess={onDocumentLoadSuccess}
                 loading={null}
               >
-                <div className={`relative group transition-all duration-300 ${isRendering ? 'opacity-0 scale-[0.97] blur-md' : 'opacity-100 scale-100 blur-0'}`}>
+                <div className="relative group">
                   <Page
                     pageNumber={pageNumber}
                     renderTextLayer={false}
