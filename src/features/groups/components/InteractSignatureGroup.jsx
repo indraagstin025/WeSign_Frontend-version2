@@ -273,7 +273,13 @@ const InteractSignatureGroup = ({
         const calcH = sig.height * parentRect.height + TOTAL_REDUCTION;
 
         positionRef.current = { x: calcX, y: calcY, w: calcW, h: calcH };
-        updateAspectRatioFromBox(calcW, calcH);
+        // [FIX RESIZE-BLOWUP] Jangan timpa aspect ratio kalau sudah ke-set
+        // dari onLoad image (natural ratio = paling akurat). Box ratio dari
+        // backend bisa stale/distorted dari session resize sebelumnya. Hanya
+        // pakai box ratio kalau belum ada anchor sama sekali.
+        if (!aspectRatioRef.current) {
+          updateAspectRatioFromBox(calcW, calcH);
+        }
         element.style.transform = `translate3d(${calcX}px, ${calcY}px, 0)`;
         element.style.width = `${calcW}px`;
         element.style.height = `${calcH}px`;
@@ -409,7 +415,8 @@ const InteractSignatureGroup = ({
             // [RESIZE-PRECISION] Pattern aspect-ratio lock dari useDraggableSignature
             // (versi react-draggable yang user bilang lebih smooth/presisi):
             //   1. Hitung newW dari delta WIDTH saja
-            //   2. Hitung newH = newW / ratio (lock aspect)
+            //   2. Hitung newH = outerHeightFromOuterWidth(newW, ratio)
+            //      — padding-aware conversion (lihat catatan FIX di bawah)
             //   3. Adjust posisi x/y kalau resize dari edge kiri/atas
             //   4. Math.round() semua nilai pixel — hindari subpixel blur
             const boxRatio = Math.max(1, oldW - TOTAL_REDUCTION) / Math.max(1, oldH - TOTAL_REDUCTION);
@@ -421,11 +428,20 @@ const InteractSignatureGroup = ({
             // delta vertikal terbesar.
             const dW = (deltaRect.right || 0) - (deltaRect.left || 0);
             let newW = Math.max(oldW + dW, 80);
-            // Lock height ke ratio image (tidak independent dari deltaRect.top/bottom).
-            let newH = Math.max(newW / ratio, 50);
-            if (newW / ratio < 50) {
-              newH = 50;
-              newW = newH * ratio;
+            // [FIX RESIZE-BLOWUP] `ratio` adalah inner aspect ratio (image
+            // content), sedangkan newW + newH yang di-track di sini adalah
+            // outer box (sudah include CSS padding + border = TOTAL_REDUCTION).
+            // Bug sebelumnya: `newH = newW / ratio` membagi outer width dengan
+            // inner ratio → tinggi systematically lebih kecil dari yang
+            // seharusnya, box jadi lebih lebar tipis tiap iterasi. Pakai
+            // `outerHeightFromOuterWidth(outerW, ratio)` yang aware padding
+            // supaya outer↔inner conversion konsisten.
+            let newH = Math.max(outerHeightFromOuterWidth(newW, ratio), 50);
+            if (newH === 50) {
+              // Height clamped — recompute outer width supaya tetap match
+              // inner ratio (newH-padding bagian inner, balikkan ke outer).
+              const innerH = Math.max(1, newH - TOTAL_REDUCTION);
+              newW = Math.max(80, Math.round(innerH * ratio + TOTAL_REDUCTION));
             }
 
             // Adjust posisi: kalau resize dari edge kiri (NW/SW), pivot di kanan;
@@ -452,7 +468,14 @@ const InteractSignatureGroup = ({
             const finalY = Math.round(y);
 
             positionRef.current = { x: finalX, y: finalY, w: finalW, h: finalH };
-            updateAspectRatioFromBox(finalW, finalH);
+            // [FIX RESIZE-BLOWUP] JANGAN re-derive ratio dari box selama
+            // resize sedang berlangsung. Box current adalah hasil komputasi
+            // dari ratio yang sama; kalau ratio di-recompute dari box,
+            // floating-point drift + padding mismatch akan kumulatif memperlebar
+            // box di tiap iterasi. Ratio adalah invariant per session resize —
+            // sudah di-anchor di start() dari natural image ratio (atau box
+            // ratio sebagai fallback).
+            // updateAspectRatioFromBox(finalW, finalH);  // ← removed
             element.style.width = `${finalW}px`;
             element.style.height = `${finalH}px`;
             element.style.transform = `translate3d(${finalX}px, ${finalY}px, 0)`;
