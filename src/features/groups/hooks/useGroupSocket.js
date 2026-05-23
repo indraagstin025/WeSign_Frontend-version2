@@ -48,6 +48,8 @@ export const useGroupSocket = ({
 }) => {
   const [activeUsers, setActiveUsers] = useState([]);
   const [socketStatus, setSocketStatus] = useState({ connected: false });
+  const incomingPositionUpdatesRef = useRef(new Map());
+  const flushPositionTimerRef = useRef(null);
 
   // Dedup guard: cegah double alert/state-update dari backend broadcast
   // `signature_saved` ke 2 room (document room + group room). Sekali user X
@@ -173,6 +175,52 @@ export const useGroupSocket = ({
 
     socketService.on('add_signature_live', handleAddSig);
     socketService.on('remove_signature_live', handleRemoveSig);
+
+    const flushPositionUpdatesToState = () => {
+      if (!setSignatures || incomingPositionUpdatesRef.current.size === 0) return;
+
+      setSignatures((prev) => {
+        let hasChanges = false;
+        const next = prev.map((sig) => {
+          const data = incomingPositionUpdatesRef.current.get(sig.id);
+          if (!data) return sig;
+
+          if (String(sig.userId || sig.signerId) === String(currentUserId)) {
+            return sig;
+          }
+
+          hasChanges = true;
+          return {
+            ...sig,
+            positionX: data.positionX ?? sig.positionX,
+            positionY: data.positionY ?? sig.positionY,
+            width: data.width ?? sig.width,
+            height: data.height ?? sig.height,
+            pageNumber: data.pageNumber ?? sig.pageNumber,
+          };
+        });
+
+        return hasChanges ? next : prev;
+      });
+
+      incomingPositionUpdatesRef.current.clear();
+    };
+
+    const handlePositionUpdate = (data) => {
+      if (!data?.signatureId || !setSignatures) return;
+      incomingPositionUpdatesRef.current.set(data.signatureId, data);
+
+      if (flushPositionTimerRef.current) {
+        clearTimeout(flushPositionTimerRef.current);
+      }
+
+      flushPositionTimerRef.current = setTimeout(() => {
+        flushPositionTimerRef.current = null;
+        flushPositionUpdatesToState();
+      }, 500);
+    };
+
+    socketService.on('update_signature_position', handlePositionUpdate);
 
     // ── Signature final dari user lain — NO REFRESH ───────────────────────
     const handleSigSaved = (data) => {
@@ -301,11 +349,17 @@ export const useGroupSocket = ({
       socketService.off('current_room_users', handleCurrentUsers);
       socketService.off('add_signature_live', handleAddSig);
       socketService.off('remove_signature_live', handleRemoveSig);
+      socketService.off('update_signature_position', handlePositionUpdate);
       socketService.off('signature_saved', handleSigSaved);
       socketService.off('group_member_update', handleGroupMemberUpdate);
       socketService.off('group_info_update', handleGroupInfoUpdate);
       socketService.offGroupDocumentUpdate(handleGroupDocUpdate);
       if (typeof unsubConn === 'function') unsubConn();
+      if (flushPositionTimerRef.current) {
+        clearTimeout(flushPositionTimerRef.current);
+        flushPositionTimerRef.current = null;
+      }
+      incomingPositionUpdatesRef.current.clear();
       // [CR-2] Defense-in-depth: clear Set di cleanup juga, supaya next
       // mount dimulai dengan tracker bersih (selain reset di setup).
       alertedSignersRef.current.clear();
