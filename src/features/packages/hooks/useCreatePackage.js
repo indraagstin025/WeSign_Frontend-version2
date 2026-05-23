@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { uploadPackageDocuments } from '../api/packageService';
-import { pdfjs } from 'react-pdf';
+import { pdfjs } from '../../../config/pdfWorker.js';
 import { createLogger } from '../../../utils/logger';
 
 const logger = createLogger('CreatePackage');

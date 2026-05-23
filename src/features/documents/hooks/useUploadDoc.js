@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { pdfjs } from 'react-pdf';
+import { pdfjs } from '../../../config/pdfWorker.js';
 import { uploadDocument } from '../api/docService';
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from '../constants/uploadLimits';
 import { createLogger } from '../../../utils/logger';

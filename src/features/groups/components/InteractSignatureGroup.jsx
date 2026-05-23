@@ -2,7 +2,11 @@ import { useEffect, useRef, useState, useMemo, memo } from 'react';
 import interact from 'interactjs';
 import { X } from 'lucide-react';
 import { socketService } from '../../../services/socketService';
-import { SIGNATURE_SOCKET_THROTTLE_MS } from '../constants/groupSignatureLayout';
+import {
+  DEFAULT_SIGNATURE_HEIGHT,
+  DEFAULT_SIGNATURE_WIDTH,
+  SIGNATURE_SOCKET_THROTTLE_MS,
+} from '../constants/groupSignatureLayout';
 
 /**
  * @file InteractSignatureGroup.jsx
@@ -61,6 +65,7 @@ const InteractSignatureGroup = ({
   readOnly = false,
 }) => {
   const elementRef = useRef(null);
+  const naturalSizeAppliedRef = useRef(false);
 
   // ── 1. OWNERSHIP CHECK ──────────────────────────────────────────────────
   const isOwner = useMemo(() => {
@@ -95,6 +100,16 @@ const InteractSignatureGroup = ({
     const innerH = Math.max(1, outerH - TOTAL_REDUCTION);
     aspectRatioRef.current = innerW / innerH;
   };
+
+  const outerHeightFromOuterWidth = (outerW, ratio) => {
+    const innerW = Math.max(1, outerW - TOTAL_REDUCTION);
+    const innerH = innerW / (ratio || 1);
+    return Math.max(1, innerH + TOTAL_REDUCTION);
+  };
+
+  const isDefaultDropSize = () =>
+    Math.abs((sig.width || 0) - DEFAULT_SIGNATURE_WIDTH) < 0.001 &&
+    Math.abs((sig.height || 0) - DEFAULT_SIGNATURE_HEIGHT) < 0.001;
 
   // ── 3. INTERACTION STATE ─────────────────────────────────────────────────
   const [isActive, setIsActive] = useState(false);
@@ -310,6 +325,7 @@ const InteractSignatureGroup = ({
             resizingFromHandleRef.current = true;
             setIsResizing(true);
             setIsActive(true);
+            updateAspectRatioFromBox(positionRef.current.w, positionRef.current.h);
             // [PERF] Cache parentRect saat resize start — hindari
             // getBoundingClientRect() per move event (force layout reflow
             // setiap call, expensive saat di tengah resize 60fps).
@@ -326,18 +342,27 @@ const InteractSignatureGroup = ({
             //   2. Hitung newH = newW / ratio (lock aspect)
             //   3. Adjust posisi x/y kalau resize dari edge kiri/atas
             //   4. Math.round() semua nilai pixel — hindari subpixel blur
-            const boxRatio = Math.max(1, oldW - TOTAL_REDUCTION) / Math.max(1, oldH - TOTAL_REDUCTION);
-            const ratio = aspectRatioRef.current || boxRatio;
+            const ratio = aspectRatioRef.current ||
+              (Math.max(1, oldW - TOTAL_REDUCTION) / Math.max(1, oldH - TOTAL_REDUCTION));
 
-            // Hitung perubahan width dari delta horizontal saja (left atau right edge)
-            const dW = (deltaRect.right || 0) - (deltaRect.left || 0);
+            // Hitung perubahan ukuran dari horizontal ATAU vertical movement.
+            // Sebelumnya hanya pakai delta horizontal, jadi saat resize dari
+            // NW/NE/SW dengan gerakan dominan vertikal, peer terlihat tidak
+            // terkunci aspect ratio. Delta vertical dikonversi ke width
+            // equivalent agar semua corner terasa sama.
+            const dWFromX = (deltaRect.right || 0) - (deltaRect.left || 0);
+            const dHFromY = (deltaRect.bottom || 0) - (deltaRect.top || 0);
+            const dWFromY = dHFromY * ratio;
+            const dW = Math.abs(dWFromX) >= Math.abs(dWFromY) ? dWFromX : dWFromY;
             let newW = Math.max(oldW + dW, 80);
-            // Lock height ke ratio image (tidak independent dari deltaRect.top/bottom)
-            let newH = Math.max(newW / ratio, 50);
-            // Kalau height yang lock sentuh min 50, fallback adjust width
-            if (newW / ratio < 50) {
+            // Lock height ke ratio inner signature. Outer box punya padding,
+            // jadi width perlu dikurangi TOTAL_REDUCTION dulu, lalu height
+            // ditambah lagi. Kalau langsung `newW / ratio`, padding ikut
+            // masuk rasio dan box bisa memanjang/geser saat resize.
+            let newH = Math.max(outerHeightFromOuterWidth(newW, ratio), 50);
+            if (outerHeightFromOuterWidth(newW, ratio) < 50) {
               newH = 50;
-              newW = newH * ratio;
+              newW = ((newH - TOTAL_REDUCTION) * ratio) + TOTAL_REDUCTION;
             }
 
             // Adjust posisi: kalau resize dari edge kiri (NW/SW), pivot di kanan;
@@ -364,7 +389,6 @@ const InteractSignatureGroup = ({
             const finalY = Math.round(y);
 
             positionRef.current = { x: finalX, y: finalY, w: finalW, h: finalH };
-            updateAspectRatioFromBox(finalW, finalH);
             element.style.width = `${finalW}px`;
             element.style.height = `${finalH}px`;
             element.style.transform = `translate3d(${finalX}px, ${finalY}px, 0)`;
@@ -454,7 +478,7 @@ const InteractSignatureGroup = ({
         // CPU thread. Native compositor handle smooth dengan GPU.
         transform: `translate3d(0px, 0px, 0px)`,
         // Transition smooth saat REMOTE update; kosong saat owner drag/resize.
-        transition: isDragging || isResizing ? 'none' : 'transform 0.1s linear',
+        transition: isDragging || isResizing ? 'none' : 'transform 0.1s linear, width 0.1s linear, height 0.1s linear',
         cursor: !canInteract ? 'default' : isDragging ? 'grabbing' : 'grab',
         pointerEvents: isLockedByRemote || isFinal ? 'none' : 'auto',
         touchAction: 'none',
@@ -544,17 +568,60 @@ const InteractSignatureGroup = ({
                 className="w-full h-full object-contain pointer-events-none select-none"
                 draggable={false}
                 onLoad={(e) => {
-                  // [RESIZE-PRECISION] Update aspectRatioRef dari natural
-                  // image ratio supaya resize lock proporsional ke gambar
-                  // asli (signature canvas biasanya 2:1, tapi varies).
                   const { naturalWidth, naturalHeight } = e.target;
-                  if (!aspectRatioRef.current && naturalWidth > 0 && naturalHeight > 0) {
-                    const current = positionRef.current;
-                    if (current.w > TOTAL_REDUCTION && current.h > TOTAL_REDUCTION) {
-                      updateAspectRatioFromBox(current.w, current.h);
-                    } else {
-                      aspectRatioRef.current = naturalWidth / naturalHeight;
+                  if (naturalWidth <= 0 || naturalHeight <= 0) return;
+
+                  const naturalRatio = naturalWidth / naturalHeight;
+                  const current = positionRef.current;
+
+                  // Saat pertama drop, tinggi awal masih default (0.1 page).
+                  // Untuk signature yang rasionya jelas bukan 1:1, sesuaikan
+                  // box ke rasio gambar asli agar tidak tampak terlalu
+                  // persegi panjang. Kalau gambar/canvas terbaca 1:1, jangan
+                  // paksa square karena itu bug yang sebelumnya muncul saat
+                  // resize.
+                  const shouldApplyNaturalRatio =
+                    !naturalSizeAppliedRef.current &&
+                    canInteract &&
+                    isDefaultDropSize() &&
+                    current.w > TOTAL_REDUCTION &&
+                    current.h > TOTAL_REDUCTION &&
+                    (naturalRatio > 1.2 || naturalRatio < 0.85);
+
+                  if (shouldApplyNaturalRatio) {
+                    const parent = elementRef.current?.parentElement;
+                    const parentRect = parent?.getBoundingClientRect();
+                    if (!parentRect?.width || !parentRect?.height) return;
+
+                    const nextH = Math.round(outerHeightFromOuterWidth(current.w, naturalRatio));
+                    const nextY = Math.max(0, Math.min(parentRect.height - nextH, current.y));
+                    positionRef.current = { ...current, y: nextY, h: nextH };
+                    elementRef.current.style.height = `${nextH}px`;
+                    elementRef.current.style.transform = `translate3d(${current.x}px, ${nextY}px, 0)`;
+                    aspectRatioRef.current = naturalRatio;
+                    naturalSizeAppliedRef.current = true;
+
+                    const innerH = Math.max(0, nextH - TOTAL_REDUCTION) / parentRect.height;
+                    const innerY = (nextY + CONTENT_OFFSET) / parentRect.height;
+                    onUpdateSize?.(sig.id, sig.width, innerH);
+                    onUpdatePosition?.(sig.id, sig.positionX, innerY);
+
+                    if (documentId) {
+                      socketService.emitSignatureUpdate?.({
+                        documentId,
+                        signatureId: sig.id,
+                        positionX: sig.positionX,
+                        positionY: innerY,
+                        width: sig.width,
+                        height: innerH,
+                        pageNumber: sig.pageNumber,
+                      });
                     }
+                    return;
+                  }
+
+                  if (!aspectRatioRef.current && current.w > TOTAL_REDUCTION && current.h > TOTAL_REDUCTION) {
+                    updateAspectRatioFromBox(current.w, current.h);
                   }
                 }}
                 style={{

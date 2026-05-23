@@ -21,15 +21,13 @@
  * (`pdfjs-dist/build/pdf.worker.min.mjs`) — tidak depend pada CDN unpkg.
  */
 
-import { pdfjs } from 'react-pdf';
+import { Document, Page, pdfjs } from 'react-pdf';
+import pdfWorkerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
-// Idempotent: kalau workerSrc sudah di-set (mis. hot-reload di dev),
-// jangan re-assign supaya worker tidak ke-terminate.
-if (!pdfjs.GlobalWorkerOptions.workerSrc) {
-  pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-    'pdfjs-dist/build/pdf.worker.min.mjs',
-    import.meta.url,
-  ).toString();
-}
+// Set eksplisit setiap wrapper ini di-import. Vite dev/HMR kadang membuat
+// route chunk memakai default pdf.js worker (`pdf.worker.mjs`) sebelum entry
+// point selesai dievaluasi. Dengan export Document/Page dari wrapper ini,
+// semua page PDF melewati assignment yang sama.
+pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
 
-export { pdfjs };
+export { Document, Page, pdfjs };

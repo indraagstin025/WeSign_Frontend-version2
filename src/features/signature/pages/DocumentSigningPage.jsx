@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AlertCircle } from 'lucide-react';
-import { Document, Page } from 'react-pdf';
+import { Document, Page } from '../../../config/pdfWorker.js';
 
 // PDF.js worker singleton — sudah di-init di main.jsx via config/pdfWorker.js.
 

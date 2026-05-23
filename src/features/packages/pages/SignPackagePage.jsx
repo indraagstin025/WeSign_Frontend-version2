@@ -7,7 +7,7 @@ import {
   CheckCircle2,
   ChevronRight
 } from 'lucide-react';
-import { Document, Page } from 'react-pdf';
+import { Document, Page } from '../../../config/pdfWorker.js';
 
 // PDF.js worker singleton — sudah di-init di main.jsx via config/pdfWorker.js.
 
