@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useGroupDraggableRef } from './useGroupDraggableRef';
 import { socketService } from '../../../services/socketService';
-import {
+import { 
   SIGNATURE_VISUAL_PADDING,
   SIGNATURE_SOCKET_THROTTLE_MS,
 } from '../constants/groupSignatureLayout';
