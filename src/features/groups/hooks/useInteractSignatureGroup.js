@@ -320,40 +320,20 @@ export function useInteractSignatureGroup({
             cachedParentRectRef.current = parent ? parent.getBoundingClientRect() : null;
           },
           move(event) {
-            const { x: oldX, y: oldY, w: oldW, h: oldH } = positionRef.current;
-            const { deltaRect, edges } = event;
+            const { x: oldX, y: oldY } = positionRef.current;
+            const { deltaRect, rect } = event;
 
-            const ratio = aspectRatioRef.current || innerRatioFromBox(oldW, oldH);
+            // Aspect ratio lock dihitung oleh interact.js modifier. Pakai
+            // rect + deltaRect hasil modifier agar semua corner punya pivot
+            // dan arah resize yang konsisten.
+            let newW = Math.max(rect.width, 80);
 
-            // Hitung perubahan ukuran dari horizontal ATAU vertical movement.
-            // Konversi delta vertikal → width equivalent supaya semua corner
-            // (terutama NW/NE/SW dengan gerakan dominan vertikal) tetap
-            // ratio-locked secara konsisten.
-            const dWFromX = (deltaRect.right || 0) - (deltaRect.left || 0);
-            const dHFromY = (deltaRect.bottom || 0) - (deltaRect.top || 0);
-            const dWFromY = dHFromY * ratio;
-            const dW = Math.abs(dWFromX) >= Math.abs(dWFromY) ? dWFromX : dWFromY;
-            let newW = Math.max(oldW + dW, 80);
+            let newH = Math.max(rect.height, 50);
 
-            // Lock height ke inner aspect ratio (padding-aware via helper).
-            // Kalau langsung `newW / ratio`, padding TOTAL_REDUCTION ikut
-            // masuk rasio dan box bisa drift saat resize berkali-kali.
-            // [PERF] Compute sekali, reuse — sebelumnya helper dipanggil 2x
-            // (sekali untuk value, sekali untuk min check).
-            let newH = outerHeightFromOuterWidth(newW, ratio);
-            if (newH < 50) {
-              newH = 50;
-              newW = ((newH - TOTAL_REDUCTION) * ratio) + TOTAL_REDUCTION;
-            }
+            let x = oldX + (deltaRect.left || 0);
+            let y = oldY + (deltaRect.top || 0);
 
-            // Adjust posisi: kalau resize dari edge kiri (NW/SW), pivot di kanan;
-            // kalau dari edge atas (NW/NE), pivot di bawah.
-            let x = oldX;
-            let y = oldY;
-            if (edges.left) x = oldX + oldW - newW;
-            if (edges.top) y = oldY + oldH - newH;
-
-            // Boundary clamp manual (lebih reliable dari restrictRect saat ratio-lock).
+            // Boundary clamp manual agar signature tetap di dalam halaman PDF.
             const parentRect = cachedParentRectRef.current;
             if (parentRect) {
               x = Math.max(0, Math.min(parentRect.width - newW, x));
@@ -408,7 +388,12 @@ export function useInteractSignatureGroup({
           },
         },
         modifiers: [
-          interact.modifiers.restrictSize({ min: { width: 80, height: 50 } }),
+          interact.modifiers.aspectRatio({
+            ratio: 'preserve',
+            modifiers: [
+              interact.modifiers.restrictSize({ min: { width: 80, height: 50 } }),
+            ],
+          }),
         ],
       });
 
