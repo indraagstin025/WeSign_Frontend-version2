@@ -220,11 +220,12 @@ export const removeMember = (groupId, userIdToRemove) =>
  * @param {string} groupId
  * @param {FormData} formData - Harus berisi: file (PDF), title, signerUserIds (JSON string)
  */
-export const uploadGroupDocument = (groupId, formData) =>
+export const uploadGroupDocument = (groupId, formData, options = {}) =>
   apiFetch(`/groups/${groupId}/documents/upload`, {
     method: 'POST',
     body: formData,
     // apiFetch otomatis hapus Content-Type jika body instanceof FormData
+    ...options,
   }).then((res) => {
     invalidateGroupCache(groupId);
     return res;

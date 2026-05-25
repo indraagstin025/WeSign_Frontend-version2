@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'react-toastify';
-import { getPackageDetails, signPackage } from '../api/packageService';
+import { getPackageDetails, signPackage, invalidatePackageCache } from '../api/packageService';
 import { getDocumentFile } from '../../documents/api/docService';
 import { createLogger } from '../../../utils/logger';
 import {
@@ -14,6 +14,21 @@ import {
 } from '../constants/layout';
 
 const logger = createLogger('PackageDraft');
+
+const isNetworkOrTimeoutError = (err) => {
+  const message = err?.message || '';
+  return (
+    (typeof navigator !== 'undefined' && !navigator.onLine) ||
+    message.includes('Koneksi internet') ||
+    message.includes('Waktu tunggu') ||
+    message.includes('Failed to fetch') ||
+    message.includes('fetch failed') ||
+    message.includes('NetworkError')
+  );
+};
+
+const isCompletedStatus = (status) =>
+  String(status || '').toLowerCase() === 'completed';
 
 /**
  * @hook useSignPackage
@@ -308,6 +323,44 @@ export const useSignPackage = (packageId) => {
         });
       }
     } catch (err) {
+      if (isNetworkOrTimeoutError(err)) {
+        try {
+          logger.warn('sign package network error, verifying package status:', err.message);
+          invalidatePackageCache(packageId);
+          const verifyResponse = await getPackageDetails(packageId);
+          const latestPackage = verifyResponse?.data;
+
+          if (isCompletedStatus(latestPackage?.status)) {
+            clearDraft();
+            setStatusModal({
+              isOpen: true,
+              type: 'success',
+              title: 'Penandatanganan Berhasil',
+              message: 'Koneksi sempat terputus, tetapi server sudah menyelesaikan penandatanganan paket.',
+              onConfirm: () => navigate('/dashboard/packages'),
+            });
+            return;
+          }
+
+          setStatusModal({
+            isOpen: true,
+            type: 'warning',
+            title: 'Status Belum Terkonfirmasi',
+            message: 'Koneksi terputus saat mengonfirmasi hasil tanda tangan paket. Status paket belum selesai saat dicek ulang. Silakan coba lagi setelah koneksi stabil.',
+          });
+          return;
+        } catch (verifyErr) {
+          logger.warn('failed verify package signing status after network error:', verifyErr.message);
+          setStatusModal({
+            isOpen: true,
+            type: 'warning',
+            title: 'Status Belum Terkonfirmasi',
+            message: 'Koneksi terputus dan status paket belum bisa diverifikasi. Muat ulang halaman setelah koneksi stabil sebelum mencoba lagi.',
+          });
+          return;
+        }
+      }
+
       setStatusModal({
         isOpen: true,
         type: 'error',

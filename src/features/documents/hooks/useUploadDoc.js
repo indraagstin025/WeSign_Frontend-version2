@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { pdfjs } from 'react-pdf';
 import { uploadDocument } from '../api/docService';
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from '../constants/uploadLimits';
@@ -20,6 +20,7 @@ const log = createLogger('UploadDoc');
  * @param {() => void} onClose - Callback saat modal ditutup
  */
 export const useUploadDoc = (onSuccess, onClose) => {
+  const uploadIdempotencyKeyRef = useRef(null);
   const [file, setFile] = useState(null);
   const [title, setTitle] = useState('');
   const [type, setType] = useState('General');
@@ -122,6 +123,7 @@ export const useUploadDoc = (onSuccess, onClose) => {
       }
 
       // 3. Sukses → siapkan untuk submit
+      uploadIdempotencyKeyRef.current = null;
       setFile(selectedFile);
       if (!title) {
         setTitle(selectedFile.name.replace(/\.[^/.]+$/, ''));
@@ -155,6 +157,9 @@ export const useUploadDoc = (onSuccess, onClose) => {
     try {
       const response = await uploadDocument(formData, {
         onProgress: (percent) => setUploadProgress(percent),
+        idempotencyKey:
+          uploadIdempotencyKeyRef.current ||
+          (uploadIdempotencyKeyRef.current = crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`),
       });
 
       if (response.status === 'success') {
@@ -179,6 +184,7 @@ export const useUploadDoc = (onSuccess, onClose) => {
   const handleClose = () => {
     if (loading || validating) return;
     setFile(null);
+    uploadIdempotencyKeyRef.current = null;
     setTitle('');
     setError(null);
     setSuccess(false);

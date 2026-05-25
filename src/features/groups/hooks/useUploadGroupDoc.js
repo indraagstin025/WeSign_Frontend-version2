@@ -44,6 +44,7 @@ const inferErrorType = (err) => {
  * @param {() => void} [args.onClose]
  */
 export function useUploadGroupDoc({ groupId, members = [], isOpen, onSuccess, onClose }) {
+  const uploadIdempotencyKeyRef = useRef(null);
   const [title, setTitle] = useState('');
   const [file, setFile] = useState(null);
   const [selectedSigners, setSelectedSigners] = useState([]);
@@ -53,6 +54,7 @@ export function useUploadGroupDoc({ groupId, members = [], isOpen, onSuccess, on
   const fileInputRef = useRef(null);
 
   const resetState = () => {
+    uploadIdempotencyKeyRef.current = null;
     setTitle('');
     setFile(null);
     setSelectedSigners([]);
@@ -67,6 +69,7 @@ export function useUploadGroupDoc({ groupId, members = [], isOpen, onSuccess, on
       setError({ message: validationError, type: 'validation' });
       return;
     }
+    uploadIdempotencyKeyRef.current = null;
     setFile(selectedFile);
     setError(null);
     if (!title) {
@@ -133,7 +136,11 @@ export function useUploadGroupDoc({ groupId, members = [], isOpen, onSuccess, on
         formData.append('signerUserIds', JSON.stringify(selectedSigners));
       }
 
-      const res = await uploadGroupDocument(groupId, formData);
+      const res = await uploadGroupDocument(groupId, formData, {
+        idempotencyKey:
+          uploadIdempotencyKeyRef.current ||
+          (uploadIdempotencyKeyRef.current = crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`),
+      });
       if (res.status === 'success') {
         onSuccess?.();
         handleClose();

@@ -24,9 +24,16 @@
 import { pdfjs } from 'react-pdf';
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
-// Idempotent: kalau workerSrc sudah di-set (mis. hot-reload di dev),
-// jangan re-assign supaya worker tidak ke-terminate.
-if (!pdfjs.GlobalWorkerOptions.workerSrc) {
+const currentWorkerSrc = pdfjs.GlobalWorkerOptions.workerSrc || '';
+const isDefaultWorkerSrc =
+  !currentWorkerSrc ||
+  currentWorkerSrc === 'pdf.worker.mjs' ||
+  currentWorkerSrc.endsWith('/pdf.worker.mjs');
+
+// PDF.js bisa memasang default "pdf.worker.mjs" lebih dulu di dev. URL itu
+// tidak ada di Vite, jadi harus dioverride ke asset hasil resolve `?url`.
+// Tetap idempotent: jangan re-assign kalau sudah pakai URL yang benar.
+if (isDefaultWorkerSrc || currentWorkerSrc !== pdfWorkerUrl) {
   pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 }
 

@@ -44,6 +44,7 @@ function setCsrfToken(token) {
  * @param {string} [options.method='GET'] - HTTP method
  * @param {object|FormData} [options.body] - Request body (auto-serialize JSON)
  * @param {object} [options.headers] - Additional headers (Authorization & CSRF auto-handled)
+ * @param {string} [options.idempotencyKey] - Optional key for safe retry of POST/create/upload requests
  * @param {number} [options.timeout=DEFAULT_TIMEOUT] - Custom timeout dalam ms
  * @param {AbortSignal} [options.signal] - External abort signal (untuk cancel/coalesce)
  * @param {string} [options._tokenOverride] - Internal: token override (dipakai oleh retry handler setelah refresh)
@@ -84,6 +85,9 @@ export async function apiFetch(endpoint, options = {}) {
   const isModifyingRequest = ["POST", "PUT", "DELETE", "PATCH"].includes(options.method?.toUpperCase());
   if (isModifyingRequest && csrfToken) {
     defaultHeaders["X-CSRF-Token"] = csrfToken;
+  }
+  if (options.idempotencyKey) {
+    defaultHeaders["Idempotency-Key"] = options.idempotencyKey;
   }
 
   const config = {

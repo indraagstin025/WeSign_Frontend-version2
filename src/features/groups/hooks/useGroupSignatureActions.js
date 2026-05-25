@@ -8,12 +8,50 @@ import {
   signDocument,
   rejectDocument,
 } from '../api/groupSignatureService';
-import { finalizeGroupDocument, invalidateGroupCache } from '../api/groupService';
+import { getGroupDetail, finalizeGroupDocument, invalidateGroupCache } from '../api/groupService';
 import { socketService } from '../../../services/socketService';
 import { createLogger } from '../../../utils/logger';
 
 // [M-6] Scoped logger agar console output konsisten dengan service lain.
 const log = createLogger('GroupSignatureActions');
+
+const isNetworkOrTimeoutError = (err) => {
+  const message = err?.message || '';
+  return (
+    (typeof navigator !== 'undefined' && !navigator.onLine) ||
+    message.includes('Koneksi internet') ||
+    message.includes('Waktu tunggu') ||
+    message.includes('Failed to fetch') ||
+    message.includes('fetch failed') ||
+    message.includes('NetworkError')
+  );
+};
+
+const isCompletedStatus = (status) =>
+  String(status || '').toLowerCase() === 'completed';
+
+const findDocumentInGroup = (group, documentId) =>
+  group?.documents?.find((doc) => String(doc.id) === String(documentId));
+
+const findSignerRequestForUser = (doc, userId) =>
+  doc?.signerRequests?.find((request) =>
+    String(request.userId || request.user?.id) === String(userId)
+  );
+
+const isSignedSignerRequest = (request) =>
+  String(request?.status || '').toUpperCase() === 'SIGNED' ||
+  String(request?.signatureGroup?.status || '').toLowerCase() === 'final';
+
+const getFinalAccessCodeFromDocument = (doc) => {
+  const signedSignature = doc?.signerRequests
+    ?.map((request) => request.signatureGroup)
+    ?.find((signature) => signature?.accessCode);
+
+  return signedSignature?.accessCode || doc?.accessCode || null;
+};
+
+const getFinalUrlFromDocument = (doc) =>
+  doc?.currentVersion?.url || doc?.signedFileUrl || doc?.pdfUrl || null;
 
 /**
  * @hook useGroupSignatureActions
@@ -390,12 +428,58 @@ export const useGroupSignatureActions = ({
           : 'Tanda tangan Anda berhasil disimpan. Semua penandatangan sudah selesai. Admin dapat melakukan finalisasi.'
       );
     } catch (err) {
+      if (isNetworkOrTimeoutError(err)) {
+        try {
+          log.warn('group signer submit network error, verifying signer status:', err.message);
+          invalidateGroupCache(groupId);
+          const verifyRes = await getGroupDetail(groupId, { includeSignatureImages: true });
+          const verifiedDoc = findDocumentInGroup(verifyRes?.data, documentId);
+          const signerRequest = findSignerRequestForUser(verifiedDoc, currentUser?.id);
+
+          if (isSignedSignerRequest(signerRequest)) {
+            const remainingSigners = verifiedDoc?.signerRequests
+              ?.filter((request) => String(request.status || '').toUpperCase() === 'PENDING')
+              ?.length ?? 0;
+
+            setSignatures((prev) =>
+              prev.map((s) => (s.id === mySignature.id ? { ...s, status: 'final' } : s))
+            );
+            setHasMyFinalSig(true);
+            if (setPendingSigners && currentUser?.id) {
+              setPendingSigners((prev) =>
+                prev.filter((s) => String(s.userId) !== String(currentUser.id))
+              );
+            }
+            setReadyToFinalize?.(remainingSigners === 0);
+            if (isCompletedStatus(verifiedDoc?.status)) {
+              setDocumentStatus?.('COMPLETED');
+            }
+            socketService.emitSignatureSaved(documentId, groupId);
+            fetchGroupData?.();
+
+            toast.success(
+              remainingSigners > 0
+                ? `Koneksi sempat terputus, tetapi tanda tangan Anda sudah tersimpan. Menunggu ${remainingSigners} orang lagi.`
+                : 'Koneksi sempat terputus, tetapi tanda tangan Anda sudah tersimpan. Semua penandatangan sudah selesai.'
+            );
+            return;
+          }
+
+          toast.warning('Koneksi terputus saat mengonfirmasi tanda tangan. Status tanda tangan belum selesai saat dicek ulang. Silakan coba lagi setelah koneksi stabil.');
+          return;
+        } catch (verifyErr) {
+          log.warn('Gagal verifikasi status tanda tangan group setelah network error:', verifyErr.message);
+          toast.warning('Koneksi terputus dan status tanda tangan belum bisa diverifikasi. Muat ulang halaman setelah koneksi stabil sebelum mencoba lagi.');
+          return;
+        }
+      }
+
       toast.error(err.message || 'Gagal menyimpan tanda tangan. Silakan coba lagi.');
     } finally {
       submitInFlightRef.current = false;
       setIsSubmitting(false);
     }
-  }, [mySignature, documentId, groupId, currentUser?.id, setSignatures, setHasMyFinalSig, setReadyToFinalize, setPendingSigners, setIsSubmitting]);
+  }, [mySignature, documentId, groupId, currentUser?.id, setSignatures, setHasMyFinalSig, setReadyToFinalize, setPendingSigners, setDocumentStatus, setIsSubmitting, fetchGroupData]);
 
   // ── Finalisasi Dokumen (Admin Only) ───────────────────────────────────────
   const handleFinalizeDocument = useCallback(async (auditTrailMode = "embedded") => {
@@ -406,23 +490,68 @@ export const useGroupSignatureActions = ({
     setIsFinalizing(true);
     try {
       const res = await finalizeGroupDocument(groupId, documentId, auditTrailMode);
-      const { document: finalDoc } = res.data || {};
+      const { document: finalDoc, accessCode, url } = res.data || {};
 
       // Tandai bahwa user ini yang melakukan finalisasi — supaya hanya dia
       // yang diarahkan ke halaman selanjutnya ("Dokumen Telah Difinalisasi").
       setIFinalized?.(true);
       setDocumentStatus('COMPLETED');
+      setReadyToFinalize?.(false);
       socketService.emitDocumentFinalized(groupId, documentId, documentTitle);
 
       setStatusModal({
         isOpen: true, type: 'success',
         title: 'Dokumen Difinalisasi!',
-        message: `PDF final berhasil dibuat. Access code: ${finalDoc?.accessCode || '-'}`,
+        message: `PDF final berhasil dibuat. Access code: ${accessCode || finalDoc?.accessCode || '-'}`,
         onConfirm: () => {
-          window.open(finalDoc?.currentVersion?.url || finalDoc?.pdfUrl, '_blank');
+          window.open(url || finalDoc?.currentVersion?.url || finalDoc?.pdfUrl, '_blank');
         },
       });
     } catch (err) {
+      if (isNetworkOrTimeoutError(err)) {
+        try {
+          invalidateGroupCache(groupId);
+          const verifyRes = await getGroupDetail(groupId, { includeSignatureImages: true });
+          const verifiedDoc = findDocumentInGroup(verifyRes?.data, documentId);
+
+          if (isCompletedStatus(verifiedDoc?.status)) {
+            const verifiedAccessCode = getFinalAccessCodeFromDocument(verifiedDoc);
+            const finalUrl = getFinalUrlFromDocument(verifiedDoc);
+
+            setIFinalized?.(true);
+            setDocumentStatus('COMPLETED');
+            setReadyToFinalize?.(false);
+            fetchGroupData?.();
+
+            setStatusModal({
+              isOpen: true,
+              type: 'success',
+              title: 'Dokumen Difinalisasi!',
+              message: `Koneksi sempat terputus, tetapi server sudah menyelesaikan finalisasi. Access code: ${verifiedAccessCode || '-'}`,
+              onConfirm: finalUrl ? () => window.open(finalUrl, '_blank') : null,
+            });
+            return;
+          }
+
+          setStatusModal({
+            isOpen: true,
+            type: 'warning',
+            title: 'Status Finalisasi Belum Terkonfirmasi',
+            message: 'Koneksi terputus saat mengonfirmasi hasil finalisasi. Status dokumen belum selesai saat dicek ulang. Silakan coba lagi setelah koneksi stabil.',
+          });
+          return;
+        } catch (verifyErr) {
+          log.warn('Gagal verifikasi status finalisasi setelah network error:', verifyErr.message);
+          setStatusModal({
+            isOpen: true,
+            type: 'warning',
+            title: 'Status Finalisasi Belum Terkonfirmasi',
+            message: 'Koneksi terputus saat finalisasi dan status dokumen belum bisa diverifikasi. Muat ulang halaman setelah koneksi stabil sebelum mencoba lagi.',
+          });
+          return;
+        }
+      }
+
       setStatusModal({
         isOpen: true, type: 'error',
         title: 'Gagal Finalisasi',
@@ -432,7 +561,7 @@ export const useGroupSignatureActions = ({
       finalizeInFlightRef.current = false;
       setIsFinalizing(false);
     }
-  }, [isAdmin, readyToFinalize, groupId, documentId, documentTitle, setDocumentStatus, setIFinalized, setIsFinalizing, setStatusModal]);
+  }, [isAdmin, readyToFinalize, groupId, documentId, documentTitle, setDocumentStatus, setIFinalized, setReadyToFinalize, setIsFinalizing, setStatusModal, fetchGroupData]);
 
   // ── Reject Document (Signer menolak) ──────────────────────────────────────
   const handleRejectDocument = useCallback(async (reason = null) => {

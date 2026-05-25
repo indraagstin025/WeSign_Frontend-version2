@@ -49,7 +49,7 @@ function getUploadErrorMessage(code, status, originalMessage) {
  * @param {boolean} _isRetry - Internal flag untuk mencegah infinite retry
  * @returns {Promise<object>} Response data
  */
-export function apiUpload(endpoint, formData, { onProgress, signal } = {}, _isRetry = false) {
+export function apiUpload(endpoint, formData, { onProgress, signal, idempotencyKey } = {}, _isRetry = false) {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     const token = localStorage.getItem('wesign_token');
@@ -65,6 +65,10 @@ export function apiUpload(endpoint, formData, { onProgress, signal } = {}, _isRe
     // ✅ Set CSRF Token Header (diperlukan oleh csrfValidation middleware)
     if (csrfToken) {
       xhr.setRequestHeader('X-CSRF-Token', csrfToken);
+    }
+
+    if (idempotencyKey) {
+      xhr.setRequestHeader('Idempotency-Key', idempotencyKey);
     }
 
     // Monitor Progress
@@ -135,7 +139,7 @@ export function apiUpload(endpoint, formData, { onProgress, signal } = {}, _isRe
 
             log.info('Token refreshed, retrying upload...');
             // Retry upload dengan token baru
-            resolve(apiUpload(endpoint, formData, { onProgress, signal }, true));
+            resolve(apiUpload(endpoint, formData, { onProgress, signal, idempotencyKey }, true));
           } else {
             throw new Error('Refresh failed');
           }

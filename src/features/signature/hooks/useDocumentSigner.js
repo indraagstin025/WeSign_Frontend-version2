@@ -16,6 +16,21 @@ import { createLogger } from '../../../utils/logger';
 // [L-4] Scoped logger untuk useSignatureDraft (private hook di file ini).
 const log = createLogger('SignatureDraft');
 
+const isNetworkOrTimeoutError = (err) => {
+  const message = err?.message || '';
+  return (
+    (typeof navigator !== 'undefined' && !navigator.onLine) ||
+    message.includes('Koneksi internet') ||
+    message.includes('Waktu tunggu') ||
+    message.includes('Failed to fetch') ||
+    message.includes('fetch failed') ||
+    message.includes('NetworkError')
+  );
+};
+
+const isCompletedStatus = (status) =>
+  String(status || '').toLowerCase() === 'completed';
+
 /**
  * @hook useDocumentSigner
  * @description Orchestrator state untuk halaman penandatanganan personal
@@ -243,6 +258,43 @@ export const useDocumentSigner = (documentId) => {
         });
       }
     } catch (err) {
+      if (isNetworkOrTimeoutError(err)) {
+        try {
+          log.warn('final sign network error, verifying document status:', err.message);
+          const verifyResponse = await getDocumentDetail(documentId);
+          const latestDoc = verifyResponse?.data;
+
+          if (isCompletedStatus(latestDoc?.status)) {
+            clearDraft();
+            setStatusModal({
+              isOpen: true,
+              type: 'success',
+              title: 'Berhasil!',
+              message: 'Koneksi sempat terputus, tetapi server sudah menyelesaikan tanda tangan dokumen.',
+              onConfirm: () => navigate('/dashboard/documents'),
+            });
+            return;
+          }
+
+          setStatusModal({
+            isOpen: true,
+            type: 'warning',
+            title: 'Status Belum Terkonfirmasi',
+            message: 'Koneksi terputus saat mengonfirmasi hasil tanda tangan. Status dokumen belum selesai saat dicek ulang. Silakan coba lagi setelah koneksi stabil.',
+          });
+          return;
+        } catch (verifyErr) {
+          log.warn('failed verify personal signing status after network error:', verifyErr.message);
+          setStatusModal({
+            isOpen: true,
+            type: 'warning',
+            title: 'Status Belum Terkonfirmasi',
+            message: 'Koneksi terputus dan status dokumen belum bisa diverifikasi. Muat ulang halaman setelah koneksi stabil sebelum mencoba lagi.',
+          });
+          return;
+        }
+      }
+
       setStatusModal({ isOpen: true, type: 'error', title: 'Gagal', message: err.message });
     } finally {
       submitInFlightRef.current = false;

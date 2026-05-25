@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useRef, useState, useCallback } from 'react';
 import { uploadPackageDocuments } from '../api/packageService';
 import { pdfjs } from 'react-pdf';
 import { createLogger } from '../../../utils/logger';
@@ -19,6 +19,7 @@ const logger = createLogger('CreatePackage');
  * @param {() => void} onClose - Callback tutup modal upload
  */
 export const useCreatePackage = (onSuccess, onClose) => {
+  const uploadIdempotencyKeyRef = useRef(null);
   const [files, setFiles] = useState([]);
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('General');
@@ -120,6 +121,7 @@ export const useCreatePackage = (onSuccess, onClose) => {
     }
 
     if (validFiles.length > 0) {
+      uploadIdempotencyKeyRef.current = null;
       setFiles((prev) => {
         const updatedFiles = [...prev, ...validFiles];
         // Auto-set title if empty and this is the first batch
@@ -136,6 +138,7 @@ export const useCreatePackage = (onSuccess, onClose) => {
   };
 
   const clearFiles = () => {
+    uploadIdempotencyKeyRef.current = null;
     setFiles([]);
     setTitle('');
     setCategory('General');
@@ -164,7 +167,11 @@ export const useCreatePackage = (onSuccess, onClose) => {
     });
 
     try {
-      const response = await uploadPackageDocuments(formData);
+      const response = await uploadPackageDocuments(formData, {
+        idempotencyKey:
+          uploadIdempotencyKeyRef.current ||
+          (uploadIdempotencyKeyRef.current = crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`),
+      });
 
       if (response?.status === 'success') {
         // Semua file berhasil
@@ -201,6 +208,7 @@ export const useCreatePackage = (onSuccess, onClose) => {
   const resetAndClose = useCallback(() => {
     if (loading) return;
     setFiles([]);
+    uploadIdempotencyKeyRef.current = null;
     setTitle('');
     setCategory('General');
     setError(null);
