@@ -17,6 +17,13 @@ import { useGroupSocket } from './useGroupSocket';
 import { useGroupMembers } from './useGroupMembers';
 import { createLogger } from '../../../utils/logger';
 import { GROUPS_COPY_FEEDBACK_MS } from '../../../config/timeouts';
+import { invalidateGroupCache } from '../api/groupService';
+import { buildGroupFinalizeIdempotencyKey } from '../../signing-jobs/utils/idempotencyKey';
+import {
+  persistGroupFinalizeJob,
+  readGroupFinalizeJob,
+  clearGroupFinalizeJob,
+} from '../../signing-jobs/utils/jobPersistence';
 
 // [M-6] Scoped logger.
 const log = createLogger('GroupDetailPage');
@@ -99,6 +106,39 @@ export function useGroupDetailPage() {
     title: '',
     message: '',
   });
+
+  // [REVIEW FIX H-1] Async finalize job state untuk path "finalize dari
+  // detail page". Mirror pola yang dipakai di useGroupSignatureActions
+  // (signing page) supaya konsisten: idempotency key stabil, persistensi
+  // sessionStorage scoped per (groupId, documentId), dan modal bersama
+  // SigningJobStatusModal.
+  //
+  // Ini menutup gap di mana tombol Finalisasi pada GroupDetailPage tidak
+  // mengirim Idempotency-Key (jadi 400 saat SIGNING_JOB_ENABLED=true) dan
+  // memperlakukan response { jobId, mode: "job" } sebagai sukses (false
+  // success). Setelah perubahan ini, kedua path konvergen ke flow yang
+  // sama.
+  const [finalizeJob, setFinalizeJob] = useState(null);
+  // Shape: { jobId, documentId, documentTitle } | null
+
+  // Restore active finalize job dari sessionStorage saat component mount
+  // atau saat list dokumen ter-refresh (refresh halaman setelah submit).
+  useEffect(() => {
+    if (!groupId || !documents || documents.length === 0) return;
+    if (finalizeJob) return; // Sudah ada — jangan timpa.
+    for (const doc of documents) {
+      const persisted = readGroupFinalizeJob(groupId, doc.id);
+      if (persisted?.jobId) {
+        setFinalizeJob({
+          jobId: persisted.jobId,
+          documentId: doc.id,
+          documentTitle: doc.title || 'Dokumen',
+        });
+        break;
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupId, documents]);
 
   // ── Fetch group (metadata + members only) ────────────────────────────────
   //
@@ -251,7 +291,36 @@ export function useGroupDetailPage() {
   const handleFinalize = async (docId, title, auditTrailMode = "embedded") => {
     setIsFinalizing(docId);
     try {
-      await finalizeGroupDocument(groupId, docId, auditTrailMode);
+      // [REVIEW FIX H-1] Idempotency key stabil supaya retry network drop
+      // tidak menggandakan job. Identik dengan key yang dipakai di
+      // useGroupSignatureActions agar dua titik trigger (signing page &
+      // detail page) berbagi job existing bila admin memicu finalize di
+      // tempat yang berbeda dengan parameter sama.
+      const idempotencyKey = buildGroupFinalizeIdempotencyKey(
+        groupId,
+        docId,
+        auditTrailMode,
+      );
+
+      const res = await finalizeGroupDocument(groupId, docId, auditTrailMode, {
+        idempotencyKey,
+      });
+      const data = res?.data || {};
+
+      // Mode async — backend mengembalikan { jobId, mode: "job", ... }.
+      // Persist + tampilkan modal job. Status COMPLETED dan refresh list
+      // dilakukan di handler completed (lihat handleFinalizeJobCompleted).
+      if (data.mode === 'job' && data.jobId) {
+        persistGroupFinalizeJob(groupId, docId, data.jobId, data.status);
+        setFinalizeJob({
+          jobId: data.jobId,
+          documentId: docId,
+          documentTitle: title,
+        });
+        return;
+      }
+
+      // Mode sync (legacy / SIGNING_JOB_ENABLED=false).
       setStatusModal({
         isOpen: true,
         type: 'success',
@@ -266,6 +335,42 @@ export function useGroupDetailPage() {
       setIsFinalizing(null);
     }
   };
+
+  // [REVIEW FIX H-1] Handler untuk modal job async — dipanggil saat status
+  // job berubah ke `completed`. Mirror logic dari useGroupSignatureActions:
+  // clear persistensi, invalidate cache, refresh list, tampilkan status
+  // sukses dengan accessCode + url dari worker result.
+  const handleFinalizeJobCompleted = useCallback((result) => {
+    if (!finalizeJob) return;
+    const { documentId: docId, documentTitle } = finalizeJob;
+    clearGroupFinalizeJob(groupId, docId);
+    setFinalizeJob(null);
+    invalidateGroupCache(groupId);
+
+    const accessCode = result?.accessCode || null;
+    const url = result?.publicUrl || null;
+    setStatusModal({
+      isOpen: true,
+      type: 'success',
+      title: 'Dokumen Final!',
+      message: accessCode
+        ? `Dokumen "${documentTitle}" berhasil difinalisasi. Access code: ${accessCode}`
+        : `Dokumen "${documentTitle}" berhasil difinalisasi.`,
+      onConfirm: url ? () => window.open(url, '_blank') : null,
+    });
+
+    fetchGroup(true);
+    fetchDocuments({ silent: true });
+  }, [finalizeJob, groupId, fetchGroup, fetchDocuments]);
+
+  // Handler untuk modal close (failed/cancelled/manual close pada
+  // completed yang sudah dihandle oleh `handleFinalizeJobCompleted`).
+  // Tetap clear state job; jangan ubah dokumen.
+  const handleFinalizeJobModalClose = useCallback(() => {
+    if (!finalizeJob) return;
+    clearGroupFinalizeJob(groupId, finalizeJob.documentId);
+    setFinalizeJob(null);
+  }, [finalizeJob, groupId]);
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
@@ -455,6 +560,8 @@ export function useGroupDetailPage() {
       trashPage,
       trashLoading,
       trashCount,
+      // Async finalize job (Phase 5 review fix H-1)
+      finalizeJob,
     },
     actions: {
       fetchGroup,
@@ -489,6 +596,9 @@ export function useGroupDetailPage() {
       fetchTrashDocuments,
       setTrashPage,
       handleRestoreGroupDoc,
+      // Async finalize job (Phase 5 review fix H-1)
+      handleFinalizeJobCompleted,
+      handleFinalizeJobModalClose,
     },
   };
 }

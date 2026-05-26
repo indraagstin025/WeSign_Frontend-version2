@@ -213,10 +213,32 @@ export function useSigningJobPolling({
         return;
       }
 
-      // Non-network error (mis. 404 → job hilang). Stop polling dan
-      // expose error ke caller.
+      // Non-network error (mis. 404 → job hilang, 403 → tidak diizinkan,
+      // 500 → server error). Stop polling dan expose synthetic failed job
+      // ke caller supaya modal tidak stuck di state "queued" (default
+      // ketika job=null). Synthetic job tetap menyertakan `errorCode`
+      // dan `errorMessage` agar UI bisa menampilkan pesan yang jelas
+      // dan tombol Tutup. `retryable: false` karena polling error pada
+      // dasarnya bukan job yang gagal di worker — retrying job
+      // lama-lama tidak akan berubah hasilnya bila job sudah hilang
+      // atau auth ditolak.
       setPollingError(err);
       setIsPolling(false);
+      const httpStatus = err?.status || err?.response?.status || null;
+      let errorCode = "POLLING_ERROR";
+      if (httpStatus === 404) errorCode = "JOB_NOT_FOUND";
+      else if (httpStatus === 403 || httpStatus === 401) errorCode = "UNAUTHORIZED";
+      else if (httpStatus >= 500) errorCode = "SERVER_ERROR";
+      setJob((prev) => ({
+        ...(prev || {}),
+        id: prev?.id || jobId,
+        status: "failed",
+        errorCode,
+        errorMessage:
+          err?.message ||
+          "Tidak dapat memperoleh status pekerjaan. Coba muat ulang halaman.",
+        retryable: false,
+      }));
     }
   }, [jobId, enabled, scheduleNext, computeNextDelay]);
 
