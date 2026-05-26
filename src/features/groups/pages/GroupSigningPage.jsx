@@ -38,6 +38,8 @@ import StampModal from '../../signature/components/StampModal';
 import TextAnnotationModal from '../../signature/components/TextAnnotationModal';
 import DateFieldModal from '../../signature/components/DateFieldModal';
 import { saveStatus } from '../../../services/saveStatus';
+import SigningJobStatusModal from '../../signing-jobs/components/SigningJobStatusModal';
+import { useSigningJobPolling } from '../../signing-jobs/hooks/useSigningJobPolling';
 
 /**
  * @page GroupSigningPage
@@ -121,7 +123,23 @@ const GroupSigningPage = () => {
     handleDeleteSignature,
     onDocumentLoadSuccess,
     handlePageLoadSuccess,
+
+    // Phase 5: async finalize job state.
+    signingAsyncJob,
   } = state;
+
+  // Phase 5: polling job async finalize. Hook ini hanya aktif saat
+  // `signingAsyncJob.activeJobId` ada (dari submit response mode='job'
+  // atau restore via sessionStorage saat refresh).
+  const {
+    job: signingJob,
+    isReconnecting,
+    retry: retrySigningJob,
+    cancel: cancelSigningJob,
+  } = useSigningJobPolling({
+    jobId: signingAsyncJob?.activeJobId,
+    enabled: !!signingAsyncJob?.activeJobId,
+  });
 
   useEffect(() => saveStatus.subscribe(setSaveState), []);
 
@@ -445,6 +463,38 @@ const GroupSigningPage = () => {
           actions.handleRejectDocument(reason || null);
         }}
         documentTitle={documentTitle}
+      />
+
+      {/* Phase 5: Async signing job status modal. Hanya tampil saat
+          backend menyalakan SIGNING_JOB_ENABLED dan finalize return jobId.
+          Group finalize hanya proses 1 dokumen final → hint sederhana. */}
+      <SigningJobStatusModal
+        isOpen={!!signingAsyncJob?.activeJobId}
+        job={signingJob}
+        isReconnecting={isReconnecting}
+        onClose={signingAsyncJob?.handleJobModalClose}
+        onConfirmDone={() =>
+          signingAsyncJob?.handleJobCompleted?.(signingJob?.result)
+        }
+        onRetry={async () => {
+          try {
+            await retrySigningJob();
+          } catch {
+            /* error sudah di-handle di hook */
+          }
+        }}
+        onCancel={async () => {
+          try {
+            await cancelSigningJob();
+            signingAsyncJob?.handleJobModalClose?.();
+          } catch {
+            /* swallow */
+          }
+        }}
+        labels={{
+          processingHint:
+            'Dokumen grup sedang difinalisasi. Tetap di halaman ini sampai proses selesai. Status akan dipulihkan jika halaman dimuat ulang.',
+        }}
       />
     </div>
   );

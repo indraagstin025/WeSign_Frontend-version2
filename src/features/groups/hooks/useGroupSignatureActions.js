@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'react-toastify';
 import {
@@ -11,6 +11,12 @@ import {
 import { getGroupDetail, finalizeGroupDocument, invalidateGroupCache } from '../api/groupService';
 import { socketService } from '../../../services/socketService';
 import { createLogger } from '../../../utils/logger';
+import { buildGroupFinalizeIdempotencyKey } from '../../signing-jobs/utils/idempotencyKey';
+import {
+  persistGroupFinalizeJob,
+  readGroupFinalizeJob,
+  clearGroupFinalizeJob,
+} from '../../signing-jobs/utils/jobPersistence';
 
 // [M-6] Scoped logger agar console output konsisten dengan service lain.
 const log = createLogger('GroupSignatureActions');
@@ -124,6 +130,22 @@ export const useGroupSignatureActions = ({
   // pemanggilan kedua langsung early-return tanpa menunggu re-render.
   const submitInFlightRef = useRef(false);
   const finalizeInFlightRef = useRef(false);
+
+  // Phase 5: state job async finalize. Ketika SIGNING_JOB_ENABLED=true di
+  // backend, finalize endpoint kembalikan { jobId, mode: "job" } — frontend
+  // lanjut polling status job. Sync mode tetap dipakai apa adanya (status
+  // modal sukses tampil langsung).
+  const [activeJobId, setActiveJobId] = useState(null);
+
+  // Restore active jobId dari sessionStorage saat mount (refresh setelah
+  // submit). Hanya dilakukan saat groupId+documentId tersedia.
+  useEffect(() => {
+    if (!groupId || !documentId) return;
+    const persisted = readGroupFinalizeJob(groupId, documentId);
+    if (persisted?.jobId) {
+      setActiveJobId(persisted.jobId);
+    }
+  }, [groupId, documentId]);
 
   // ── Tambah TTD (Drop/Klik di PDF) ─────────────────────────────────────────
   const handleAddSignature = useCallback(
@@ -489,8 +511,32 @@ export const useGroupSignatureActions = ({
     finalizeInFlightRef.current = true;
     setIsFinalizing(true);
     try {
-      const res = await finalizeGroupDocument(groupId, documentId, auditTrailMode);
-      const { document: finalDoc, accessCode, url } = res.data || {};
+      // Phase 5: idempotency key stabil. Untuk group finalize key cukup
+      // berbasis (groupId, documentId, auditTrailMode) karena payload
+      // signing dibentuk backend dari final signatures yang sudah ada.
+      const idempotencyKey = buildGroupFinalizeIdempotencyKey(
+        groupId,
+        documentId,
+        auditTrailMode,
+      );
+
+      const res = await finalizeGroupDocument(groupId, documentId, auditTrailMode, {
+        idempotencyKey,
+      });
+      const data = res.data || {};
+
+      // Mode async (Phase 4 backend dengan SIGNING_JOB_ENABLED=true).
+      if (data.mode === 'job' && data.jobId) {
+        persistGroupFinalizeJob(groupId, documentId, data.jobId, data.status);
+        setActiveJobId(data.jobId);
+        // JANGAN ubah status dokumen ke COMPLETED dulu — tunggu job selesai.
+        // Modal SigningJobStatusModal di page akan tampil sampai
+        // worker confirm + processor mark completed.
+        return;
+      }
+
+      // Mode sync (legacy / SIGNING_JOB_ENABLED=false).
+      const { document: finalDoc, accessCode, url } = data;
 
       // Tandai bahwa user ini yang melakukan finalisasi — supaya hanya dia
       // yang diarahkan ke halaman selanjutnya ("Dokumen Telah Difinalisasi").
@@ -563,6 +609,39 @@ export const useGroupSignatureActions = ({
     }
   }, [isAdmin, readyToFinalize, groupId, documentId, documentTitle, setDocumentStatus, setIFinalized, setReadyToFinalize, setIsFinalizing, setStatusModal, fetchGroupData]);
 
+  // Phase 5: dipanggil dari SigningJobStatusModal saat job async selesai.
+  const handleJobCompleted = useCallback((result) => {
+    clearGroupFinalizeJob(groupId, documentId);
+    setActiveJobId(null);
+    invalidateGroupCache(groupId);
+
+    setIFinalized?.(true);
+    setDocumentStatus?.('COMPLETED');
+    setReadyToFinalize?.(false);
+    socketService.emitDocumentFinalized(groupId, documentId, documentTitle);
+
+    const accessCode = result?.accessCode || null;
+    const url = result?.publicUrl || null;
+    setStatusModal({
+      isOpen: true,
+      type: 'success',
+      title: 'Dokumen Difinalisasi!',
+      message: accessCode
+        ? `PDF final berhasil dibuat. Access code: ${accessCode}`
+        : 'PDF final berhasil dibuat.',
+      onConfirm: url ? () => window.open(url, '_blank') : null,
+    });
+
+    fetchGroupData?.();
+  }, [groupId, documentId, documentTitle, setIFinalized, setDocumentStatus, setReadyToFinalize, setStatusModal, fetchGroupData]);
+
+  // Phase 5: dipanggil saat user tutup modal job (failed/cancelled). Tidak
+  // ubah status dokumen — admin masih bisa retry finalize.
+  const handleJobModalClose = useCallback(() => {
+    clearGroupFinalizeJob(groupId, documentId);
+    setActiveJobId(null);
+  }, [groupId, documentId]);
+
   // ── Reject Document (Signer menolak) ──────────────────────────────────────
   const handleRejectDocument = useCallback(async (reason = null) => {
     try {
@@ -590,5 +669,11 @@ export const useGroupSignatureActions = ({
     handleSaveMySignature,
     handleFinalizeDocument,
     handleRejectDocument,
+    // Phase 5: async finalize job state.
+    asyncJob: {
+      activeJobId,
+      handleJobCompleted,
+      handleJobModalClose,
+    },
   };
 };
