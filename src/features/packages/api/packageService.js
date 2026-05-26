@@ -96,16 +96,30 @@ export function invalidatePackageCache(packageId) {
  *
  * [FE-1] Setelah signing sukses, status paket berubah → cache stale → bust.
  *
+ * Phase 4 backend dual-path: response bisa berupa
+ *   - Sync: { status: "success", data: { packageId, status, success, failed, ... } }
+ *   - Async: { status: "success", data: { jobId, status, mode: "job" } }
+ * Caller (hook) yang membedakan dua shape.
+ *
  * @param {string} packageId
- * @param {Array} signaturesPayload - Array konfigurasi tanda tangan untuk setiap dokumen
+ * @param {Array} signaturesPayload
+ * @param {string} [auditTrailMode]
+ * @param {object} [options]
+ * @param {string|null} [options.idempotencyKey]
  */
-export async function signPackage(packageId, signaturesPayload, auditTrailMode = "embedded") {
+export async function signPackage(packageId, signaturesPayload, auditTrailMode = "embedded", options = {}) {
   const result = await apiFetch(`/packages/${packageId}/sign`, {
     method: 'POST',
     body: { signatures: signaturesPayload, auditTrailMode },
-    timeout: 120000, // 2 menit — signing butuh waktu lama (generate PDF + upload per dokumen)
+    timeout: 120000, // 2 menit — sync signing butuh waktu lama (generate PDF + upload per dokumen)
+    idempotencyKey: options.idempotencyKey || undefined,
   });
-  invalidatePackageCache(packageId);
+  // Cache hanya di-bust kalau response sync (status sudah berubah). Untuk
+  // response job, status paket belum berubah saat ini — caller akan
+  // memanggil invalidatePackageCache lagi setelah polling completed.
+  if (result?.data?.mode !== 'job') {
+    invalidatePackageCache(packageId);
+  }
   return result;
 }
 

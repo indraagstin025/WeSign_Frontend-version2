@@ -12,6 +12,12 @@ import {
   PDF_MIN_RENDER_WIDTH_PX,
   REDIRECT_AFTER_TOAST_MS,
 } from '../constants/layout';
+import { buildPackageIdempotencyKey } from '../../signing-jobs/utils/idempotencyKey';
+import {
+  persistPackageJob,
+  readPackageJob,
+  clearPackageJob,
+} from '../../signing-jobs/utils/jobPersistence';
 
 const logger = createLogger('PackageDraft');
 
@@ -80,6 +86,9 @@ export const useSignPackage = (packageId) => {
   // Audit Trail mode
   const [auditTrailMode, setAuditTrailMode] = useState("embedded");
 
+  // Phase 5: state job async signing.
+  const [activeJobId, setActiveJobId] = useState(null);
+
   // --- Current Active Document Helper ---
   const activeDoc = documents[currentIndex] || null;
   const currentSignatures = activeDoc ? (signaturesMap[activeDoc.id] || []) : [];
@@ -135,6 +144,15 @@ export const useSignPackage = (packageId) => {
   useEffect(() => {
     fetchPackage();
   }, [fetchPackage]);
+
+  // Phase 5: restore active jobId dari sessionStorage saat refresh.
+  useEffect(() => {
+    if (!packageId) return;
+    const persisted = readPackageJob(packageId);
+    if (persisted?.jobId) {
+      setActiveJobId(persisted.jobId);
+    }
+  }, [packageId]);
 
   /**
    * Fetch PDF URL for active document
@@ -309,11 +327,23 @@ export const useSignPackage = (packageId) => {
         });
       });
 
-      const res = await signPackage(packageId, signaturesPayload, auditTrailMode);
-      if (res.status === 'success') {
-        // Clear draft on success
-        clearDraft();
+      // Phase 5: idempotency key stabil per payload (gabungan semua dokumen).
+      const idempotencyKey = await buildPackageIdempotencyKey(packageId, signaturesPayload);
 
+      const res = await signPackage(packageId, signaturesPayload, auditTrailMode, { idempotencyKey });
+      if (res.status === 'success') {
+        const data = res.data || {};
+
+        // Mode async (Phase 4 backend dengan SIGNING_JOB_ENABLED=true).
+        if (data.mode === 'job' && data.jobId) {
+          persistPackageJob(packageId, data.jobId, data.status);
+          setActiveJobId(data.jobId);
+          // JANGAN clearDraft di sini — biarkan job selesai dulu.
+          return;
+        }
+
+        // Mode sync (legacy / SIGNING_JOB_ENABLED=false).
+        clearDraft();
         setStatusModal({
           isOpen: true,
           type: 'success',
@@ -373,6 +403,26 @@ export const useSignPackage = (packageId) => {
     }
   };
 
+  /**
+   * Phase 5: dipanggil dari SigningJobStatusModal saat job selesai sukses.
+   */
+  const handleJobCompleted = useCallback(() => {
+    clearPackageJob(packageId);
+    invalidatePackageCache(packageId);
+    clearDraft();
+    setActiveJobId(null);
+    navigate('/dashboard/packages');
+  }, [packageId, clearDraft, navigate]);
+
+  /**
+   * Phase 5: dipanggil saat user tutup modal job (failed/cancelled). Tidak
+   * clear draft — user mungkin mau retry submit dengan adjust signature.
+   */
+  const handleJobModalClose = useCallback(() => {
+    clearPackageJob(packageId);
+    setActiveJobId(null);
+  }, [packageId]);
+
   return {
     packageData,
     documents,
@@ -431,7 +481,13 @@ export const useSignPackage = (packageId) => {
       },
       handleSubmit,
       handleCloseStatusModal: () => setStatusModal(prev => ({ ...prev, isOpen: false }))
-    }
+    },
+    // Phase 5: async signing job state.
+    asyncJob: {
+      activeJobId,
+      handleJobCompleted,
+      handleJobModalClose,
+    },
   };
 };
 
