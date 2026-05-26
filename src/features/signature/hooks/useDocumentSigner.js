@@ -12,6 +12,12 @@ import {
   DEFAULT_SIGNATURE_HEIGHT,
 } from '../constants/signatureLayout';
 import { createLogger } from '../../../utils/logger';
+import { buildPersonalIdempotencyKey } from '../../signing-jobs/utils/idempotencyKey';
+import {
+  persistPersonalJob,
+  readPersonalJob,
+  clearPersonalJob,
+} from '../../signing-jobs/utils/jobPersistence';
 
 // [L-4] Scoped logger untuk useSignatureDraft (private hook di file ini).
 const log = createLogger('SignatureDraft');
@@ -86,6 +92,11 @@ export const useDocumentSigner = (documentId) => {
   const [statusModal, setStatusModal] = useState({ 
     isOpen: false, type: 'success', title: '', message: '', onConfirm: null 
   });
+
+  // Phase 5: state job async signing. Saat backend running di mode job,
+  // submit personal signing return jobId — frontend lanjut polling via
+  // useSigningJobPolling. Sync mode tetap dipakai apa adanya (StatusModal).
+  const [activeJobId, setActiveJobId] = useState(null);
 
   // Audit Trail mode: "embedded" | "separate" | "none"
   const [auditTrailMode, setAuditTrailMode] = useState("embedded");
@@ -225,6 +236,17 @@ export const useDocumentSigner = (documentId) => {
   // sebagai fraksi (0-1) dari dimensi halaman PDF.
   // Tidak perlu lagi mengurangi padding — koordinat sudah bersih.
 
+  // Phase 5: restore active job dari sessionStorage saat mount/refresh.
+  // Kalau user submit lalu refresh halaman sebelum job selesai,
+  // frontend tetap bisa lanjut polling status job yang sama.
+  useEffect(() => {
+    if (!documentId) return;
+    const persisted = readPersonalJob(documentId);
+    if (persisted?.jobId) {
+      setActiveJobId(persisted.jobId);
+    }
+  }, [documentId]);
+
   const handleFinalSign = async () => {
     if (submitInFlightRef.current) return;
     if (signatures.length === 0) {
@@ -249,8 +271,32 @@ export const useDocumentSigner = (documentId) => {
         displayQrCode: true
       }));
 
-      const res = await addPersonalSignature({ signatures: signaturesToSubmit, auditTrailMode });
+      // Phase 5: idempotency key stabil per payload. Kalau user
+      // double-click atau retry submit, key sama → backend reuse job.
+      const idempotencyKey = await buildPersonalIdempotencyKey(
+        documentId,
+        signaturesToSubmit,
+      );
+
+      const res = await addPersonalSignature(
+        { signatures: signaturesToSubmit, auditTrailMode },
+        { idempotencyKey },
+      );
+
       if (res.status === 'success') {
+        const data = res.data || {};
+
+        // Mode async (Phase 4 backend dengan SIGNING_JOB_ENABLED=true).
+        if (data.mode === 'job' && data.jobId) {
+          persistPersonalJob(documentId, data.jobId, data.status);
+          setActiveJobId(data.jobId);
+          // JANGAN clearDraft di sini — biarkan job selesai dulu.
+          // StatusModal personal akan diganti oleh SigningJobStatusModal
+          // di komponen halaman; flag activeJobId yang menandakan async.
+          return;
+        }
+
+        // Mode sync (legacy / SIGNING_JOB_ENABLED=false).
         clearDraft();
         setStatusModal({
           isOpen: true, type: 'success', title: 'Berhasil!', message: 'Dokumen telah ditandatangani.',
@@ -302,14 +348,40 @@ export const useDocumentSigner = (documentId) => {
     }
   };
 
+  /**
+   * Phase 5 callback ketika job async sudah selesai sukses.
+   * Dipanggil dari SigningJobStatusModal di komponen page.
+   */
   const { clearDraft } = useSignatureDraft(documentId, signatures, setSignatures, currentSignature, setCurrentSignature);
+
+  // Phase 5: callbacks untuk SigningJobStatusModal didefinisikan di bawah
+  // useSignatureDraft supaya `clearDraft` sudah tersedia di closure.
+  const handleJobCompleted = useCallback(() => {
+    clearPersonalJob(documentId);
+    clearDraft();
+    setActiveJobId(null);
+    navigate('/dashboard/documents');
+  }, [documentId, navigate, clearDraft]);
+
+  /**
+   * Phase 5 callback saat user tutup modal job (failed/cancelled). Tidak
+   * clear draft karena user mungkin mau retry submit.
+   */
+  const handleJobModalClose = useCallback(() => {
+    clearPersonalJob(documentId);
+    setActiveJobId(null);
+  }, [documentId]);
 
   return {
     document, pdfUrl, loading, error, loadError, isRendering, setIsRendering, isSubmitting, containerRef, containerWidth, isReady,
     numPages, pageNumber, setPageNumber, pageDimensions, signatures, currentSignature, setCurrentSignature, activeElement, removeSignature,
     updateSignaturePosition, updateSignatureSize, isCanvasOpen, setIsCanvasOpen, handleSaveCanvas, handleSaveToolElement, switchToTool, isSheetOpen, setIsSheetOpen,
     onDocumentLoadSuccess, onDocumentLoadError, handlePageLoadSuccess, handleCanvasClick, handleFinalSign, statusModal, setStatusModal,
-    auditTrailMode, setAuditTrailMode
+    auditTrailMode, setAuditTrailMode,
+    // Phase 5: async signing job state.
+    activeJobId,
+    handleJobCompleted,
+    handleJobModalClose,
   };
 };
 
