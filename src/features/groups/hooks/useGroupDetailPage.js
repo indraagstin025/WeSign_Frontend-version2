@@ -22,6 +22,7 @@ import { buildGroupFinalizeIdempotencyKey } from '../../signing-jobs/utils/idemp
 import {
   persistGroupFinalizeJob,
   readGroupFinalizeJob,
+  readGroupFinalizeActive,
   clearGroupFinalizeJob,
 } from '../../signing-jobs/utils/jobPersistence';
 
@@ -121,11 +122,43 @@ export function useGroupDetailPage() {
   const [finalizeJob, setFinalizeJob] = useState(null);
   // Shape: { jobId, documentId, documentTitle } | null
 
-  // Restore active finalize job dari sessionStorage saat component mount
-  // atau saat list dokumen ter-refresh (refresh halaman setelah submit).
+  // Restore active finalize job dari sessionStorage saat component mount.
+  //
+  // [REVIEW FIX M-4] Restore dilakukan dalam dua tahap:
+  //
+  //   1. Active key (`signing-job:group-active:{groupId}`) — pointer
+  //      level group yang berisi `{ jobId, documentId, documentTitle }`.
+  //      Tahap ini TIDAK butuh `documents` ter-fetch karena pointer
+  //      sudah membawa semua info yang dibutuhkan untuk modal job.
+  //      Skenario: user finalize dari signing page atau detail page,
+  //      lalu refresh halaman. List dokumen balik ke page 1, dokumen
+  //      target mungkin di page 2/3, tapi modal tetap bisa restore
+  //      dari pointer ini.
+  //
+  //   2. Per-document key — fallback untuk kompatibilitas. Berguna saat
+  //      active key tidak tertulis (mis. sessionStorage bocor sebagian,
+  //      atau data lama dari versi sebelumnya). Scan list `documents`
+  //      yang sedang tampil.
+  //
+  // Cleanup: clear key per-document sudah otomatis hapus active key
+  // selama `documentId`-nya cocok (lihat `clearGroupFinalizeJob`).
   useEffect(() => {
-    if (!groupId || !documents || documents.length === 0) return;
+    if (!groupId) return;
     if (finalizeJob) return; // Sudah ada — jangan timpa.
+
+    // Tahap 1 — active key.
+    const active = readGroupFinalizeActive(groupId);
+    if (active?.jobId && active?.documentId) {
+      setFinalizeJob({
+        jobId: active.jobId,
+        documentId: active.documentId,
+        documentTitle: active.documentTitle || 'Dokumen',
+      });
+      return;
+    }
+
+    // Tahap 2 — fallback scan per-document.
+    if (!documents || documents.length === 0) return;
     for (const doc of documents) {
       const persisted = readGroupFinalizeJob(groupId, doc.id);
       if (persisted?.jobId) {
@@ -311,7 +344,9 @@ export function useGroupDetailPage() {
       // Persist + tampilkan modal job. Status COMPLETED dan refresh list
       // dilakukan di handler completed (lihat handleFinalizeJobCompleted).
       if (data.mode === 'job' && data.jobId) {
-        persistGroupFinalizeJob(groupId, docId, data.jobId, data.status);
+        persistGroupFinalizeJob(groupId, docId, data.jobId, data.status, {
+          documentTitle: title,
+        });
         setFinalizeJob({
           jobId: data.jobId,
           documentId: docId,

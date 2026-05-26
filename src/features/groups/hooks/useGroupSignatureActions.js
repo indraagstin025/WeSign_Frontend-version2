@@ -527,7 +527,12 @@ export const useGroupSignatureActions = ({
 
       // Mode async (Phase 4 backend dengan SIGNING_JOB_ENABLED=true).
       if (data.mode === 'job' && data.jobId) {
-        persistGroupFinalizeJob(groupId, documentId, data.jobId, data.status);
+        // [REVIEW FIX M-4] Lewatkan documentTitle ke active key supaya
+        // GroupDetailPage bisa restore + tampilkan judul tanpa harus
+        // menunggu list dokumen mengandung dokumen ini di page 1.
+        persistGroupFinalizeJob(groupId, documentId, data.jobId, data.status, {
+          documentTitle,
+        });
         setActiveJobId(data.jobId);
         // JANGAN ubah status dokumen ke COMPLETED dulu — tunggu job selesai.
         // Modal SigningJobStatusModal di page akan tampil sampai
