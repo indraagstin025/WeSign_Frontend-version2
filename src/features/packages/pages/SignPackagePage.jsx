@@ -33,6 +33,8 @@ import DateFieldModal from '../../signature/components/DateFieldModal';
 import PackageDocSidebar from '../components/PackageDocSidebar';
 import StatusModal from '../../../components/ui/StatusModal';
 import MobilePackageBottomSheet from '../components/MobilePackageBottomSheet';
+import SigningJobStatusModal from '../../signing-jobs/components/SigningJobStatusModal';
+import { useSigningJobPolling } from '../../signing-jobs/hooks/useSigningJobPolling';
 
 /**
  * @page SignPackagePage
@@ -67,8 +69,20 @@ const SignPackagePage = () => {
     error,
     pdfStates,
     signingStates,
-    actions
+    actions,
+    asyncJob,
   } = useSignPackage(id);
+
+  // Phase 5: polling job async signing.
+  const {
+    job: signingJob,
+    isReconnecting,
+    retry: retrySigningJob,
+    cancel: cancelSigningJob,
+  } = useSigningJobPolling({
+    jobId: asyncJob?.activeJobId,
+    enabled: !!asyncJob?.activeJobId,
+  });
 
   // [L-7 lint] Destructure pdfStates di sini (bukan di JSX) supaya
   // lint rule react-hooks/refs tidak salah deteksi `pdfStates.X` sebagai
@@ -419,6 +433,36 @@ const SignPackagePage = () => {
       <StampModal isOpen={isStampOpen} onClose={() => setIsStampOpen(false)} onSave={(dataUrl) => { actions.handleSaveCanvas(dataUrl, 'stamp'); setActiveElement({ type: 'stamp', imageUrl: dataUrl }); setSessionAssets(prev => ({ ...prev, stamp: dataUrl })); setIsStampOpen(false); }} />
       <TextAnnotationModal isOpen={isTextOpen} onClose={() => setIsTextOpen(false)} onSave={(dataUrl) => { actions.handleSaveCanvas(dataUrl, 'text'); setActiveElement({ type: 'text', imageUrl: dataUrl }); setSessionAssets(prev => ({ ...prev, text: dataUrl })); setIsTextOpen(false); }} />
       <DateFieldModal isOpen={isDateOpen} onClose={() => setIsDateOpen(false)} onSave={(dataUrl) => { actions.handleSaveCanvas(dataUrl, 'date'); setActiveElement({ type: 'date', imageUrl: dataUrl }); setSessionAssets(prev => ({ ...prev, date: dataUrl })); setIsDateOpen(false); }} />
+
+      {/* Phase 5: Async signing job status modal. Hanya tampil saat
+          backend menyalakan SIGNING_JOB_ENABLED dan submit return jobId.
+          Package signing paling lama → text hint khusus. */}
+      <SigningJobStatusModal
+        isOpen={!!asyncJob?.activeJobId}
+        job={signingJob}
+        isReconnecting={isReconnecting}
+        onClose={asyncJob?.handleJobModalClose}
+        onConfirmDone={asyncJob?.handleJobCompleted}
+        onRetry={async () => {
+          try {
+            await retrySigningJob();
+          } catch {
+            /* error sudah di-handle di hook */
+          }
+        }}
+        onCancel={async () => {
+          try {
+            await cancelSigningJob();
+            asyncJob?.handleJobModalClose?.();
+          } catch {
+            /* swallow */
+          }
+        }}
+        labels={{
+          processingHint:
+            'Paket sedang diproses. Anda dapat menunggu sampai proses selesai. Jangan menutup tab atau refresh halaman.',
+        }}
+      />
     </div>
   );
 };

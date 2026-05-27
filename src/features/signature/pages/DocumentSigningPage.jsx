@@ -24,6 +24,8 @@ import ParafModal from '../components/ParafModal';
 import StampModal from '../components/StampModal';
 import TextAnnotationModal from '../components/TextAnnotationModal';
 import DateFieldModal from '../components/DateFieldModal';
+import SigningJobStatusModal from '../../signing-jobs/components/SigningJobStatusModal';
+import { useSigningJobPolling } from '../../signing-jobs/hooks/useSigningJobPolling';
 
 /**
  * @page DocumentSigningPage
@@ -89,8 +91,22 @@ const DocumentSigningPage = () => {
     statusModal,
     setStatusModal,
     auditTrailMode,
-    setAuditTrailMode
+    setAuditTrailMode,
+    activeJobId,
+    handleJobCompleted,
+    handleJobModalClose,
   } = useDocumentSigner(id);
+
+  // Phase 5: polling job async signing.
+  const {
+    job: signingJob,
+    isReconnecting,
+    retry: retrySigningJob,
+    cancel: cancelSigningJob,
+  } = useSigningJobPolling({
+    jobId: activeJobId,
+    enabled: !!activeJobId,
+  });
 
   // Handler klik pada PDF — hanya tempel TTD jika mode cursor
   const handlePdfClick = (e) => {
@@ -360,6 +376,31 @@ const DocumentSigningPage = () => {
       <StampModal isOpen={isStampOpen} onClose={() => setIsStampOpen(false)} onSave={(dataUrl, meta) => { handleSaveToolElement(dataUrl, 'stamp', meta?.metadata); setIsStampOpen(false); }} />
       <TextAnnotationModal isOpen={isTextOpen} onClose={() => setIsTextOpen(false)} onSave={(dataUrl, meta) => { handleSaveToolElement(dataUrl, 'text', meta?.metadata); setIsTextOpen(false); }} />
       <DateFieldModal isOpen={isDateOpen} onClose={() => setIsDateOpen(false)} onSave={(dataUrl, meta) => { handleSaveToolElement(dataUrl, 'date', meta?.metadata); setIsDateOpen(false); }} />
+
+      {/* Phase 5: Async signing job status modal. Hanya tampil saat
+          backend menyalakan SIGNING_JOB_ENABLED dan submit return jobId. */}
+      <SigningJobStatusModal
+        isOpen={!!activeJobId}
+        job={signingJob}
+        isReconnecting={isReconnecting}
+        onClose={handleJobModalClose}
+        onConfirmDone={handleJobCompleted}
+        onRetry={async () => {
+          try {
+            await retrySigningJob();
+          } catch {
+            /* error sudah di-handle di hook */
+          }
+        }}
+        onCancel={async () => {
+          try {
+            await cancelSigningJob();
+            handleJobModalClose();
+          } catch {
+            /* swallow */
+          }
+        }}
+      />
     </div>
   );
 };

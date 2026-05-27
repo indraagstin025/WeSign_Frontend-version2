@@ -298,16 +298,23 @@ export const getGroupDocuments = (
   return apiFetch(`/groups/${groupId}/documents?${params.toString()}`);
 };
 
-export const finalizeGroupDocument = (groupId, documentId, auditTrailMode = "embedded") =>
+export const finalizeGroupDocument = (groupId, documentId, auditTrailMode = "embedded", options = {}) =>
   apiFetch(`/groups/${groupId}/documents/${documentId}/finalize`, {
     method: 'POST',
     body: { auditTrailMode },
     timeout: 120000,
+    idempotencyKey: options.idempotencyKey || undefined,
   }).then((res) => {
     // [Bug fix duplicate signature] Wajib bust cache /groups/:id setelah
     // finalize. Tanpa ini, user yang back ke /sign akan dapat data lama
     // dari cache 30 detik (signature draft + final terlihat dobel di UI).
-    invalidateGroupCache(groupId);
+    //
+    // Phase 4: kalau response async (mode === "job"), cache belum perlu
+    // di-bust karena status dokumen belum berubah; akan di-bust ulang
+    // setelah job selesai oleh polling layer (caller).
+    if (res?.data?.mode !== 'job') {
+      invalidateGroupCache(groupId);
+    }
     return res;
   });
 

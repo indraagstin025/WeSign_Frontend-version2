@@ -14,6 +14,8 @@ import ConfirmModal from '../../../components/ui/ConfirmModal';
 import { useGroupDetailPage } from '../hooks/useGroupDetailPage';
 import AuditTrailToggle from '../../signature/components/AuditTrailToggle';
 import { timeAgo } from '../../../utils/timeAgo';
+import SigningJobStatusModal from '../../signing-jobs/components/SigningJobStatusModal';
+import { useSigningJobPolling } from '../../signing-jobs/hooks/useSigningJobPolling';
 
 /**
  * Collapsible section untuk dokumen terhapus di grup.
@@ -116,7 +118,21 @@ const GroupDetailPage = () => {
     docSearch,
     docSortBy,
     docLoading,
+    // Async finalize job (Phase 5 review fix H-1)
+    finalizeJob,
   } = state;
+
+  // Phase 5 review fix H-1: polling job async finalize. Aktif hanya saat
+  // ada job aktif (jobId tersimpan dari submit atau restore sessionStorage).
+  const {
+    job: signingJob,
+    isReconnecting,
+    retry: retrySigningJob,
+    cancel: cancelSigningJob,
+  } = useSigningJobPolling({
+    jobId: finalizeJob?.jobId,
+    enabled: !!finalizeJob?.jobId,
+  });
 
   if (loading && !groupData) {
     return (
@@ -501,6 +517,41 @@ const GroupDetailPage = () => {
           isLoading={!!isFinalizing}
         />
       )}
+
+      {/* [REVIEW FIX H-1] Async signing job status modal untuk finalize
+          dari detail page. Identik dengan yang dipakai di signing page —
+          memberikan dual-path konsisten. Hanya tampil saat backend
+          mengembalikan { jobId, mode: "job" }. */}
+      <SigningJobStatusModal
+        isOpen={!!finalizeJob?.jobId}
+        job={signingJob}
+        isReconnecting={isReconnecting}
+        onClose={actions.handleFinalizeJobModalClose}
+        onConfirmDone={() =>
+          actions.handleFinalizeJobCompleted?.(signingJob?.result)
+        }
+        onRetry={async () => {
+          try {
+            await retrySigningJob();
+          } catch {
+            /* error sudah di-handle di hook */
+          }
+        }}
+        onCancel={async () => {
+          try {
+            await cancelSigningJob();
+            actions.handleFinalizeJobModalClose?.();
+          } catch {
+            /* swallow */
+          }
+        }}
+        labels={{
+          processingHint:
+            finalizeJob?.documentTitle
+              ? `Dokumen "${finalizeJob.documentTitle}" sedang difinalisasi. Anda dapat menutup halaman ini, status akan dipulihkan saat Anda kembali.`
+              : 'Dokumen sedang difinalisasi. Anda dapat menutup halaman ini, status akan dipulihkan saat Anda kembali.',
+        }}
+      />
     </div>
   );
 };

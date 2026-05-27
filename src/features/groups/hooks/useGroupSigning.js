@@ -113,6 +113,7 @@ export const useGroupSigning = ({ groupId, documentId, currentUser }) => {
     handleSaveMySignature,
     handleFinalizeDocument,
     handleRejectDocument,
+    asyncJob: signingAsyncJob,
   } = useGroupSignatureActions({
     documentId,
     groupId,
@@ -237,5 +238,7 @@ export const useGroupSigning = ({ groupId, documentId, currentUser }) => {
     onDocumentLoadSuccess,
     handlePageLoadSuccess,
     refreshData: fetchGroupData,
+    // Phase 5: async job state untuk finalize.
+    signingAsyncJob,
   };
 };
