@@ -37,6 +37,42 @@ const STATUS_LABEL = {
 const isTerminal = (status) =>
   status === "completed" || status === "failed" || status === "cancelled";
 
+const getProgressMeta = ({ status, progress, isReconnecting, labels }) => {
+  if (status === "queued") {
+    return {
+      value: Math.max(progress, 8),
+      stage: "Tahap 1 dari 3",
+      title: "Permintaan sudah masuk antrian",
+      hint:
+        labels.queuedHint ||
+        "Worker akan mengambil dokumen ini begitu giliran proses tersedia.",
+      isActive: false,
+    };
+  }
+
+  if (status === "processing") {
+    return {
+      value: Math.max(progress, 30),
+      stage: "Tahap 2 dari 3",
+      title: isReconnecting
+        ? "Proses tetap berjalan di server"
+        : "PDF sedang ditandatangani di server",
+      hint:
+        labels.processingHint ||
+        "Tahap ini bisa memakan waktu beberapa saat. Hasil akan muncul otomatis setelah worker selesai.",
+      isActive: true,
+    };
+  }
+
+  return {
+    value: progress,
+    stage: "",
+    title: "",
+    hint: "",
+    isActive: false,
+  };
+};
+
 const SigningJobStatusModal = ({
   isOpen,
   job,
@@ -53,6 +89,12 @@ const SigningJobStatusModal = ({
   const progress = Math.max(0, Math.min(100, Number(job?.progress || 0)));
   const errorMessage = job?.errorMessage;
   const retryable = !!job?.retryable;
+  const progressMeta = getProgressMeta({
+    status,
+    progress,
+    isReconnecting,
+    labels,
+  });
 
   let theme = "info";
   if (status === "completed") theme = "success";
@@ -134,14 +176,27 @@ const SigningJobStatusModal = ({
           {/* Progress bar saat processing/queued */}
           {(status === "queued" || status === "processing") && (
             <div className="w-full mb-4">
-              <div className="h-1.5 bg-zinc-100 dark:bg-white/5 rounded-full overflow-hidden">
+              <div
+                className="h-1.5 bg-zinc-100 dark:bg-white/5 rounded-full overflow-hidden"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={progressMeta.value}
+              >
                 <div
-                  className="h-full bg-sky-500 transition-all duration-500"
-                  style={{ width: `${progress}%` }}
-                />
+                  className="h-full bg-sky-500 transition-all duration-700 relative overflow-hidden"
+                  style={{ width: `${progressMeta.value}%` }}
+                >
+                  {progressMeta.isActive && (
+                    <span className="absolute inset-0 bg-white/30 animate-pulse" />
+                  )}
+                </div>
               </div>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2">
-                {progress > 0 ? `${progress}%` : "Memulai..."}
+              <p className="text-xs font-bold text-sky-600 dark:text-sky-400 mt-3 uppercase tracking-widest">
+                {progressMeta.stage}
+              </p>
+              <p className="text-sm font-black text-zinc-800 dark:text-zinc-100 mt-1">
+                {progressMeta.title}
               </p>
             </div>
           )}
@@ -149,8 +204,7 @@ const SigningJobStatusModal = ({
           {/* Hint text */}
           {(status === "queued" || status === "processing") && (
             <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400 leading-relaxed mb-4 px-2">
-              {labels.processingHint ||
-                "Tetap di halaman ini sampai proses selesai. Jika menutup halaman, status akan dipulihkan saat Anda kembali."}
+              {progressMeta.hint}
             </p>
           )}
 
@@ -214,7 +268,7 @@ const SigningJobStatusModal = ({
           {status === "completed" && (
             <>
               <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400 leading-relaxed mb-4 px-2">
-                Dokumen Anda telah berhasil ditandatangani.
+                {labels.completedMessage || "Dokumen Anda telah berhasil ditandatangani."}
               </p>
               <button
                 type="button"
