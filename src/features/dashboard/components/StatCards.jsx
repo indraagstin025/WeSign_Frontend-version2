@@ -1,18 +1,14 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion as Motion } from 'framer-motion';
 import { FileText, Clock, CheckCircle2, FileEdit, TrendingUp, TrendingDown } from 'lucide-react';
-import { AreaChart, Area, ResponsiveContainer } from 'recharts';
 
 const StatCards = ({ counts, itemVariants }) => {
-  // Mapping ke backend response shape: { waiting, process, completed }
-  // - waiting: dokumen draft (belum di-assign ke siapa pun)
-  // - process: dokumen pending signature (sedang berjalan)
-  // - completed: dokumen sudah selesai ditandatangani
-  // - total: agregasi waiting + process + completed
   const waiting = counts?.waiting ?? 0;
   const process = counts?.process ?? 0;
   const completed = counts?.completed ?? 0;
-  const total = waiting + process + completed;
+  const actionRequired = counts?.actionRequired ?? process;
+  const total = counts?.total ?? waiting + process + completed;
+  const maxValue = Math.max(total, waiting, actionRequired, completed, 1);
 
   const stats = [
     {
@@ -23,8 +19,7 @@ const StatCards = ({ counts, itemVariants }) => {
       iconBg: 'bg-emerald-50',
       iconColor: 'text-emerald-600',
       icon: <FileText size={22} />,
-      lineColor: '#10b981',
-      data: [30, 40, 35, 50, 40, 55, 45, 60],
+      barColor: 'bg-emerald-500',
     },
     {
       label: 'Draft',
@@ -34,19 +29,17 @@ const StatCards = ({ counts, itemVariants }) => {
       iconBg: 'bg-zinc-50',
       iconColor: 'text-zinc-500',
       icon: <FileEdit size={22} />,
-      lineColor: '#71717a',
-      data: [20, 22, 18, 25, 22, 20, 18, 15],
+      barColor: 'bg-zinc-500',
     },
     {
-      label: 'Sedang Berjalan',
-      value: process,
-      trend: 'Menunggu tanda tangan',
+      label: 'Perlu Aksi',
+      value: actionRequired,
+      trend: 'Menunggu tindakan Anda',
       isUp: true,
       iconBg: 'bg-amber-50',
       iconColor: 'text-amber-500',
       icon: <Clock size={22} />,
-      lineColor: '#f59e0b',
-      data: [20, 25, 22, 30, 25, 35, 30, 40],
+      barColor: 'bg-amber-500',
     },
     {
       label: 'Selesai',
@@ -56,15 +49,14 @@ const StatCards = ({ counts, itemVariants }) => {
       iconBg: 'bg-emerald-50',
       iconColor: 'text-emerald-600',
       icon: <CheckCircle2 size={22} />,
-      lineColor: '#10b981',
-      data: [40, 50, 45, 60, 50, 70, 60, 80],
+      barColor: 'bg-emerald-500',
     },
   ];
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {stats.map((stat, i) => (
-        <motion.div
+        <Motion.div
           key={i}
           variants={itemVariants}
           className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-2xl p-5 flex flex-col gap-3 shadow-sm hover:shadow-md transition-shadow"
@@ -89,29 +81,13 @@ const StatCards = ({ counts, itemVariants }) => {
           {/* Trend text */}
           <p className="text-[10px] text-zinc-400">{stat.trend}</p>
 
-          {/* Mini sparkline */}
-          <div className="h-10 w-full -mx-1">
-            <ResponsiveContainer width="100%" height={40}>
-              <AreaChart data={stat.data.map((v, j) => ({ v, j }))}>
-                <defs>
-                  <linearGradient id={`grad${i}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor={stat.lineColor} stopOpacity={0.15} />
-                    <stop offset="95%" stopColor={stat.lineColor} stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <Area
-                  type="monotone"
-                  dataKey="v"
-                  stroke={stat.lineColor}
-                  strokeWidth={2}
-                  fill={`url(#grad${i})`}
-                  isAnimationActive={false}
-                  dot={false}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+          <div className="h-2 w-full rounded-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
+            <div
+              className={`h-full rounded-full ${stat.barColor}`}
+              style={{ width: `${Math.min(100, Math.round((stat.value / maxValue) * 100))}%` }}
+            />
           </div>
-        </motion.div>
+        </Motion.div>
       ))}
     </div>
   );

@@ -14,8 +14,9 @@
  * Status keys (uppercase, sesuai backend):
  * - DRAFT      — dokumen draft, belum di-publish ke signer
  * - PENDING    — sedang menunggu tanda tangan
- * - SIGNED     — user ini sudah tanda tangan (per-signer status)
  * - PROCESSING — sebagian signer sudah TTD, masih nunggu sisanya (per-document)
+ * - FINALIZING — job finalisasi sedang berjalan
+ * - SIGNED     — user ini sudah tanda tangan (per-signer status)
  * - COMPLETED  — semua signer sudah TTD + admin sudah finalize
  * - REJECTED   — ada signer yang menolak dokumen
  */
@@ -58,6 +59,14 @@ export const GROUP_DOCUMENT_STATUS = {
     color: 'text-blue-600',
     bg: 'bg-blue-500/10',
     accent: 'bg-blue-400',
+    icon: Loader2,
+  },
+  FINALIZING: {
+    label: 'Finalisasi',
+    cls: 'bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-500',
+    color: 'text-blue-600',
+    bg: 'bg-blue-500/10',
+    accent: 'bg-blue-500',
     icon: Loader2,
   },
   SIGNED: {

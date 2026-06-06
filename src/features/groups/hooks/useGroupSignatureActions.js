@@ -144,8 +144,9 @@ export const useGroupSignatureActions = ({
     const persisted = readGroupFinalizeJob(groupId, documentId);
     if (persisted?.jobId) {
       setActiveJobId(persisted.jobId);
+      setDocumentStatus?.('FINALIZING');
     }
-  }, [groupId, documentId]);
+  }, [groupId, documentId, setDocumentStatus]);
 
   // ── Tambah TTD (Drop/Klik di PDF) ─────────────────────────────────────────
   const handleAddSignature = useCallback(
@@ -534,6 +535,8 @@ export const useGroupSignatureActions = ({
           documentTitle,
         });
         setActiveJobId(data.jobId);
+        setDocumentStatus?.('FINALIZING');
+        setReadyToFinalize?.(false);
         // JANGAN ubah status dokumen ke COMPLETED dulu — tunggu job selesai.
         // Modal SigningJobStatusModal di page akan tampil sampai
         // worker confirm + processor mark completed.

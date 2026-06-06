@@ -10,7 +10,7 @@
  * Inkonsistensi: pending → "Pending" vs "Proses", completed → "Selesai" konsisten,
  * draft → "Draft" konsisten. STATUS_BADGE pakai `archived` yang tidak ada di tab.
  *
- * Sekarang: 1 source of truth dengan 4 status keys + helper lookup.
+ * Sekarang: 1 source of truth dengan status keys backend + helper lookup.
  */
 
 /**
@@ -33,6 +33,11 @@ export const DOCUMENT_STATUS = {
     label: 'Proses',
     cls: 'bg-amber-50 text-amber-600 border border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20',
     chip: 'bg-amber-500 text-white border-transparent shadow-sm',
+  },
+  finalizing: {
+    label: 'Finalisasi',
+    cls: 'bg-blue-50 text-blue-600 border border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20',
+    chip: 'bg-blue-500 text-white border-transparent shadow-sm',
   },
   completed: {
     label: 'Selesai',

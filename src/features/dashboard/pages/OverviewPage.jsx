@@ -1,6 +1,6 @@
 import React from 'react';
 import { Loader2 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion as Motion } from 'framer-motion';
 import { useDashboard } from '../hooks/useDashboard';
 
 import DashboardHeader from '../components/DashboardHeader';
@@ -11,7 +11,7 @@ import OverviewChart from '../components/OverviewChart';
 import QuickActions from '../components/QuickActions';
 
 const OverviewPage = () => {
-  const { counts, actions, activities, loading } = useDashboard();
+  const { counts, recentDocuments, activeSignings, loading, error } = useDashboard();
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -37,7 +37,7 @@ const OverviewPage = () => {
   return (
     <div className="flex-1 overflow-y-auto no-scrollbar bg-zinc-50 dark:bg-zinc-950">
       <div className="px-5 lg:px-8 py-5 lg:py-6">
-        <motion.div
+        <Motion.div
           variants={containerVariants}
           initial="hidden"
           animate="visible"
@@ -46,21 +46,27 @@ const OverviewPage = () => {
           {/* Header */}
           <DashboardHeader itemVariants={itemVariants} />
 
+          {error && (
+            <div className="rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+              {error}
+            </div>
+          )}
+
           {/* Stat Cards */}
           <StatCards counts={counts} itemVariants={itemVariants} />
 
           {/* Recent Documents + Active Signings */}
           <section className="grid grid-cols-12 gap-4 items-start">
-            <RecentDocuments documents={actions} itemVariants={itemVariants} />
-            <ActiveSignings signings={activities} itemVariants={itemVariants} />
+            <RecentDocuments documents={recentDocuments} itemVariants={itemVariants} />
+            <ActiveSignings signings={activeSignings} itemVariants={itemVariants} />
           </section>
 
           {/* Overview Chart + Quick Actions */}
           <section className="grid grid-cols-12 gap-4 items-start">
-            <OverviewChart itemVariants={itemVariants} />
+            <OverviewChart counts={counts} itemVariants={itemVariants} />
             <QuickActions itemVariants={itemVariants} />
           </section>
-        </motion.div>
+        </Motion.div>
       </div>
     </div>
   );
