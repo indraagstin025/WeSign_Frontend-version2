@@ -80,7 +80,6 @@ export async function apiFetch(endpoint, options = {}) {
   if (token) {
     defaultHeaders["Authorization"] = `Bearer ${token}`;
   }
-
   // Add CSRF token untuk non-GET requests
   const isModifyingRequest = ["POST", "PUT", "DELETE", "PATCH"].includes(options.method?.toUpperCase());
   if (isModifyingRequest && csrfToken) {
@@ -97,6 +96,7 @@ export async function apiFetch(endpoint, options = {}) {
       ...defaultHeaders,
       ...options.headers,
     },
+    cache: options.cache || 'no-store',
   };
 
   const isFormData = config.body instanceof FormData;
