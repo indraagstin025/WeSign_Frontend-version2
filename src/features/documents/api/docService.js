@@ -69,6 +69,93 @@ export async function uploadDocument(formData, options = {}) {
 }
 
 /**
+ * Direct upload dokumen ke Backblaze B2 via Presigned URL.
+ * 1. Minta presigned URL dari backend
+ * 2. Upload biner PDF langsung ke Backblaze via HTTP PUT dengan progress callback
+ * 3. Konfirmasi ke backend untuk mencatat metadata dokumen ke database
+ *
+ * @param {File} file - Objek File PDF
+ * @param {string} title - Judul dokumen
+ * @param {string} type - Tipe dokumen (misal: "General")
+ * @param {object} [options] - { onProgress: (percent) => void, hash: string }
+ * @returns {Promise<object>} Data dokumen yang berhasil dibuat
+ */
+export async function uploadDocumentDirect(file, title, type = 'General', options = {}) {
+  const { onProgress, hash } = options;
+  const tTotalStart = performance.now();
+
+  // 1. Minta Presigned URL dari Backend
+  const tTicketStart = performance.now();
+  const ticketRes = await apiFetch('/documents/presigned-url', {
+    method: 'POST',
+    body: {
+      fileName: file.name,
+      contentType: file.type || 'application/pdf',
+    },
+  });
+  const ticketMs = performance.now() - tTicketStart;
+
+  const { uploadUrl, filePath } = ticketRes.data;
+
+  // 2. Upload file langsung ke Backblaze B2 via HTTP PUT
+  const tPutStart = performance.now();
+  await new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', uploadUrl, true);
+    xhr.setRequestHeader('Content-Type', file.type || 'application/pdf');
+
+    if (xhr.upload && onProgress) {
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          const percent = Math.round((event.loaded / event.total) * 100);
+          onProgress(percent);
+        }
+      };
+    }
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve();
+      } else {
+        reject(new Error(`Gagal mengunggah file ke Backblaze (Status: ${xhr.status})`));
+      }
+    };
+
+    xhr.onerror = () => reject(new Error('Koneksi terputus saat mengunggah ke penyimpanan cloud.'));
+    xhr.ontimeout = () => reject(new Error('Upload ke penyimpanan cloud timeout.'));
+
+    xhr.send(file);
+  });
+  const putMs = performance.now() - tPutStart;
+
+  // 3. Konfirmasi ke Backend untuk simpan ke database
+  const tConfirmStart = performance.now();
+  const res = await apiFetch('/documents/confirm', {
+    method: 'POST',
+    body: {
+      filePath,
+      title: title || file.name.replace(/\.[^/.]+$/, ''),
+      type: type || 'General',
+      hash: hash || null,
+    },
+  });
+  const confirmMs = performance.now() - tConfirmStart;
+  const totalMs = performance.now() - tTotalStart;
+
+  console.log(
+    `%c[WeSign Metrics] 🚀 Upload Selesai (${file.name} - ${(file.size / 1024).toFixed(1)} KB):%c\n` +
+    `  • Tiket Presigned : ${ticketMs.toFixed(1)} ms\n` +
+    `  • Direct PUT B2   : ${putMs.toFixed(1)} ms\n` +
+    `  • Simpan ke DB    : ${confirmMs.toFixed(1)} ms\n` +
+    `  👉 TOTAL PROSES   : ${totalMs.toFixed(1)} ms (~${(totalMs / 1000).toFixed(2)}s)`,
+    'color: #0284c7; font-weight: bold;',
+    'color: inherit;'
+  );
+
+  return res;
+}
+
+/**
  * Mendapatkan URL file dokumen (Signed URL).
  * @param {string} id - Document ID
  * @param {string} purpose - 'view' atau 'download'
