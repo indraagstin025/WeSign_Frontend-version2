@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, Trash2, Check, FileText, PenTool, Type, Stamp, Calendar, ChevronDown, MoreVertical } from 'lucide-react';
+import { Plus, Trash2, Check, FileText, PenTool, Type, Stamp, Calendar, ChevronDown, MoreVertical, GripVertical } from 'lucide-react';
 
 /**
  * @component SigningSidebar
@@ -64,8 +64,33 @@ const SigningSidebar = ({
 
         {/* Preview Elemen Aktif */}
         {currentSignature && (
-          <div className="space-y-2 p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-100 dark:border-zinc-800">
-            <div className="flex items-center justify-between">
+          <div 
+            className="space-y-2 p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-100 dark:border-zinc-800 cursor-grab active:cursor-grabbing"
+            draggable="true"
+            onDragStart={(e) => {
+              e.dataTransfer.setData('application/wesign-signature', JSON.stringify({
+                imageUrl: currentSignature,
+                type: activeElement?.type || 'signature',
+                metadata: activeElement?.metadata || null,
+              }));
+              e.dataTransfer.effectAllowed = 'copy';
+              // Suppress native ghost → custom preview di DocumentSigningPage
+              const ghost = document.createElement('div');
+              ghost.style.width = '1px';
+              ghost.style.height = '1px';
+              ghost.style.opacity = '0.01';
+              document.body.appendChild(ghost);
+              e.dataTransfer.setDragImage(ghost, 0, 0);
+              setTimeout(() => document.body.removeChild(ghost), 0);
+              // Beri tahu page untuk show custom preview
+              window.dispatchEvent(new CustomEvent('wesign-drag-start', {
+                detail: { imageUrl: currentSignature, type: activeElement?.type || 'signature' },
+              }));
+            }}
+            onDragEnd={() => {
+              window.dispatchEvent(new CustomEvent('wesign-drag-end'));
+            }}
+          >            <div className="flex items-center justify-between">
               <p className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">
                 {activeElement?.type === 'initial' ? 'Paraf Aktif' 
                   : activeElement?.type === 'stamp' ? 'Stamp Aktif'
@@ -96,6 +121,13 @@ const SigningSidebar = ({
                 <MoreVertical size={12} />
               </button>
             </div>
+            {/* Drag hint */}
+            <p className="text-[8px] text-center text-zinc-400 dark:text-zinc-500 select-none pt-1">
+              <span className="inline-flex items-center gap-1">
+                <GripVertical size={8} className="opacity-60" />
+                Seret ke dokumen untuk menempatkan
+              </span>
+            </p>
           </div>
         )}
 
