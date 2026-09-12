@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useUser } from '../../../context/UserContext';
-import { getGroupDetail } from '../api/groupService';
+import { getGroupDocumentDetail, getGroupSummary } from '../api/groupService';
 import { getDocumentFile } from '../../documents/api/docService';
 import { apiFetch } from '../../../services/api';
 import { useGroupSocket } from './useGroupSocket';
@@ -40,13 +40,16 @@ export function useGroupDocumentPreviewPage() {
       if (!silent) setLoading(true);
       setError(null);
       try {
-        const groupRes = await getGroupDetail(groupId);
+        const [groupRes, documentRes] = await Promise.all([
+          getGroupSummary(groupId),
+          getGroupDocumentDetail(groupId, documentId),
+        ]);
         if (groupRes.status !== 'success') throw new Error(groupRes.message);
+        if (documentRes.status !== 'success') throw new Error(documentRes.message);
         const gData = groupRes.data;
         setGroupData(gData);
 
-        const foundDoc = gData.documents?.find((d) => String(d.id) === String(documentId));
-        if (!foundDoc) throw new Error('Dokumen tidak ditemukan di grup ini.');
+        const foundDoc = documentRes.data;
         setDoc(foundDoc);
 
         if (isAuditTrailMode && foundDoc.currentVersion?.auditTrailUrl) {
