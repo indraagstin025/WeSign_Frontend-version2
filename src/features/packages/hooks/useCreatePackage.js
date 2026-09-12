@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback } from 'react';
-import { uploadPackageDocuments } from '../api/packageService';
+import { uploadPackageDocuments, uploadPackageDirect } from '../api/packageService';
 import { pdfjs } from 'react-pdf';
 import { createLogger } from '../../../utils/logger';
 
@@ -13,7 +13,7 @@ const logger = createLogger('CreatePackage');
  * @hook useCreatePackage
  * @description Hook untuk mengelola logika create paket baru — validasi
  * file PDF lokal (password protection + scan-only detection), file batch
- * processing, dan submission ke server.
+ * processing, direct upload ke Backblaze B2, dan submission ke server.
  *
  * @param {() => void} onSuccess - Callback saat upload sukses
  * @param {() => void} onClose - Callback tutup modal upload
@@ -50,9 +50,6 @@ export const useCreatePackage = (onSuccess, onClose) => {
           
           resolve({ valid: true, hasText });
         } catch (err) {
-          // [L-5] Sebelumnya pakai console.error("❌ ...") dengan emoji.
-          // Pakai createLogger supaya output prefix konsisten + bisa
-          // disilent di production via logger config.
           logger.error('Validation error trace:', err.name, err.message);
           
           if (err.name === 'PasswordException' || err.name === 'PasswordResponseException' || err.message?.toLowerCase().includes('password')) {
@@ -146,6 +143,20 @@ export const useCreatePackage = (onSuccess, onClose) => {
   };
 
   /**
+   * Helper menghitung SHA-256 hash file di browser menggunakan Web Crypto API
+   */
+  const calculateSha256 = async (file) => {
+    try {
+      const buffer = await file.arrayBuffer();
+      const hashBuffer = await window.crypto.subtle.digest('SHA-256', buffer);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    } catch {
+      return null;
+    }
+  };
+
+  /**
    * Submit the package to the server
    */
   const handleSubmit = async (e) => {
@@ -158,20 +169,37 @@ export const useCreatePackage = (onSuccess, onClose) => {
     setLoading(true);
     setError(null);
 
-    const formData = new FormData();
-    formData.append('title', title || 'Paket Dokumen');
-    formData.append('label', category);
-    
-    files.forEach((file) => {
-      formData.append('documentFiles', file);
-    });
+    // Hitung SHA-256 hash dokumen di browser (0 RAM overhead di server)
+    const fileHashes = {};
+    for (const file of files) {
+      const hash = await calculateSha256(file);
+      if (hash) fileHashes[file.name] = hash;
+    }
 
     try {
-      const response = await uploadPackageDocuments(formData, {
-        idempotencyKey:
-          uploadIdempotencyKeyRef.current ||
-          (uploadIdempotencyKeyRef.current = crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`),
-      });
+      let response;
+      try {
+        // Coba Direct Upload ke Backblaze B2 via Presigned URLs
+        response = await uploadPackageDirect(files, title, category, {
+          fileHashes,
+        });
+      } catch (directErr) {
+        logger.warn('Direct upload paket ke Backblaze gagal, beralih ke upload server:', directErr.message);
+
+        // Fallback: Legacy upload via Express Multer
+        const formData = new FormData();
+        formData.append('title', title || (files[0] ? `Paket: ${files[0].name.replace(/\.[^/.]+$/, '')}` : 'Paket Dokumen'));
+        formData.append('label', category);
+        files.forEach((file) => {
+          formData.append('documentFiles', file);
+        });
+
+        response = await uploadPackageDocuments(formData, {
+          idempotencyKey:
+            uploadIdempotencyKeyRef.current ||
+            (uploadIdempotencyKeyRef.current = crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`),
+        });
+      }
 
       if (response?.status === 'success') {
         // Semua file berhasil
