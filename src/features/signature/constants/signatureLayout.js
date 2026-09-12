@@ -48,3 +48,10 @@ export const TOTAL_PADDING = VISUAL_PADDING * 2;
  * dikecilkan sampai tidak terlihat.
  */
 export const MIN_INNER_WIDTH = 10;
+
+/**
+ * Rasio lebar OUTER maksimum terhadap container saat resize.
+ * 0.8 = 80% dari lebar container. Mencegah signature menutupi seluruh
+ * halaman PDF saat di-resize.
+ */
+export const MAX_OUTER_WIDTH_RATIO = 0.8;
