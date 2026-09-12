@@ -25,6 +25,18 @@ export async function registerUser({ name, email, password, isCompany }) {
 }
 
 /**
+ * Memverifikasi email pengguna menggunakan token.
+ * @param {string} token
+ * @returns {Promise<object>}
+ */
+export async function verifyEmail(token) {
+  return await apiFetch("/auth/verify-email", {
+    method: "POST",
+    body: { token },
+  });
+}
+
+/**
  * Login pengguna dan simpan token ke localStorage.
  *
  * [M-4] Bersihkan auth state lama sebelum request login. Sebelumnya kalau
