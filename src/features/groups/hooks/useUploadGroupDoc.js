@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { uploadGroupDocument } from '../api/groupService';
+import { uploadGroupDocument, uploadGroupDocumentDirect } from '../api/groupService';
 import {
   DOC_TITLE_MAX,
   validateDocTitle,
@@ -10,6 +10,20 @@ const inferErrorType = (err) => {
   if (err.status === 400 || err.status === 422) return 'validation';
   if (!navigator.onLine || err.message?.toLowerCase().includes('koneksi')) return 'network';
   return 'server';
+};
+
+/**
+ * Helper menghitung SHA-256 hash file di browser menggunakan Web Crypto API
+ */
+const calculateSha256 = async (file) => {
+  try {
+    const buffer = await file.arrayBuffer();
+    const hashBuffer = await window.crypto.subtle.digest('SHA-256', buffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+  } catch {
+    return null;
+  }
 };
 
 /**
@@ -31,10 +45,6 @@ const inferErrorType = (err) => {
  *   - Backend buat 1 SignerRequest per userId di array
  *   - Email notification dispatch ke setiap signer
  *   - Dokumen langsung masuk fase signing
- *
- * Backend payload: kalau `willBeDraft: true`, frontend SKIP append
- * `signerUserIds` ke FormData (lihat handleUpload). Backend infer DRAFT
- * dari ketiadaan field ini.
  *
  * @param {object} args
  * @param {number|string} args.groupId
@@ -129,18 +139,31 @@ export function useUploadGroupDoc({ groupId, members = [], isOpen, onSuccess, on
     setIsUploading(true);
     setError(null);
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('title', title.trim());
-      if (selectedSigners.length > 0) {
-        formData.append('signerUserIds', JSON.stringify(selectedSigners));
+      // Hitung SHA-256 hash file di browser (0 RAM spike di server)
+      const hash = await calculateSha256(file);
+
+      let res;
+      try {
+        // Coba Direct Upload ke Backblaze B2 via Presigned URL
+        res = await uploadGroupDocumentDirect(groupId, file, title.trim(), selectedSigners, { hash });
+      } catch (directErr) {
+        console.warn('Direct upload grup ke Backblaze gagal, beralih ke upload server:', directErr.message);
+
+        // Fallback: Legacy upload via Multer
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('title', title.trim());
+        if (selectedSigners.length > 0) {
+          formData.append('signerUserIds', JSON.stringify(selectedSigners));
+        }
+
+        res = await uploadGroupDocument(groupId, formData, {
+          idempotencyKey:
+            uploadIdempotencyKeyRef.current ||
+            (uploadIdempotencyKeyRef.current = crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`),
+        });
       }
 
-      const res = await uploadGroupDocument(groupId, formData, {
-        idempotencyKey:
-          uploadIdempotencyKeyRef.current ||
-          (uploadIdempotencyKeyRef.current = crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`),
-      });
       if (res.status === 'success') {
         onSuccess?.();
         handleClose();
