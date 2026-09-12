@@ -13,6 +13,7 @@ import './App.css';
 const HomePage = lazy(() => import('./pages/public/HomePage'));
 const LoginPage = lazy(() => import('./features/auth/pages/LoginPage'));
 const RegisterPage = lazy(() => import('./features/auth/pages/RegisterPage'));
+const VerifyEmailPage = lazy(() => import('./features/auth/pages/VerifyEmailPage'));
 const ForgotPasswordPage = lazy(() => import('./features/auth/pages/ForgotPasswordPage'));
 const ResetPasswordPage = lazy(() => import('./features/auth/pages/ResetPasswordPage'));
 const OverviewPage = lazy(() => import('./features/dashboard/pages/OverviewPage'));
@@ -101,6 +102,11 @@ function App() {
             <Route path="/register" element={
               <GuestRoute>
                 <RegisterPage />
+              </GuestRoute>
+            } />
+            <Route path="/verify-email" element={
+              <GuestRoute>
+                <VerifyEmailPage />
               </GuestRoute>
             } />
             <Route path="/forgot-password" element={
