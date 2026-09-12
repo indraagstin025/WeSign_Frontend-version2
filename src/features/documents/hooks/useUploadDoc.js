@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { pdfjs } from 'react-pdf';
-import { uploadDocument } from '../api/docService';
+import { uploadDocument, uploadDocumentDirect } from '../api/docService';
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from '../constants/uploadLimits';
 import { createLogger } from '../../../utils/logger';
 
@@ -22,6 +22,7 @@ const log = createLogger('UploadDoc');
 export const useUploadDoc = (onSuccess, onClose) => {
   const uploadIdempotencyKeyRef = useRef(null);
   const [file, setFile] = useState(null);
+  const [fileHash, setFileHash] = useState(null);
   const [title, setTitle] = useState('');
   const [type, setType] = useState('General');
   const [loading, setLoading] = useState(false);
@@ -44,10 +45,11 @@ export const useUploadDoc = (onSuccess, onClose) => {
    * juga sudah handle worker offload saat disableWorker:false.
    */
   const validatePdfLocally = async (selectedFile) => {
+    let arrayBuffer;
     let data;
     try {
-      const buffer = await selectedFile.arrayBuffer();
-      data = new Uint8Array(buffer);
+      arrayBuffer = await selectedFile.arrayBuffer();
+      data = new Uint8Array(arrayBuffer);
     } catch {
       return { valid: false, error: 'Gagal membaca file dari penyimpanan lokal.' };
     }
@@ -65,7 +67,20 @@ export const useUploadDoc = (onSuccess, onClose) => {
       const textContent = await page.getTextContent();
       const hasText = textContent.items.length > 0;
 
-      return { valid: true, hasText };
+      // Hitung SHA-256 hash file di browser via Web Crypto API (0ms overhead server)
+      let hashHex = null;
+      try {
+        if (window.crypto?.subtle && arrayBuffer) {
+          const hashBuffer = await window.crypto.subtle.digest('SHA-256', arrayBuffer);
+          hashHex = Array.from(new Uint8Array(hashBuffer))
+            .map((b) => b.toString(16).padStart(2, '0'))
+            .join('');
+        }
+      } catch (hashErr) {
+        log.warn('Kalkulasi hash lokal dilewati:', hashErr.message);
+      }
+
+      return { valid: true, hasText, hash: hashHex };
     } catch (err) {
       if (
         err.name === 'PasswordException' ||
@@ -94,6 +109,7 @@ export const useUploadDoc = (onSuccess, onClose) => {
   const processSelectedFile = async (selectedFile) => {
     setError(null);
     setFile(null);
+    setFileHash(null);
 
     // 1. Cek format & ukuran file dasar
     if (selectedFile.type !== 'application/pdf' && !selectedFile.name.toLowerCase().endsWith('.pdf')) {
@@ -125,12 +141,11 @@ export const useUploadDoc = (onSuccess, onClose) => {
       // 3. Sukses → siapkan untuk submit
       uploadIdempotencyKeyRef.current = null;
       setFile(selectedFile);
+      setFileHash(validation.hash || null);
       if (!title) {
         setTitle(selectedFile.name.replace(/\.[^/.]+$/, ''));
       }
     } catch (err) {
-      // [Bonus #3] Sebelumnya `err` di-catch tapi tidak dipakai (lint
-      // no-unused-vars). Sekarang log untuk debugging dengan prefix scope.
       log.error('PDF validation unexpected error:', err?.message || err);
       setError('Gagal memvalidasi konten PDF.');
     } finally {
@@ -149,17 +164,11 @@ export const useUploadDoc = (onSuccess, onClose) => {
     setError(null);
     setUploadProgress(0);
 
-    const formData = new FormData();
-    formData.append('documentFile', file);
-    formData.append('title', title || file.name);
-    formData.append('type', type);
-
     try {
-      const response = await uploadDocument(formData, {
+      // 1. Coba Direct Upload via Presigned URL (Zero Server RAM Spike)
+      const response = await uploadDocumentDirect(file, title || file.name, type, {
         onProgress: (percent) => setUploadProgress(percent),
-        idempotencyKey:
-          uploadIdempotencyKeyRef.current ||
-          (uploadIdempotencyKeyRef.current = crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`),
+        hash: fileHash,
       });
 
       if (response.status === 'success') {
@@ -170,7 +179,34 @@ export const useUploadDoc = (onSuccess, onClose) => {
         }, 1500);
       }
     } catch (err) {
-      log.error('Upload error:', err.message);
+      log.warn('Direct upload gagal, mencoba fallback ke legacy upload:', err.message);
+
+      // 2. Graceful Fallback ke upload legacy (Multer) jika direct upload terhambat
+      try {
+        const formData = new FormData();
+        formData.append('documentFile', file);
+        formData.append('title', title || file.name);
+        formData.append('type', type);
+
+        const fallbackResponse = await uploadDocument(formData, {
+          onProgress: (percent) => setUploadProgress(percent),
+          idempotencyKey:
+            uploadIdempotencyKeyRef.current ||
+            (uploadIdempotencyKeyRef.current = crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`),
+        });
+
+        if (fallbackResponse.status === 'success') {
+          setSuccess(true);
+          setTimeout(() => {
+            onSuccess();
+            handleClose();
+          }, 1500);
+          return;
+        }
+      } catch (fallbackErr) {
+        log.error('Fallback upload juga gagal:', fallbackErr.message);
+      }
+
       setError(err.message || 'Gagal mengunggah dokumen. Silakan periksa koneksi Anda.');
       setUploadProgress(0);
     } finally {
@@ -184,6 +220,7 @@ export const useUploadDoc = (onSuccess, onClose) => {
   const handleClose = () => {
     if (loading || validating) return;
     setFile(null);
+    setFileHash(null);
     uploadIdempotencyKeyRef.current = null;
     setTitle('');
     setError(null);
