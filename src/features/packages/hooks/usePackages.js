@@ -6,6 +6,7 @@ import {
   deletePackage,
   getMyTrashPackages,
   restoreMyPackage,
+  hardDeleteMyPackage,
 } from '../api/packageService';
 import { SEARCH_DEBOUNCE_MS } from '../constants/layout';
 
@@ -206,6 +207,9 @@ export const usePackages = () => {
       case 'delete':
         setDeletePkg(pkg);
         break;
+      case 'hardDelete':
+        setHardDeletePkg(pkg);
+        break;
       case 'restore':
         try {
           await restoreMyPackage(pkg.id);
@@ -261,6 +265,37 @@ export const usePackages = () => {
     }
   };
 
+  const [hardDeletePkg, setHardDeletePkg] = useState(null);
+  const [isHardDeleting, setIsHardDeleting] = useState(false);
+
+  const handleConfirmHardDelete = async (pkgToHardDelete = null) => {
+    const target = pkgToHardDelete || hardDeletePkg;
+    if (!target) return;
+    setIsHardDeleting(true);
+    try {
+      await hardDeleteMyPackage(target.id);
+      const deletedTitle = target.title || 'Tanpa Judul';
+      if (hardDeletePkg && target.id === hardDeletePkg.id) setHardDeletePkg(null);
+
+      // Adjust counter lokal dan hanya re-fetch list page yang sedang dilihat
+      adjustTrashCount(-1);
+
+      // Refresh current page (or go back one if last item on page)
+      const newPage = packages.length === 1 && currentPage > 1 ? currentPage - 1 : currentPage;
+      setCurrentPage(newPage);
+      fetchPackages(newPage);
+
+      toast.success(
+        `Paket "${deletedTitle}" beserta dokumen di dalamnya telah dihapus secara permanen.`,
+        { autoClose: 4000 }
+      );
+    } catch (err) {
+      toast.error(err.message || 'Gagal menghapus paket secara permanen.');
+    } finally {
+      setIsHardDeleting(false);
+    }
+  };
+
   return {
     packages,
     meta,
@@ -291,13 +326,16 @@ export const usePackages = () => {
       },
       handleAction,
       handleConfirmDelete,
+      handleConfirmHardDelete,
       setStatus: handleSetStatus,
+      setHardDeletePkg,
     },
     modals: {
       upload: { isOpen: isUploadModalOpen, setOpen: setIsUploadModalOpen },
       info: { data: infoPkg, setOpen: (val) => !val && setInfoPkg(null) },
       edit: { data: editPkg, setOpen: (val) => !val && setEditPkg(null) },
       delete: { data: deletePkg, setOpen: (val) => !val && setDeletePkg(null), isDeleting },
+      hardDelete: { data: hardDeletePkg, setOpen: (val) => !val && setHardDeletePkg(null), isHardDeleting },
     },
   };
 };
