@@ -12,6 +12,100 @@ export async function uploadPackageDocuments(formData, options = {}) {
 }
 
 /**
+ * Direct upload Multiple Documents to create a new Package via Presigned URLs.
+ * 1. Minta batch presigned URLs dari backend
+ * 2. Upload file-file secara paralel via HTTP PUT langsung ke Backblaze B2 (dengan tracking progress)
+ * 3. Konfirmasi ke backend untuk menyimpan dokumen dan membuat paket
+ *
+ * @param {Array<File>} files
+ * @param {string} title
+ * @param {string} category
+ * @param {object} [options] - { onProgress: (percent) => void, fileHashes: object }
+ * @returns {Promise<Object>} Package yang baru dibuat
+ */
+export async function uploadPackageDirect(files, title, category = 'General', options = {}) {
+  const { onProgress, fileHashes = {} } = options;
+
+  // 1. Dapatkan Batch Presigned URLs dari backend
+  const ticketRes = await apiFetch('/packages/presigned-urls', {
+    method: 'POST',
+    body: {
+      files: files.map((f) => ({
+        fileName: f.name,
+        contentType: f.type || 'application/pdf',
+      })),
+    },
+  });
+
+  const items = ticketRes?.data?.items || [];
+  if (items.length === 0) {
+    throw new Error('Gagal mendapatkan tiket upload dari server.');
+  }
+
+  // 2. Upload masing-masing file langsung ke Backblaze B2 via HTTP PUT
+  const fileProgresses = new Array(files.length).fill(0);
+  const updateAggregateProgress = (index, percent) => {
+    fileProgresses[index] = percent;
+    if (onProgress) {
+      const totalPercent = Math.round(
+        fileProgresses.reduce((sum, p) => sum + p, 0) / files.length
+      );
+      onProgress(totalPercent);
+    }
+  };
+
+  const uploadPromises = items.map((item, idx) => {
+    const file = files.find((f) => f.name === item.fileName) || files[idx];
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('PUT', item.uploadUrl, true);
+      xhr.setRequestHeader('Content-Type', file.type || 'application/pdf');
+
+      if (xhr.upload) {
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const percent = Math.round((event.loaded / event.total) * 100);
+            updateAggregateProgress(idx, percent);
+          }
+        };
+      }
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          updateAggregateProgress(idx, 100);
+          resolve();
+        } else {
+          reject(new Error(`Gagal mengunggah file '${item.fileName}' ke Backblaze (Status: ${xhr.status})`));
+        }
+      };
+
+      xhr.onerror = () => reject(new Error(`Koneksi terputus saat mengunggah '${item.fileName}' ke penyimpanan cloud.`));
+      xhr.ontimeout = () => reject(new Error(`Upload '${item.fileName}' ke penyimpanan cloud timeout.`));
+
+      xhr.send(file);
+    });
+  });
+
+  await Promise.all(uploadPromises);
+
+  // 3. Konfirmasi ke backend
+  const documentsPayload = items.map((item) => ({
+    fileName: item.fileName,
+    filePath: item.filePath,
+    hash: fileHashes[item.fileName] || null,
+  }));
+
+  return apiFetch('/packages/confirm-upload', {
+    method: 'POST',
+    body: {
+      title: title || (files[0] ? `Paket: ${files[0].name.replace(/\.[^/.]+$/, '')}` : 'Paket Dokumen'),
+      label: category || 'General',
+      documents: documentsPayload,
+    },
+  });
+}
+
+/**
  * Get all packages for the logged in user with server-side pagination
  * @param {object} params - { page, limit, status, search }
  * @returns {Promise<{ data: Array, meta: { total, page, limit, totalPages } }>}
@@ -175,4 +269,14 @@ export async function getMyTrashPackages({ page = 1, limit = 10 } = {}) {
  */
 export async function restoreMyPackage(packageId) {
   return apiFetch(`/packages/trash/${packageId}/restore`, { method: 'POST' });
+}
+
+/**
+ * Hard delete paket milik user dari trash. Penghapusan ini bersifat permanen
+ * dan membersihkan file PDF fisik dari storage.
+ * @param {string} packageId
+ * @returns {Promise<object>} Status operasi
+ */
+export async function hardDeleteMyPackage(packageId) {
+  return apiFetch(`/packages/trash/${packageId}`, { method: 'DELETE' });
 }
