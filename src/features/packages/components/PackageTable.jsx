@@ -113,14 +113,24 @@ const PackageTable = ({ packages, onAction, isTrashMode = false }) => {
               {/* Aksi — Inline icons (primary) + kebab (secondary) */}
               <div className="flex items-center justify-end gap-1">
                 {isTrashMode ? (
-                  <button
-                    onClick={() => onAction('restore', pkg)}
-                    title="Pulihkan Paket"
-                    className="p-2 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/20 bg-transparent border-none cursor-pointer text-emerald-500 hover:text-emerald-600 transition-all"
-                    aria-label="Pulihkan paket"
-                  >
-                    <RotateCcw size={16} />
-                  </button>
+                  <>
+                    <button
+                      onClick={() => onAction('restore', pkg)}
+                      title="Pulihkan Paket"
+                      className="p-2 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/20 bg-transparent border-none cursor-pointer text-emerald-500 hover:text-emerald-600 transition-all"
+                      aria-label="Pulihkan paket"
+                    >
+                      <RotateCcw size={16} />
+                    </button>
+                    <button
+                      onClick={() => onAction('hardDelete', pkg)}
+                      title="Hapus Permanen"
+                      className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 bg-transparent border-none cursor-pointer text-red-500 hover:text-red-600 transition-all"
+                      aria-label="Hapus permanen paket"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </>
                 ) : (
                   <>
                     {/* Sign Paket — primary action, hanya bila draft */}
@@ -213,12 +223,20 @@ const PackageTable = ({ packages, onAction, isTrashMode = false }) => {
               {/* ACTION ROW */}
               <div className="flex items-center justify-between px-2 py-2">
                 {isTrashMode ? (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); onAction('restore', pkg); }}
-                    className="flex items-center gap-2 px-3 py-2 text-[12px] font-medium text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 bg-transparent border-none cursor-pointer rounded-lg"
-                  >
-                    <RotateCcw size={15} /> Pulihkan
-                  </button>
+                  <>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onAction('restore', pkg); }}
+                      className="flex items-center gap-2 px-3 py-2 text-[12px] font-medium text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 bg-transparent border-none cursor-pointer rounded-lg"
+                    >
+                      <RotateCcw size={15} /> Pulihkan
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onAction('hardDelete', pkg); }}
+                      className="flex items-center gap-2 px-3 py-2 text-[12px] font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 bg-transparent border-none cursor-pointer rounded-lg"
+                    >
+                      <Trash2 size={15} /> Hapus Permanen
+                    </button>
+                  </>
                 ) : (
                   <>
                     <div className="flex items-center gap-1">
@@ -277,6 +295,10 @@ const PackageTable = ({ packages, onAction, isTrashMode = false }) => {
                 </button>
                 <button onClick={() => handleActionClick('info', activePkg)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 bg-transparent border-none cursor-pointer text-left">
                   <Eye size={14} /> Info Detail
+                </button>
+                <div className="h-px bg-zinc-100 dark:bg-zinc-700 my-1" />
+                <button onClick={() => handleActionClick('hardDelete', activePkg)} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 bg-transparent border-none cursor-pointer text-left">
+                  <Trash2 size={14} /> Hapus Permanen
                 </button>
               </>
             ) : (
