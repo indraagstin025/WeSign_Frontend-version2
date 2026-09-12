@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
-import { VISUAL_PADDING, TOTAL_PADDING, MIN_INNER_WIDTH } from '../../signature/constants/signatureLayout';
+import { VISUAL_PADDING, TOTAL_PADDING, MIN_INNER_WIDTH, MAX_OUTER_WIDTH_RATIO } from '../../signature/constants/signatureLayout';
 
 /**
  * @file useGroupDraggableRef.js
@@ -35,7 +35,8 @@ export const useGroupDraggableRef = (
   containerHeight,
   onUpdatePosition,
   onUpdateSize,
-  onResizeMove
+  onResizeMove,
+  onResizeEnd
 ) => {
   // ── DOM REFS ────────────────────────────────────────────────────────────
   const nodeRef = useRef(null);
@@ -201,6 +202,8 @@ export const useGroupDraggableRef = (
           const dx = currentX - startPointerX;
           let newW = dir.includes('w') ? startW - dx : startW + dx;
           newW = Math.max(60, newW);
+          // FIX #4: Clamp max width ke 80% container
+          newW = Math.min(newW, containerWidthRef.current * MAX_OUTER_WIDTH_RATIO);
           const newH = outerHeightFromOuterWidth(newW, ratio);
           let newPosX = dir.includes('w') ? startX - (newW - startW) : startX;
           let newPosY = dir.includes('n') ? startY - (newH - outerHeightFromOuterWidth(startW, ratio)) : startY;
@@ -243,8 +246,15 @@ export const useGroupDraggableRef = (
           const innerY = (y + VISUAL_PADDING) / ch;
           const innerW = Math.max(0, w - TOTAL_PADDING) / cw;
           const innerH = Math.max(0, h - TOTAL_PADDING) / ch;
-          onUpdatePosition(sigRef.current.id, innerX, innerY);
-          onUpdateSize(sigRef.current.id, innerW, innerH);
+          // Consolidated resize end: satu callback dengan semua data
+          // (posisi + ukuran) agar parent bisa emit socket 1x non-throttled.
+          if (onResizeEnd) {
+            onResizeEnd(sigRef.current.id, innerX, innerY, innerW, innerH);
+          } else {
+            // Fallback kalau onResizeEnd tidak disediakan
+            onUpdatePosition(sigRef.current.id, innerX, innerY);
+            onUpdateSize(sigRef.current.id, innerW, innerH);
+          }
 
           document.removeEventListener('mousemove', onMove);
           document.removeEventListener('mouseup', onEnd);
@@ -271,7 +281,7 @@ export const useGroupDraggableRef = (
       }
       cleanups.forEach((fn) => fn());
     };
-  }, [isActive, onUpdatePosition, onUpdateSize, onResizeMove, applyPositionToDom]);
+  }, [isActive, onUpdatePosition, onUpdateSize, onResizeMove, onResizeEnd, applyPositionToDom]);
 
   // ── External setter: update posisi dari socket remote ────────────────────
   // Dipanggil oleh useGroupDraggable handler saat dapat event
