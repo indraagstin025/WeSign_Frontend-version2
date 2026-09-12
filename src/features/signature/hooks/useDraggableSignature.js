@@ -3,6 +3,7 @@ import {
   VISUAL_PADDING,
   TOTAL_PADDING,
   MIN_INNER_WIDTH,
+  MAX_OUTER_WIDTH_RATIO,
 } from '../constants/signatureLayout';
 
 /**
@@ -70,6 +71,30 @@ export const useDraggableSignature = (sig, containerWidth, containerHeight, onUp
   useEffect(() => { sigRef.current = sig; }, [sig]);
   useEffect(() => { containerWidthRef.current = containerWidth; }, [containerWidth]);
   useEffect(() => { containerHeightRef.current = containerHeight; }, [containerHeight]);
+
+  // --- FIX #1: Reposisi saat window/container resize ---
+  // Saat containerWidth/containerHeight berubah (misal window resize, rotasi
+  // layar), recalculate pixel position & size dari fraksi yang tersimpan di sig.
+  // Guard: hanya jalankan setelah image ready, skip saat resize manual aktif.
+  useEffect(() => {
+    if (!isReadyRef.current) return;
+    if (isResizingRef.current) return;
+
+    const s = sigRef.current;
+    const ratio = aspectRatioRef.current;
+
+    const innerW = s.width * containerWidth;
+    const innerH = ratio ? (innerW / ratio) : (s.height * containerHeight);
+
+    setLocalSize({
+      width: Math.round(innerW + TOTAL_PADDING),
+      height: Math.round(innerH + TOTAL_PADDING),
+    });
+    setDragPos({
+      x: Math.max(0, s.positionX * containerWidth - VISUAL_PADDING),
+      y: Math.max(0, s.positionY * containerHeight - VISUAL_PADDING),
+    });
+  }, [containerWidth, containerHeight]);
 
   // --- CLICK OUTSIDE (DESELECT) ---
   // [M-2] Sebelumnya pakai mousedown + touchstart yang fire SEBELUM event
@@ -187,6 +212,8 @@ export const useDraggableSignature = (sig, containerWidth, containerHeight, onUp
           const dx = currentX - startX;
           let newW = dir.includes('w') ? startW - dx : startW + dx;
           newW = Math.max(60, newW);
+          // FIX #4: Clamp max width ke 80% container
+          newW = Math.min(newW, containerWidthRef.current * MAX_OUTER_WIDTH_RATIO);
           const newH = outerHeightFromOuterWidth(newW, ratio);
           let newPosX = dir.includes('w') ? startPosX - (newW - startW) : startPosX;
           let newPosY = dir.includes('n') ? startPosY - (newH - outerHeightFromOuterWidth(startW, ratio)) : startPosY;
