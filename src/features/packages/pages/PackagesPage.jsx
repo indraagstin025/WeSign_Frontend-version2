@@ -314,6 +314,17 @@ const PackagesPage = () => {
         variant="danger"
         loading={modals.delete.isDeleting}
       />
+      <ConfirmModal
+        isOpen={modals.hardDelete?.data !== null}
+        onClose={() => modals.hardDelete.setOpen(false)}
+        onConfirm={() => actions.handleConfirmHardDelete()}
+        title="Hapus Permanen Paket?"
+        message={`Apakah Anda yakin ingin menghapus permanen paket "${modals.hardDelete?.data?.title || 'ini'}"? Paket ini beserta seluruh dokumen yang ada di dalamnya dan riwayat tandatangannya akan dihapus selamanya. Tindakan ini tidak dapat dibatalkan!`}
+        confirmText="Ya, Hapus Permanen"
+        cancelText="Batal"
+        variant="danger"
+        loading={modals.hardDelete?.isHardDeleting}
+      />
     </div>
   );
 };
