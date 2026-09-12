@@ -5,8 +5,8 @@
  * [L-8] Sebelumnya hardcoded `10 * 1024 * 1024` di useUploadDoc.js + label
  * `'10 MB'` terpisah → mudah out of sync saat ada perubahan.
  *
- * Backend punya `MAX_FILE_SIZE` 1 GB (env), tapi frontend sengaja menahan
- * di 10 MB untuk:
+ * Backend personal/group juga membatasi upload di 10 MB. Frontend menahan
+ * di batas yang sama untuk:
  * - Menghemat bandwidth pemakai (mobile data)
  * - Menolak file besar lebih cepat (UX feedback)
  *
