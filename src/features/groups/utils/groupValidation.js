@@ -9,7 +9,7 @@
 
 export const GROUP_NAME_MAX = 100;
 export const DOC_TITLE_MAX = 200;
-export const FILE_SIZE_MAX_BYTES = 20 * 1024 * 1024; // 20 MB
+export const FILE_SIZE_MAX_BYTES = 10 * 1024 * 1024; // 10 MB
 export const ACCEPTED_FILE_MIME = 'application/pdf';
 
 export const ALLOWED_INVITATION_ROLES = ['member', 'admin_group', 'viewer'];
