@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AlertCircle } from 'lucide-react';
 import { Document, Page } from 'react-pdf';
@@ -87,6 +87,7 @@ const DocumentSigningPage = () => {
     onDocumentLoadError,
     handlePageLoadSuccess,
     handleCanvasClick,
+    addSignatureAtPosition,
     handleFinalSign,
     statusModal,
     setStatusModal,
@@ -107,6 +108,72 @@ const DocumentSigningPage = () => {
     jobId: activeJobId,
     enabled: !!activeJobId,
   });
+
+  // --- DRAG & DROP dari Sidebar ---
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  // Custom drag preview state (iLovePDF-style)
+  const [dragPreview, setDragPreview] = useState(null); // { imageUrl, type, x, y }
+
+  // Listen for custom events from SigningSidebar
+  useEffect(() => {
+    const onDragStart = (e) => {
+      setDragPreview({ ...e.detail, x: 0, y: 0 });
+    };
+    const onDragEnd = () => {
+      setDragPreview(null);
+      setIsDragOver(false);
+    };
+    // Track cursor position during drag via document-level dragover
+    const onDocDragOver = (e) => {
+      if (dragPreview || e.dataTransfer?.types?.includes('application/wesign-signature')) {
+        setDragPreview(prev => prev ? { ...prev, x: e.clientX, y: e.clientY } : prev);
+      }
+    };
+
+    window.addEventListener('wesign-drag-start', onDragStart);
+    window.addEventListener('wesign-drag-end', onDragEnd);
+    document.addEventListener('dragover', onDocDragOver);
+    // Juga handle dragend global (kalau drop di luar atau Escape)
+    document.addEventListener('dragend', onDragEnd);
+    return () => {
+      window.removeEventListener('wesign-drag-start', onDragStart);
+      window.removeEventListener('wesign-drag-end', onDragEnd);
+      document.removeEventListener('dragover', onDocDragOver);
+      document.removeEventListener('dragend', onDragEnd);
+    };
+  }, [dragPreview]);
+
+  const handleDragOver = (e) => {
+    // Cek apakah data yang di-drag adalah signature kita
+    if (e.dataTransfer.types.includes('application/wesign-signature')) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+      setIsDragOver(true);
+    }
+  };
+
+  const handleDragLeave = (e) => {
+    // Hanya reset jika benar-benar keluar dari container (bukan child element)
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+      setIsDragOver(false);
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    setDragPreview(null);
+    const raw = e.dataTransfer.getData('application/wesign-signature');
+    if (!raw) return;
+    try {
+      const { imageUrl, type, metadata } = JSON.parse(raw);
+      const rect = e.currentTarget.getBoundingClientRect();
+      const dropX = (e.clientX - rect.left) / rect.width;
+      const dropY = (e.clientY - rect.top) / rect.height;
+      addSignatureAtPosition(dropX, dropY, imageUrl, type, metadata);
+    } catch { /* ignore malformed data */ }
+  };
 
   // Handler klik pada PDF — hanya tempel TTD jika mode cursor
   const handlePdfClick = (e) => {
@@ -282,12 +349,28 @@ const DocumentSigningPage = () => {
                       onLoadSuccess={handlePageLoadSuccess}
                     />
                     
-                    {/* Layer interaksi — hanya aktif di mode cursor */}
+                    {/* Layer interaksi — klik (cursor mode) + drop zone */}
                     <div 
-                      className="absolute inset-0 z-10" 
+                      className={`absolute inset-0 z-10 transition-all duration-200 ${
+                        isDragOver 
+                          ? 'border-2 border-dashed border-emerald-500 bg-emerald-500/10' 
+                          : ''
+                      }`}
                       onClick={handlePdfClick}
-                      style={{ pointerEvents: interactionMode === 'cursor' ? 'auto' : 'none' }}
-                    />
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      onDrop={handleDrop}
+                      style={{ pointerEvents: interactionMode === 'cursor' || isDragOver ? 'auto' : 'none' }}
+                    >
+                      {/* Drop indicator overlay */}
+                      {isDragOver && (
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-50">
+                          <div className="bg-emerald-500/90 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg animate-pulse">
+                            Lepaskan di sini
+                          </div>
+                        </div>
+                      )}
+                    </div>
                     
                     {/* Layer Tanda Tangan */}
                     <div className="absolute inset-0 pointer-events-none z-20 overflow-hidden" style={{ touchAction: 'none' }}>
@@ -401,6 +484,45 @@ const DocumentSigningPage = () => {
           }
         }}
       />
+
+      {/* 6. CUSTOM DRAG PREVIEW (iLovePDF-style) */}
+      {dragPreview && dragPreview.x > 0 && (
+        <div
+          className="fixed pointer-events-none z-[999] transition-none"
+          style={{
+            left: dragPreview.x,
+            top: dragPreview.y,
+            transform: 'translate(-50%, -50%)',
+          }}
+        >
+          {/* Preview container */}
+          <div className="relative bg-white dark:bg-zinc-900 border-2 border-dashed border-blue-500 rounded-lg shadow-2xl shadow-blue-500/20 p-2 min-w-[120px] max-w-[180px] opacity-90">
+            {/* Signature image */}
+            <div className="w-full aspect-[2.5/1] flex items-center justify-center overflow-hidden rounded">
+              <img 
+                src={dragPreview.imageUrl} 
+                alt="Drag preview" 
+                className="max-w-full max-h-full object-contain" 
+                draggable={false} 
+              />
+            </div>
+            {/* Type badge */}
+            <div className="absolute -top-2.5 left-1/2 -translate-x-1/2">
+              <span className="text-[8px] font-bold text-white bg-blue-500 px-2 py-0.5 rounded-full shadow-sm uppercase tracking-wider whitespace-nowrap">
+                {dragPreview.type === 'initial' ? 'Paraf'
+                  : dragPreview.type === 'stamp' ? 'Stamp'
+                  : dragPreview.type === 'text' ? 'Teks'
+                  : dragPreview.type === 'date' ? 'Tanggal'
+                  : 'Tanda Tangan'}
+              </span>
+            </div>
+            {/* Plus icon */}
+            <div className="absolute -bottom-2 -right-2 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center shadow-md">
+              <span className="text-white text-[11px] font-bold leading-none">+</span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
