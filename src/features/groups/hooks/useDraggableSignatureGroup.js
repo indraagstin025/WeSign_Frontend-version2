@@ -99,32 +99,17 @@ export function useDraggableSignatureGroup({
     [documentId, sig.id]
   );
 
-  // ── Throttled Socket Resize Emit ──────────────────────────────────────
-  const emitResizeThrottled = useMemo(
-    () =>
-      throttle((w, h) => {
-        if (documentId) {
-          socketService.emitSignatureUpdate(
-            {
-              documentId,
-              signatureId: sig.id,
-              positionX: sig.positionX,
-              positionY: sig.positionY,
-              width: w,
-              height: h,
-              pageNumber: sig.pageNumber,
-            },
-            { volatile: true }
-          );
-        }
-      }, SOCKET_THROTTLE_MS),
-    [documentId, sig.id, sig.positionX, sig.positionY, sig.pageNumber]
-  );
+  // [BUG-FIX] emitResizeThrottled dihapus — menjadi penyebab desync:
+  //   1. Leading-only throttle drop final emit di resize end
+  //   2. Closure capture stale sig.positionX/Y saat NW/SW resize
+  // Realtime resize emit tetap via onResizeMove (yang sudah kirim
+  // position + size fresh dari useGroupDraggableRef). Final emit
+  // di-handle oleh wrappedOnResizeEnd (non-throttled, consolidated).
 
-  // Wrap onUpdatePosition dengan guard ownership + status.
+  // Wrap onUpdatePosition — untuk DRAG (bukan resize).
+  // Saat drag, ukuran tidak berubah, jadi sig.width/height dari closure aman.
   // [FIX] Guard `isFinal`: cegah PATCH otomatis dari `handleImageLoad` untuk
-  // signature yang sudah final. Backend reject 400 (status guard
-  // `updateDraftPosition`) → entry masuk outbox → "Antri offline".
+  // signature yang sudah final.
   const wrappedOnUpdatePosition = useMemo(
     () => (id, x, y) => {
       if (!isOwner || isFinal) return;
@@ -144,14 +129,50 @@ export function useDraggableSignatureGroup({
     [onUpdatePosition, documentId, sig.width, sig.height, sig.pageNumber, isOwner, isFinal]
   );
 
-  // Wrap onUpdateSize dengan guard ownership + status (sama alasan).
+  // Wrap onUpdateSize — hanya update state parent, TANPA emit socket.
+  // Socket emit untuk resize sudah di-handle oleh:
+  //   - onResizeMove (realtime, throttled) — selama resize
+  //   - wrappedOnResizeEnd (final, non-throttled) — di akhir resize
   const wrappedOnUpdateSize = useMemo(
     () => (id, w, h) => {
       if (!isOwner || isFinal) return;
       onUpdateSize(id, w, h);
-      emitResizeThrottled(w, h);
     },
-    [onUpdateSize, emitResizeThrottled, isOwner, isFinal]
+    [onUpdateSize, isOwner, isFinal]
+  );
+
+  /**
+   * Consolidated resize end emit — kirim posisi + ukuran final dalam
+   * SATU socket event NON-THROTTLED. Mengganti pattern lama yang:
+   *   - wrappedOnUpdatePosition kirim posisi baru + ukuran LAMA (stale closure)
+   *   - wrappedOnUpdateSize kirim ukuran baru via throttle yang bisa di-DROP
+   *
+   * @param {string} id - Signature ID
+   * @param {number} x - Final positionX (inner fraction)
+   * @param {number} y - Final positionY (inner fraction)
+   * @param {number} w - Final width (inner fraction)
+   * @param {number} h - Final height (inner fraction)
+   */
+  const wrappedOnResizeEnd = useMemo(
+    () => (id, x, y, w, h) => {
+      if (!isOwner || isFinal) return;
+      // Update state parent
+      onUpdatePosition(id, x, y);
+      onUpdateSize(id, w, h);
+      // Emit 1x consolidated, NON-throttled, NON-volatile (reliable)
+      if (documentId) {
+        socketService.emitSignatureUpdate({
+          documentId,
+          signatureId: id,
+          positionX: x,
+          positionY: y,
+          width: w,
+          height: h,
+          pageNumber: sig.pageNumber,
+        });
+      }
+    },
+    [onUpdatePosition, onUpdateSize, documentId, sig.pageNumber, isOwner, isFinal]
   );
 
   // Realtime resize emit
@@ -182,7 +203,8 @@ export function useDraggableSignatureGroup({
     containerHeight,
     wrappedOnUpdatePosition,
     wrappedOnUpdateSize,
-    onResizeMove
+    onResizeMove,
+    wrappedOnResizeEnd
   );
 
   // Capture remote setter via ref agar useEffect socket di bawah tidak
