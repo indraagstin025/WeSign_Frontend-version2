@@ -198,27 +198,38 @@ export const useDocumentSigner = (documentId) => {
     return false;
   };
 
+  /**
+   * Menambahkan signature/elemen ke posisi tertentu pada halaman aktif.
+   * Dipanggil baik dari klik pada PDF maupun dari drop event (drag & drop).
+   *
+   * @param {number} x - posisi X (fraksi 0-1 dari lebar halaman)
+   * @param {number} y - posisi Y (fraksi 0-1 dari tinggi halaman)
+   * @param {string} imageUrl - URL/dataUrl gambar signature
+   * @param {string} type - tipe elemen: 'signature' | 'initial' | 'stamp' | 'text' | 'date'
+   * @param {object|null} metadata - metadata tambahan (optional)
+   */
+  const addSignatureAtPosition = useCallback((x, y, imageUrl, type = 'canvas', metadata = null) => {
+    // [M-6] Default size dari constants/signatureLayout.js
+    // [CR-3] Pakai uuidv4() bukan Date.now()
+    setSignatures(prev => [...prev, {
+      id: uuidv4(),
+      pageNumber,
+      positionX: Math.max(0, Math.min(1 - DEFAULT_SIGNATURE_WIDTH, x - (DEFAULT_SIGNATURE_WIDTH / 2))),
+      positionY: Math.max(0, y - 0.05),
+      width: DEFAULT_SIGNATURE_WIDTH,
+      height: DEFAULT_SIGNATURE_HEIGHT,
+      signatureImageUrl: imageUrl,
+      method: type,
+      metadata,
+    }]);
+  }, [pageNumber]);
+
   const handleCanvasClick = (e) => {
     if (!currentSignature) { setIsCanvasOpen(true); return; }
     const rect = e.currentTarget.getBoundingClientRect();
     const clickX = (e.clientX - rect.left) / rect.width;
     const clickY = (e.clientY - rect.top) / rect.height;
-
-    // [M-6] Default size dari constants/signatureLayout.js
-    // [CR-3] Pakai uuidv4() bukan Date.now() — Date.now() resolusi 1ms,
-    // double-click cepat <1ms apart bisa generate ID sama → React key
-    // collision + removeSignature(id) filter hapus 2 entry sekaligus.
-    setSignatures(prev => [...prev, {
-      id: uuidv4(),
-      pageNumber,
-      positionX: Math.max(0, Math.min(1 - DEFAULT_SIGNATURE_WIDTH, clickX - (DEFAULT_SIGNATURE_WIDTH / 2))),
-      positionY: Math.max(0, clickY - 0.05),
-      width: DEFAULT_SIGNATURE_WIDTH,
-      height: DEFAULT_SIGNATURE_HEIGHT,
-      signatureImageUrl: currentSignature,
-      method: activeElement?.type || 'canvas',
-      metadata: activeElement?.metadata || null,
-    }]);
+    addSignatureAtPosition(clickX, clickY, currentSignature, activeElement?.type || 'canvas', activeElement?.metadata || null);
   };
 
   // Pakai functional update di mana-mana — race-safe (sebelumnya pakai
@@ -298,6 +309,12 @@ export const useDocumentSigner = (documentId) => {
 
         // Mode sync (legacy / SIGNING_JOB_ENABLED=false).
         clearDraft();
+        // [OPT-UPDATE] Simpan marker di sessionStorage agar useDocuments
+        // bisa optimistic update status tanpa tunggu backend selesai proses.
+        try {
+          sessionStorage.setItem('wesign_just_signed', documentId);
+          sessionStorage.setItem('wesign_just_signed_counters', documentId);
+        } catch { /* noop */ }
         setStatusModal({
           isOpen: true, type: 'success', title: 'Berhasil!', message: 'Dokumen telah ditandatangani.',
           onConfirm: () => navigate('/dashboard/documents')
@@ -360,6 +377,11 @@ export const useDocumentSigner = (documentId) => {
     clearPersonalJob(documentId);
     clearDraft();
     setActiveJobId(null);
+    // [OPT-UPDATE] Marker agar useDocuments langsung update status di UI.
+    try {
+      sessionStorage.setItem('wesign_just_signed', documentId);
+      sessionStorage.setItem('wesign_just_signed_counters', documentId);
+    } catch { /* noop */ }
     navigate('/dashboard/documents');
   }, [documentId, navigate, clearDraft]);
 
@@ -376,7 +398,7 @@ export const useDocumentSigner = (documentId) => {
     document, pdfUrl, loading, error, loadError, isRendering, setIsRendering, isSubmitting, containerRef, containerWidth, isReady,
     numPages, pageNumber, setPageNumber, pageDimensions, signatures, currentSignature, setCurrentSignature, activeElement, removeSignature,
     updateSignaturePosition, updateSignatureSize, isCanvasOpen, setIsCanvasOpen, handleSaveCanvas, handleSaveToolElement, switchToTool, isSheetOpen, setIsSheetOpen,
-    onDocumentLoadSuccess, onDocumentLoadError, handlePageLoadSuccess, handleCanvasClick, handleFinalSign, statusModal, setStatusModal,
+    onDocumentLoadSuccess, onDocumentLoadError, handlePageLoadSuccess, handleCanvasClick, addSignatureAtPosition, handleFinalSign, statusModal, setStatusModal,
     auditTrailMode, setAuditTrailMode,
     // Phase 5: async signing job state.
     activeJobId,
