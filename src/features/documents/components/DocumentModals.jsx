@@ -45,8 +45,19 @@ const DocumentModals = ({ modals, actions }) => {
         onConfirm={actions.handleConfirmDelete}
         loading={modals.delete.loading}
         title="Hapus Dokumen"
-        message={`Apakah Anda yakin ingin menghapus "${modals.delete.data?.title}"? Dokumen ini akan dihapus secara permanen dari brankas Anda.`}
+        message={`Apakah Anda yakin ingin menghapus "${modals.delete.data?.title}"? Dokumen ini akan dipindahkan ke tempat sampah (Trash).`}
         confirmText="Ya, Hapus"
+        variant="danger"
+      />
+
+      <ConfirmModal 
+        isOpen={!!modals.hardDelete?.data}
+        onClose={() => modals.hardDelete?.setOpen(null)}
+        onConfirm={actions.handleConfirmHardDelete}
+        loading={modals.hardDelete?.loading}
+        title="Hapus Permanen Dokumen"
+        message={`Apakah Anda yakin ingin menghapus permanen "${modals.hardDelete?.data?.title}"? Dokumen ini beserta seluruh riwayat dan tanda tangannya akan dihapus selamanya. Tindakan ini tidak dapat dibatalkan!`}
+        confirmText="Ya, Hapus Permanen"
         variant="danger"
       />
 
