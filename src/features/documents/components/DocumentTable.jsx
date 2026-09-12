@@ -96,15 +96,25 @@ const DocumentTable = ({ documents, onAction, modals = {}, isTrashMode = false }
               {/* Aksi — Inline icons (primary) + kebab menu (secondary) */}
               <div className="flex items-center justify-end gap-1">
                 {isTrashMode ? (
-                  // Trash mode hanya tampilkan Restore
-                  <button
-                    onClick={() => helpers.handleAction('restore', doc)}
-                    title="Restore"
-                    className="p-2 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/20 bg-transparent border-none cursor-pointer text-emerald-500 hover:text-emerald-600 transition-all"
-                    aria-label="Restore dokumen"
-                  >
-                    <RotateCcw size={16} />
-                  </button>
+                  // Trash mode hanya tampilkan Restore dan Hapus Permanen
+                  <>
+                    <button
+                      onClick={() => helpers.handleAction('restore', doc)}
+                      title="Restore"
+                      className="p-2 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/20 bg-transparent border-none cursor-pointer text-emerald-500 hover:text-emerald-600 transition-all"
+                      aria-label="Restore dokumen"
+                    >
+                      <RotateCcw size={16} />
+                    </button>
+                    <button
+                      onClick={() => helpers.handleAction('hard_delete', doc)}
+                      title="Hapus Permanen"
+                      className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 bg-transparent border-none cursor-pointer text-red-500 hover:text-red-600 transition-all ml-1"
+                      aria-label="Hapus permanen dokumen"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </>
                 ) : (
                   <>
                     {/* Tanda Tangani — primary action, hidden bila completed */}
