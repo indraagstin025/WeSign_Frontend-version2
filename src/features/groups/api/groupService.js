@@ -216,7 +216,7 @@ export const removeMember = (groupId, userIdToRemove) =>
 // ── Dokumen Grup ──────────────────────────────────────────────────────────────
 
 /**
- * Upload dokumen baru ke grup.
+ * Upload dokumen baru ke grup (legacy via Multer).
  * @param {string} groupId
  * @param {FormData} formData - Harus berisi: file (PDF), title, signerUserIds (JSON string)
  */
@@ -230,6 +230,82 @@ export const uploadGroupDocument = (groupId, formData, options = {}) =>
     invalidateGroupCache(groupId);
     return res;
   });
+
+/**
+ * Direct upload dokumen baru ke grup via Backblaze B2 Presigned URL.
+ * 1. Minta presigned URL dari backend
+ * 2. Upload file via HTTP PUT langsung ke Backblaze B2
+ * 3. Konfirmasi ke backend untuk menyimpan dokumen grup
+ *
+ * @param {string|number} groupId
+ * @param {File} file
+ * @param {string} title
+ * @param {string[]} [signerUserIds=[]]
+ * @param {object} [options={}] - { onProgress: (percent) => void, hash: string }
+ */
+export const uploadGroupDocumentDirect = async (
+  groupId,
+  file,
+  title,
+  signerUserIds = [],
+  options = {}
+) => {
+  const { onProgress, hash } = options;
+
+  // 1. Minta Presigned URL dari backend
+  const ticketRes = await apiFetch(`/groups/${groupId}/documents/presigned-url`, {
+    method: 'POST',
+    body: {
+      fileName: file.name,
+      contentType: file.type || 'application/pdf',
+    },
+  });
+
+  const { uploadUrl, filePath } = ticketRes.data;
+
+  // 2. Upload biner PDF langsung ke Backblaze B2 via HTTP PUT
+  await new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', uploadUrl, true);
+    xhr.setRequestHeader('Content-Type', file.type || 'application/pdf');
+
+    if (xhr.upload && onProgress) {
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          const percent = Math.round((event.loaded / event.total) * 100);
+          onProgress(percent);
+        }
+      };
+    }
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve();
+      } else {
+        reject(new Error(`Gagal mengunggah file ke Backblaze (Status: ${xhr.status})`));
+      }
+    };
+
+    xhr.onerror = () => reject(new Error('Koneksi terputus saat mengunggah ke penyimpanan cloud.'));
+    xhr.ontimeout = () => reject(new Error('Upload ke penyimpanan cloud timeout.'));
+
+    xhr.send(file);
+  });
+
+  // 3. Konfirmasi ke Backend untuk dicatat ke database
+  const res = await apiFetch(`/groups/${groupId}/documents/confirm`, {
+    method: 'POST',
+    body: {
+      filePath,
+      title,
+      signerUserIds,
+      hash: hash || null,
+    },
+  });
+
+  invalidateGroupCache(groupId);
+  return res;
+};
 
 /**
  * Pindahkan dokumen personal ke grup.
@@ -275,10 +351,6 @@ export const updateDocumentSigners = (groupId, documentId, signerUserIds) =>
   });
 
 /**
- * Finalisasi dokumen: burn PDF dengan semua tanda tangan.
- * Hanya bisa dipanggil oleh admin group setelah semua signer sudah sign.
- */
-/**
  * Mengambil dokumen grup dengan server-side pagination.
  * @param {string|number} groupId
  * @param {object} params - { page, limit, search, status, sortBy }
@@ -298,6 +370,19 @@ export const getGroupDocuments = (
   return apiFetch(`/groups/${groupId}/documents?${params.toString()}`);
 };
 
+export const getGroupDocumentDetail = (
+  groupId,
+  documentId,
+  { includeSignatureImages = false } = {}
+) => {
+  const query = includeSignatureImages ? '?includeSignatureImages=true' : '';
+  return apiFetch(`/groups/${groupId}/documents/${documentId}${query}`);
+};
+
+/**
+ * Finalisasi dokumen: burn PDF dengan semua tanda tangan.
+ * Hanya bisa dipanggil oleh admin group setelah semua signer sudah sign.
+ */
 export const finalizeGroupDocument = (groupId, documentId, auditTrailMode = "embedded", options = {}) =>
   apiFetch(`/groups/${groupId}/documents/${documentId}/finalize`, {
     method: 'POST',
@@ -305,26 +390,11 @@ export const finalizeGroupDocument = (groupId, documentId, auditTrailMode = "emb
     timeout: 120000,
     idempotencyKey: options.idempotencyKey || undefined,
   }).then((res) => {
-    // [Bug fix duplicate signature] Wajib bust cache /groups/:id setelah
-    // finalize. Tanpa ini, user yang back ke /sign akan dapat data lama
-    // dari cache 30 detik (signature draft + final terlihat dobel di UI).
-    //
-    // Phase 4: kalau response async (mode === "job"), cache belum perlu
-    // di-bust karena status dokumen belum berubah; akan di-bust ulang
-    // setelah job selesai oleh polling layer (caller).
     if (res?.data?.mode !== 'job') {
       invalidateGroupCache(groupId);
     }
     return res;
   });
-
-/**
- * Upload dokumen baru ke grup.
- *
- * Note: didefinisikan ulang di sini supaya konsisten dengan helper invalidate.
- * Versi sebelumnya tidak invalidate cache — list dokumen di /groups/:id stale
- * sampai TTL 30s habis.
- */
 
 // ── Trash (Soft Delete) — Group Document ──────────────────────────────────
 
