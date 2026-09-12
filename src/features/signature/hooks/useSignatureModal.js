@@ -83,9 +83,9 @@ export const useSignatureModal = (isOpen, onSave, onClose) => {
     // [H-4] Replace blocking alert dengan toast.error. Alert blocking,
     // tidak ter-styled, beda di Chrome/Safari/Firefox, dan bisa
     // freeze UI saat user upload file gede di hp lambat.
-    const MAX_SIZE = 2 * 1024 * 1024; // 2 MB
+    const MAX_SIZE = 5 * 1024 * 1024; // 2 MB
     if (file.size > MAX_SIZE) {
-      toast.error('Ukuran file maksimal 2 MB. Pilih file yang lebih kecil atau kompres dulu.');
+      toast.error('Ukuran file maksimal 5 MB. Pilih file yang lebih kecil atau kompres dulu.');
       // Reset input agar user bisa pilih file lagi (kalau sama, browser
       // tidak fire onChange karena value tidak berubah).
       e.target.value = '';
