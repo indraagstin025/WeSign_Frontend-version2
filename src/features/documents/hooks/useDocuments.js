@@ -72,6 +72,8 @@ export const useDocuments = () => {
   const [isInfoLoading, setIsInfoLoading] = useState(false);
   const [deleteDoc, setDeleteDoc] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [hardDeleteDoc, setHardDeleteDoc] = useState(null);
+  const [isHardDeleting, setIsHardDeleting] = useState(false);
   const [editDoc, setEditDoc] = useState(null);
   const [isUpdating, setIsUpdating] = useState(false);
   
@@ -90,7 +92,24 @@ export const useDocuments = () => {
         response = await getUserDocuments({ page, status, search, limit: 10 });
       }
       if (response?.status === 'success') {
-        setDocuments(response.data?.data || response.data || []);
+        let docs = response.data?.data || response.data || [];
+
+        // [OPT-UPDATE] Optimistic update: jika baru kembali dari halaman
+        // tanda tangan, langsung tandai dokumen tsb sebagai 'completed'
+        // di UI tanpa menunggu backend selesai proses PDF.
+        try {
+          const justSignedId = sessionStorage.getItem('wesign_just_signed');
+          if (justSignedId) {
+            docs = docs.map(doc =>
+              doc.id === justSignedId
+                ? { ...doc, status: 'completed' }
+                : doc
+            );
+            sessionStorage.removeItem('wesign_just_signed');
+          }
+        } catch { /* sessionStorage tidak tersedia — skip */ }
+
+        setDocuments(docs);
         setMeta(response.data?.meta || response.meta || { total: 0, page: 1, limit: 10, totalPages: 1 });
       }
     } catch (err) {
@@ -162,6 +181,29 @@ export const useDocuments = () => {
     fetchDocuments();
   }, [fetchDocuments]);
 
+  // [OPT-UPDATE] Setelah mount, cek apakah ada dokumen yang baru
+  // ditandatangani. Jika ada, adjust counter dan jadwalkan re-fetch
+  // setelah delay agar data akhirnya sinkron dengan backend.
+  useEffect(() => {
+    let timerId;
+    try {
+      const justSignedId = sessionStorage.getItem('wesign_just_signed_counters');
+      if (justSignedId) {
+        sessionStorage.removeItem('wesign_just_signed_counters');
+        // Pindahkan 1 dokumen dari pending ke completed di counter
+        adjustStatusCounts('pending', -1);
+        adjustStatusCounts('completed', +1);
+        // Delayed re-fetch untuk konfirmasi status sebenarnya dari server
+        timerId = setTimeout(() => {
+          fetchDocuments();
+          fetchStatusCounts();
+        }, 5000);
+      }
+    } catch { /* noop */ }
+    return () => { if (timerId) clearTimeout(timerId); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     fetchTrashCount();
     fetchStatusCounts();
@@ -227,6 +269,10 @@ export const useDocuments = () => {
         }
         break;
 
+      case 'hard_delete':
+        setHardDeleteDoc(doc);
+        break;
+
       case 'delete':
         setDeleteDoc(doc);
         break;
@@ -278,6 +324,28 @@ export const useDocuments = () => {
     }
   };
 
+  const handleConfirmHardDelete = async () => {
+    if (!hardDeleteDoc) return;
+    setIsHardDeleting(true);
+    try {
+      // Panggil service api hard delete
+      const { hardDeleteMyDocument } = await import('../api/docService');
+      await hardDeleteMyDocument(hardDeleteDoc.id);
+      const deletedTitle = hardDeleteDoc.title;
+      setHardDeleteDoc(null);
+
+      // Adjust trash count karena dokumen benar-benar hilang dari sistem
+      adjustTrashCount(-1);
+      fetchDocuments();
+
+      toast.success(`Dokumen "${deletedTitle}" berhasil dihapus permanen.`, { autoClose: 4000 });
+    } catch (err) {
+      toast.error(err.message || 'Gagal menghapus permanen dokumen.');
+    } finally {
+      setIsHardDeleting(false);
+    }
+  };
+
   const handleUpdateDocument = async (id, data) => {
     setIsUpdating(true);
     try {
@@ -300,6 +368,7 @@ export const useDocuments = () => {
     handlePageChange,
     handleAction,
     handleConfirmDelete,
+    handleConfirmHardDelete,
     handleUpdateDocument
   };
 
@@ -328,6 +397,12 @@ export const useDocuments = () => {
       setOpen: setDeleteDoc,
       onConfirm: handleConfirmDelete,
       loading: isDeleting
+    },
+    hardDelete: {
+      data: hardDeleteDoc,
+      setOpen: setHardDeleteDoc,
+      onConfirm: handleConfirmHardDelete,
+      loading: isHardDeleting
     },
     version: {
       data: versionDoc,
