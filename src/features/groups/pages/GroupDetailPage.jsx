@@ -134,6 +134,8 @@ const GroupDetailPage = () => {
     enabled: !!finalizeJob?.jobId,
   });
 
+  const [activeTab, setActiveTab] = React.useState('documents');
+
   if (loading && !groupData) {
     return (
       <div className="flex-1 flex items-center justify-center min-h-[60vh]">
@@ -248,111 +250,207 @@ const GroupDetailPage = () => {
         </div>
       )}
 
-      {/* ── MAIN CONTENT ──────────────────────────────────────────────── */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 mt-6 pb-16 grid grid-cols-1 lg:grid-cols-12 gap-6">
+      {/* ── MAIN CONTENT (TABBED) ──────────────────────────────────────────────── */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 mt-6 pb-16">
+        
+        {/* TABS NAVIGATION */}
+        <div className="flex items-center gap-5 border-b border-zinc-200 dark:border-white/10 mb-5 overflow-x-auto no-scrollbar">
+          {['documents', 'members', 'activity', 'trash'].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`pb-2 text-xs font-bold uppercase tracking-widest border-b-2 transition-all shrink-0 whitespace-nowrap ${
+                activeTab === tab
+                  ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400'
+                  : 'border-transparent text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'
+              }`}
+            >
+              {tab === 'documents' && `Documents (${docCount})`}
+              {tab === 'members' && `Team (${memberCount})`}
+              {tab === 'activity' && 'Activity'}
+              {tab === 'trash' && `Trash (${state.trashCount || 0})`}
+            </button>
+          ))}
+        </div>
 
-        {/* LEFT: DOCUMENT VAULT (8 cols) */}
-        <div className="lg:col-span-8 space-y-4">
-
-          {/* Section header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h2 className="text-base font-black text-zinc-900 dark:text-white uppercase tracking-tight">Document Vault</h2>
-              <p className="text-[11px] text-zinc-400 mt-0.5">Kelola dan pantau semua dokumen tim dalam satu tempat.</p>
+        {/* TAB: DOCUMENTS */}
+        {activeTab === 'documents' && (
+          <div className="space-y-4">
+            {/* Section header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-black text-zinc-900 dark:text-white uppercase tracking-tight">Document Vault</h2>
+                <p className="text-[11px] text-zinc-400 mt-0.5">Kelola dan pantau semua dokumen tim dalam satu tempat.</p>
+              </div>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                {/* Search */}
+                <div className="relative flex-1 sm:flex-none">
+                  <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+                  <input
+                    type="text"
+                    value={docSearch}
+                    onChange={(e) => { actions.setDocSearch(e.target.value); actions.setDocPage(1); }}
+                    placeholder="Cari dokumen..."
+                    className="w-full sm:w-44 pl-8 pr-4 py-2 text-[11px] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-white/5 rounded-xl outline-none focus:border-emerald-500 text-zinc-700 dark:text-zinc-200 transition-all"
+                  />
+                </div>
+                {/* Sort */}
+                <select
+                  value={docSortBy}
+                  onChange={(e) => { actions.setDocSortBy(e.target.value); actions.setDocPage(1); }}
+                  className="text-[11px] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-white/5 rounded-xl px-3 py-2 outline-none focus:border-emerald-500 text-zinc-600 dark:text-zinc-300 cursor-pointer shrink-0"
+                >
+                  <option value="newest">📅 Terbaru</option>
+                  <option value="oldest">📅 Terlama</option>
+                  <option value="az">🔤 A-Z</option>
+                  <option value="za">🔤 Z-A</option>
+                  <option value="status">🔖 Status</option>
+                  <option value="signers">👥 Banyak Signer</option>
+                </select>
+              </div>
             </div>
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              {/* Search */}
-              <div className="relative flex-1 sm:flex-none">
-                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
-                <input
-                  type="text"
-                  value={docSearch}
-                  onChange={(e) => { actions.setDocSearch(e.target.value); actions.setDocPage(1); }}
-                  placeholder="Cari dokumen..."
-                  className="w-full sm:w-44 pl-8 pr-4 py-2 text-[11px] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-white/5 rounded-xl outline-none focus:border-emerald-500 text-zinc-700 dark:text-zinc-200 transition-all"
+
+            {/* Document list */}
+            {docLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="w-8 h-8 border-4 border-zinc-100 dark:border-zinc-800 border-t-emerald-500 rounded-full animate-spin" />
+              </div>
+            ) : documents.length > 0 ? (
+              <div className="space-y-2">
+                {documents.map((doc) => (
+                  <GroupDocumentCard
+                    key={doc.id}
+                    doc={doc}
+                    isAdmin={isAdmin}
+                    myStatus={actions.getMySignerStatus(doc)}
+                    currentUserId={currentUser?.id}
+                    isFinalizing={isFinalizing === doc.id}
+                    isDeleting={isDeleting === doc.id}
+                    onSign={() => actions.goToSign(doc.id)}
+                    onPreview={() => actions.goToPreview(doc.id)}
+                    onFinalize={() => actions.requestFinalize(doc)}
+                    onManageSigners={() => actions.openManageSigners(doc)}
+                    onDelete={() => actions.requestDelete(doc)}
+                    onReject={actions.handleReject}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="bg-white dark:bg-zinc-900 border border-dashed border-zinc-200 dark:border-white/10 rounded-2xl py-16 flex flex-col items-center text-center">
+                <div className="w-14 h-14 rounded-2xl bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center mb-4">
+                  <FileText size={28} className="text-zinc-300 dark:text-zinc-600" />
+                </div>
+                <h3 className="text-sm font-black text-zinc-900 dark:text-white uppercase tracking-tight mb-1">
+                  {docSearch ? 'Tidak ditemukan' : 'Belum ada dokumen'}
+                </h3>
+                <p className="text-[11px] text-zinc-400 mb-5">
+                  {docSearch ? `Tidak ada dokumen dengan kata kunci "${docSearch}"` : 'Mulai dengan mengunggah dokumen pertama.'}
+                </p>
+                {!docSearch && (
+                  <button
+                    onClick={actions.openUploadModal}
+                    className="px-5 py-2.5 rounded-xl bg-emerald-600 text-white text-[11px] font-bold border-none cursor-pointer shadow-md shadow-emerald-500/20"
+                  >
+                    Upload Dokumen
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Pagination */}
+            {docMeta.totalPages > 1 && (
+              <div className="flex items-center justify-between pt-2">
+                <p className="text-[11px] text-zinc-400">
+                  {(docPage - 1) * docMeta.limit + 1} - {Math.min(docPage * docMeta.limit, docMeta.total)} dari {docMeta.total} dokumen
+                </p>
+                <div className="flex items-center gap-1">
+                  <button onClick={() => actions.setDocPage(docPage - 1)} disabled={docPage === 1} className="w-7 h-7 rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-400 hover:text-zinc-700 flex items-center justify-center bg-white dark:bg-zinc-900 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed text-[12px]">‹</button>
+                  {Array.from({ length: docMeta.totalPages }, (_, i) => i + 1).map((p) => (
+                    <button key={p} onClick={() => actions.setDocPage(p)} className={`w-7 h-7 rounded-lg text-[11px] font-semibold border cursor-pointer transition-all ${p === docPage ? 'bg-emerald-500 text-white border-emerald-500' : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 text-zinc-500 hover:border-zinc-300'}`}>{p}</button>
+                  ))}
+                  <button onClick={() => actions.setDocPage(docPage + 1)} disabled={docPage === docMeta.totalPages} className="w-7 h-7 rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-400 hover:text-zinc-700 flex items-center justify-center bg-white dark:bg-zinc-900 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed text-[12px]">›</button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB: MEMBERS */}
+        {activeTab === 'members' && (
+          <div className="space-y-4 w-full">
+            {/* Team Directory */}
+            <div className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-white/5 rounded-2xl overflow-hidden shadow-sm">
+              <div className="px-5 py-4 flex items-center justify-between border-b border-zinc-50 dark:border-white/5">
+                <div className="flex items-center gap-2">
+                  <Users size={14} className="text-emerald-500" />
+                  <h3 className="text-[11px] font-black text-zinc-900 dark:text-white uppercase tracking-widest">Team Directory</h3>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-[10px] text-zinc-400 font-bold">{memberCount} members</span>
+                  {isAdmin && (
+                    <button
+                      onClick={actions.handleInvite}
+                      className="ml-2 p-1.5 rounded-lg text-zinc-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 border-none bg-transparent cursor-pointer transition-all"
+                      title="Invite member"
+                    >
+                      <UserPlus size={13} />
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="p-3">
+                <GroupMemberList
+                  members={groupData?.members || []}
+                  adminId={groupData?.adminId}
+                  currentUserId={currentUser?.id}
+                  onKick={isAdmin ? actions.requestKick : null}
+                  kickingId={kickingId}
                 />
               </div>
-              {/* Sort */}
-              <select
-                value={docSortBy}
-                onChange={(e) => { actions.setDocSortBy(e.target.value); actions.setDocPage(1); }}
-                className="text-[11px] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-white/5 rounded-xl px-3 py-2 outline-none focus:border-emerald-500 text-zinc-600 dark:text-zinc-300 cursor-pointer shrink-0"
-              >
-                <option value="newest">📅 Terbaru</option>
-                <option value="oldest">📅 Terlama</option>
-                <option value="az">🔤 A-Z</option>
-                <option value="za">🔤 Z-A</option>
-                <option value="status">🔖 Status</option>
-                <option value="signers">👥 Banyak Signer</option>
-              </select>
             </div>
           </div>
+        )}
 
-          {/* Document list */}
-          {docLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="w-8 h-8 border-4 border-zinc-100 dark:border-zinc-800 border-t-emerald-500 rounded-full animate-spin" />
-            </div>
-          ) : documents.length > 0 ? (
-            <div className="space-y-2">
-              {documents.map((doc) => (
-                <GroupDocumentCard
-                  key={doc.id}
-                  doc={doc}
-                  isAdmin={isAdmin}
-                  myStatus={actions.getMySignerStatus(doc)}
-                  currentUserId={currentUser?.id}
-                  isFinalizing={isFinalizing === doc.id}
-                  isDeleting={isDeleting === doc.id}
-                  onSign={() => actions.goToSign(doc.id)}
-                  onPreview={() => actions.goToPreview(doc.id)}
-                  onFinalize={() => actions.requestFinalize(doc)}
-                  onManageSigners={() => actions.openManageSigners(doc)}
-                  onDelete={() => actions.requestDelete(doc)}
-                  onReject={actions.handleReject}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="bg-white dark:bg-zinc-900 border border-dashed border-zinc-200 dark:border-white/10 rounded-2xl py-16 flex flex-col items-center text-center">
-              <div className="w-14 h-14 rounded-2xl bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center mb-4">
-                <FileText size={28} className="text-zinc-300 dark:text-zinc-600" />
+        {/* TAB: ACTIVITY */}
+        {activeTab === 'activity' && (
+          <div className="space-y-4 w-full">
+            {/* Activity Feed */}
+            <div className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-white/5 rounded-2xl overflow-hidden shadow-sm">
+              <div className="px-5 py-4 flex items-center justify-between border-b border-zinc-50 dark:border-white/5">
+                <div className="flex items-center gap-2">
+                  <Activity size={13} className="text-zinc-400" />
+                  <h3 className="text-[11px] font-black text-zinc-900 dark:text-white uppercase tracking-widest">Activity Feed</h3>
+                </div>
               </div>
-              <h3 className="text-sm font-black text-zinc-900 dark:text-white uppercase tracking-tight mb-1">
-                {docSearch ? 'Tidak ditemukan' : 'Belum ada dokumen'}
-              </h3>
-              <p className="text-[11px] text-zinc-400 mb-5">
-                {docSearch ? `Tidak ada dokumen dengan kata kunci "${docSearch}"` : 'Mulai dengan mengunggah dokumen pertama.'}
-              </p>
-              {!docSearch && (
-                <button
-                  onClick={actions.openUploadModal}
-                  className="px-5 py-2.5 rounded-xl bg-emerald-600 text-white text-[11px] font-bold border-none cursor-pointer shadow-md shadow-emerald-500/20"
-                >
-                  Upload Dokumen
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Pagination */}
-          {docMeta.totalPages > 1 && (
-            <div className="flex items-center justify-between pt-2">
-              <p className="text-[11px] text-zinc-400">
-                {(docPage - 1) * docMeta.limit + 1} - {Math.min(docPage * docMeta.limit, docMeta.total)} dari {docMeta.total} dokumen
-              </p>
-              <div className="flex items-center gap-1">
-                <button onClick={() => actions.setDocPage(docPage - 1)} disabled={docPage === 1} className="w-7 h-7 rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-400 hover:text-zinc-700 flex items-center justify-center bg-white dark:bg-zinc-900 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed text-[12px]">‹</button>
-                {Array.from({ length: docMeta.totalPages }, (_, i) => i + 1).map((p) => (
-                  <button key={p} onClick={() => actions.setDocPage(p)} className={`w-7 h-7 rounded-lg text-[11px] font-semibold border cursor-pointer transition-all ${p === docPage ? 'bg-emerald-500 text-white border-emerald-500' : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 text-zinc-500 hover:border-zinc-300'}`}>{p}</button>
-                ))}
-                <button onClick={() => actions.setDocPage(docPage + 1)} disabled={docPage === docMeta.totalPages} className="w-7 h-7 rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-400 hover:text-zinc-700 flex items-center justify-center bg-white dark:bg-zinc-900 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed text-[12px]">›</button>
+              <div className="p-4 space-y-4">
+                {documents.length > 0 ? documents.map((doc) => {
+                  const name = doc.owner?.name || 'Unknown';
+                  const initials = name.trim().split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase();
+                  return (
+                    <div key={doc.id} className="flex items-start gap-4 p-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 rounded-xl transition-colors">
+                      <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 flex items-center justify-center text-[12px] font-black shrink-0">
+                        {initials}
+                      </div>
+                      <div className="min-w-0 flex-1 mt-0.5">
+                        <p className="text-[12px] text-zinc-700 dark:text-zinc-300 font-medium leading-snug">
+                          <span className="font-bold text-zinc-900 dark:text-white">{name}</span> mengupload dokumen{' '}
+                          <span className="font-bold text-emerald-600 dark:text-emerald-400">{doc.title}</span>
+                        </p>
+                        <p className="text-[11px] text-zinc-400 mt-1">{timeAgo(doc.createdAt)}</p>
+                      </div>
+                    </div>
+                  );
+                }) : (
+                  <p className="text-xs text-zinc-400 text-center py-6">Belum ada aktivitas grup.</p>
+                )}
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* ── TRASH SECTION (Collapsible) ──────────────────────────── */}
-          {state.trashCount > 0 && (
+        {/* TAB: TRASH */}
+        {activeTab === 'trash' && (
+          <div className="space-y-4 w-full">
             <TrashSection
               trashDocs={state.trashDocs}
               trashMeta={state.trashMeta}
@@ -363,102 +461,17 @@ const GroupDetailPage = () => {
               onRestore={actions.handleRestoreGroupDoc}
               onPageChange={actions.setTrashPage}
             />
-          )}
-        </div>
-
-        {/* RIGHT: SIDEBAR (4 cols) */}
-        <div className="lg:col-span-4 space-y-4">
-
-          {/* Team Directory */}
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-white/5 rounded-2xl overflow-hidden">
-            <div className="px-5 py-4 flex items-center justify-between border-b border-zinc-50 dark:border-white/5">
-              <div className="flex items-center gap-2">
-                <Users size={14} className="text-emerald-500" />
-                <h3 className="text-[11px] font-black text-zinc-900 dark:text-white uppercase tracking-widest">Team Directory</h3>
+            {state.trashCount === 0 && (
+              <div className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-white/5 rounded-2xl py-12 flex flex-col items-center text-center shadow-sm">
+                 <div className="w-12 h-12 rounded-2xl bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center mb-3">
+                   <Trash2 size={24} className="text-zinc-300" />
+                 </div>
+                 <p className="text-sm font-bold text-zinc-500">Keranjang Sampah Kosong</p>
               </div>
-              <div className="flex items-center gap-1">
-                <span className="text-[10px] text-zinc-400 font-bold">{memberCount} members</span>
-                {isAdmin && (
-                  <button
-                    onClick={actions.handleInvite}
-                    className="ml-2 p-1.5 rounded-lg text-zinc-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 border-none bg-transparent cursor-pointer transition-all"
-                    title="Invite member"
-                  >
-                    <UserPlus size={13} />
-                  </button>
-                )}
-              </div>
-            </div>
-            <div className="p-3">
-              <GroupMemberList
-                members={groupData?.members || []}
-                adminId={groupData?.adminId}
-                currentUserId={currentUser?.id}
-                onKick={isAdmin ? actions.requestKick : null}
-                kickingId={kickingId}
-              />
-            </div>
+            )}
           </div>
-
-          {/* Workspace Status */}
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-white/5 rounded-2xl p-5">
-            <div className="flex items-center gap-2 mb-3">
-              <Settings size={13} className="text-zinc-400" />
-              <h3 className="text-[11px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">Workspace Status</h3>
-            </div>
-            <div className="flex items-center justify-between p-3 bg-emerald-50 dark:bg-emerald-500/5 rounded-xl border border-emerald-100 dark:border-emerald-500/10 cursor-pointer hover:bg-emerald-100 dark:hover:bg-emerald-500/10 transition-all">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-[12px] font-bold text-emerald-700 dark:text-emerald-400">ACTIVE HUB</span>
-              </div>
-              <span className="text-[10px] text-zinc-400">›</span>
-            </div>
-            <p className="text-[10px] text-zinc-400 mt-2 px-1">Semua sistem berjalan dengan baik</p>
-          </div>
-
-          {/* Established */}
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-white/5 rounded-2xl p-5">
-            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Established</p>
-            <p className="text-lg font-black text-zinc-900 dark:text-white uppercase tracking-tight">{createdMonth}</p>
-            <p className="text-[10px] text-zinc-400 mt-1">Workspace ini telah aktif selama 1 bulan</p>
-          </div>
-
-          {/* Activity Feed */}
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-white/5 rounded-2xl overflow-hidden">
-            <div className="px-5 py-4 flex items-center justify-between border-b border-zinc-50 dark:border-white/5">
-              <div className="flex items-center gap-2">
-                <Activity size={13} className="text-zinc-400" />
-                <h3 className="text-[11px] font-black text-zinc-900 dark:text-white uppercase tracking-widest">Activity Feed</h3>
-              </div>
-              <button className="text-[10px] font-bold text-emerald-600 bg-transparent border-none cursor-pointer hover:underline">View all</button>
-            </div>
-            <div className="p-4 space-y-3">
-              {documents.slice(0, 3).map((doc) => {
-                const name = doc.owner?.name || 'Unknown';
-                const initials = name.trim().split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase();
-                // [L-1] timeAgo dari utils/timeAgo.js. Pakai includeMinutes:false
-                // di sini karena semula format `${hrs} jam lalu` (skip menit).
-                return (
-                  <div key={doc.id} className="flex items-start gap-3">
-                    <div className="w-7 h-7 rounded-full bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 flex items-center justify-center text-[9px] font-black shrink-0">
-                      {initials}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-[11px] text-zinc-700 dark:text-zinc-300 font-medium leading-snug">
-                        <span className="font-bold">{name}</span> mengupload dokumen{' '}
-                        <span className="font-bold text-zinc-900 dark:text-white">{doc.title}</span>
-                      </p>
-                      <p className="text-[10px] text-zinc-400 mt-0.5">{timeAgo(doc.createdAt, { includeMinutes: false })}</p>
-                    </div>
-                  </div>
-                );
-              })}
-              {documents.length === 0 && (
-                <p className="text-[11px] text-zinc-400 text-center py-2">Belum ada aktivitas</p>
-              )}
-            </div>
-          </div>
-        </div>
+        )}
+        
       </div>
 
       {/* ── MODALS ────────────────────────────────────────────────────── */}
