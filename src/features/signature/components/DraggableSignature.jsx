@@ -36,7 +36,9 @@ const DraggableSignature = ({
     isReady,
   } = state;
 
-  const handleBase = "absolute w-3 h-3 bg-[#3b82f6] border-2 border-white rounded-full z-[60] pointer-events-auto shadow-sm active:scale-125 transition-all";
+  // FIX #3: Hit area 40px via ::before pseudo-element (visual tetap 12px).
+  // Apple HIG merekomendasikan minimum 44px untuk target touch.
+  const handleBase = "absolute w-3 h-3 bg-[#3b82f6] border-2 border-white rounded-full z-[60] pointer-events-auto shadow-sm active:scale-125 transition-all before:content-[''] before:absolute before:-inset-3.5 before:rounded-full";
   
   // Sekarang visual sepenuhnya bergantung pada isActive (klik)
   const isVisible = isActive || isDragging;
@@ -46,7 +48,7 @@ const DraggableSignature = ({
     : "opacity-0 scale-75 transition-all"; // Hapus group-hover
 
   let outerBorderClass = isActive 
-    ? "border border-blue-500 bg-white/40 shadow-sm z-50 p-4" 
+    ? "border border-green-500 bg-white/40 shadow-sm z-50 p-4" 
     : "border border-transparent z-20 p-4"; // Hapus hover:border-blue
 
   return (
@@ -82,7 +84,7 @@ const DraggableSignature = ({
             <button
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRemove(sig.id); }}
               onMouseDown={(e) => e.stopPropagation()}
-              className="delete-btn w-8 h-8 bg-blue-600 text-white rounded-lg flex items-center justify-center shadow-lg hover:bg-rose-600 transition-all border-none active:scale-90 cursor-pointer"
+              className="delete-btn w-8 h-8 bg-green-600 text-white rounded-lg flex items-center justify-center shadow-lg hover:bg-rose-600 transition-all border-none active:scale-90 cursor-pointer"
             >
               <X size={16} strokeWidth={3} />
             </button>
