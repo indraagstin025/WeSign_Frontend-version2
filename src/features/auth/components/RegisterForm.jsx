@@ -16,20 +16,33 @@ const RegisterForm = () => {
   return (
     <form onSubmit={actions.handleRegister} className="flex flex-col gap-3">
       
-      {/* Error Banner - More Compact */}
-      <div className={`transition-all duration-300 overflow-hidden ${state.error ? 'max-h-24 opacity-100' : 'max-h-0 opacity-0'}`}>
-        <div className="bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-800/50 text-red-600 dark:text-red-400 rounded-2xl px-4 py-2.5 text-[13px] font-medium flex items-start gap-2.5 mb-1">
-          <span className="shrink-0 text-sm">⚠️</span>
-          <span className="leading-relaxed">{state.error}</span>
-        </div>
-      </div>
-
-      {/* Success Banner */}
+      {/* Success State */}
       {state.success && (
-        <div className="bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800/50 text-emerald-600 dark:text-emerald-400 rounded-2xl px-4 py-2.5 text-[13px] font-medium flex items-center gap-2.5 mb-1">
-          <CheckCircle size={16} /> {state.success}
+        <div className="flex flex-col items-center justify-center py-8 px-4 text-center space-y-4">
+          <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mb-2">
+            <Mail size={32} />
+          </div>
+          <h3 className="text-xl font-bold text-zinc-900 dark:text-white">Cek Email Anda!</h3>
+          <p className="text-[14px] text-zinc-600 dark:text-zinc-400 max-w-sm leading-relaxed">
+            {state.success}
+          </p>
+          <div className="pt-4">
+            <Link to="/login" className="inline-flex items-center justify-center gap-2 bg-primary text-white py-2.5 px-6 rounded-xl font-bold hover:bg-primary/90 transition-all text-[13px]">
+              Kembali ke Halaman Login
+            </Link>
+          </div>
         </div>
       )}
+
+      {!state.success && (
+        <>
+          {/* Error Banner - More Compact */}
+          <div className={`transition-all duration-300 overflow-hidden ${state.error ? 'max-h-24 opacity-100' : 'max-h-0 opacity-0'}`}>
+            <div className="bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-800/50 text-red-600 dark:text-red-400 rounded-2xl px-4 py-2.5 text-[13px] font-medium flex items-start gap-2.5 mb-1">
+              <span className="shrink-0 text-sm">⚠️</span>
+              <span className="leading-relaxed">{state.error}</span>
+            </div>
+          </div>
 
       {/* Tipe Akun Toggle - Slimmer */}
       <div className="flex bg-zinc-100 dark:bg-zinc-800/50 p-1 rounded-xl mb-1">
@@ -224,6 +237,8 @@ const RegisterForm = () => {
           Masuk Sekarang <ArrowRight size={12} className="inline ml-1" />
         </Link>
       </div>
+      </>
+      )}
     </form>
   );
 };
